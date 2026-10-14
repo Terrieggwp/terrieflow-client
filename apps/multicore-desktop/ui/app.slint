@@ -448,8 +448,44 @@ component PreviewDeviceRow inherits Rectangle {
     Text { x: 56px; y: 27px; width: parent.width - 230px; height: 17px; text: root.detail; color: Theme.text-muted; font-size: 10px; vertical-alignment: center; overflow: elide; }
     Rectangle { x: parent.width - 156px; y: 21px; width: 7px; height: 7px; border-radius: 3.5px; background: root.online ? Theme.accent-green : #718096; }
     Text { x: parent.width - 138px; y: 11px; width: 112px; height: 28px; text: root.status; color: root.online ? Theme.accent-green : Theme.text-muted; font-size: 11px; vertical-alignment: center; horizontal-alignment: left; overflow: elide; }
-    Text { x: parent.width - 20px; y: 0px; width: 12px; height: parent.height; text: "⋮"; color: Theme.text-muted; font-size: 16px; horizontal-alignment: center; vertical-alignment: center; }
+    Rectangle {
+        x: parent.width - 42px; y: 10px; width: 32px; height: 30px; border-radius: 8px; background: device-menu-touch.has-hover ? #ffffff0d : transparent;
+        Image { x: 8px; y: 7px; width: 16px; height: 16px; source: @image-url("../assets/more-horizontal.svg"); colorize: Theme.text-muted; image-fit: contain; }
+        device-menu-touch := TouchArea { mouse-cursor: pointer; }
+    }
     if root.show-separator: Rectangle { x: 56px; y: parent.height - 1px; width: parent.width - 66px; height: 1px; background: #ffffff0f; }
+}
+
+component PreviewHealthTile inherits Rectangle {
+    in property <image> icon-source;
+    in property <string> title;
+    in property <string> status: "Работает";
+    height: 68px;
+    background: Theme.surface;
+    border-color: Theme.line;
+    border-width: 1px;
+    border-radius: 12px;
+    Image { x: 12px; y: 12px; width: 20px; height: 20px; source: root.icon-source; colorize: Theme.accent-blue-hover; image-fit: contain; }
+    Text { x: 40px; y: 9px; width: parent.width - 50px; height: 24px; text: root.title; color: Theme.text-primary; font-size: 11px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
+    Rectangle { x: 13px; y: 46px; width: 7px; height: 7px; border-radius: 3.5px; background: Theme.accent-green; }
+    Text { x: 29px; y: 36px; width: parent.width - 39px; height: 27px; text: root.status; color: Theme.accent-green; font-size: 10px; vertical-alignment: center; overflow: elide; }
+}
+
+component PreviewServerRow inherits Rectangle {
+    in property <string> code;
+    in property <string> country;
+    in property <string> latency;
+    in property <string> quality;
+    in property <color> tone: Theme.accent-green;
+    in property <color> tone-soft: #26d99520;
+    in property <bool> show-separator: true;
+    height: 37px;
+    background: transparent;
+    Rectangle { x: 8px; y: 7px; width: 30px; height: 23px; border-radius: 6px; background: #12335a; Text { text: root.code; color: Theme.text-primary; font-size: 9px; font-weight: Theme.weight-bold; horizontal-alignment: center; vertical-alignment: center; } }
+    Text { x: 48px; y: 0px; width: parent.width - 235px; height: parent.height; text: root.country; color: Theme.text-primary; font-size: 11px; vertical-alignment: center; overflow: elide; }
+    Text { x: parent.width - 178px; y: 0px; width: 54px; height: parent.height; text: root.latency; color: root.tone; font-size: 10px; horizontal-alignment: right; vertical-alignment: center; }
+    Rectangle { x: parent.width - 112px; y: 9px; width: 102px; height: 20px; border-radius: 10px; background: root.tone-soft; border-color: root.tone; border-width: 1px; Text { text: root.quality; color: root.tone; font-size: 9px; horizontal-alignment: center; vertical-alignment: center; overflow: elide; } }
+    if root.show-separator: Rectangle { x: 48px; y: parent.height - 1px; width: parent.width - 58px; height: 1px; background: #ffffff0f; }
 }
 
 component SmallAction inherits Rectangle {
@@ -1876,7 +1912,7 @@ export component AppWindow inherits Window {
     in-out property <bool> navigation-collapsed: false;
     // Development-only shell and fixture data; enabled only by the isolated preview host.
     in property <bool> terrieflow-preview: false;
-    in-out property <bool> terrieflow-preview-grace: false;
+    in property <bool> terrieflow-preview-grace: false;
     in-out property <string> terrieflow-preview-mode: "auto";
     in-out property <string> terrieflow-route-query;
     in-out property <bool> terrieflow-split-enabled: true;
@@ -1888,6 +1924,8 @@ export component AppWindow inherits Window {
     in-out property <string> terrieflow-telegram-mode: "terrieflow";
     in-out property <string> terrieflow-pubg-mode: "auto";
     in-out property <bool> terrieflow-subscription-copied: false;
+    in-out property <bool> terrieflow-subscription-revealed: false;
+    in-out property <bool> terrieflow-diagnostics-checked: false;
     in-out property <bool> shell-active: true;
     in property <bool> reduced-motion: false;
     in property <string> system-name: "Windows";
@@ -2265,6 +2303,11 @@ export component AppWindow inherits Window {
         running: root.tooltip-owner != "" && !root.tooltip-ready;
         triggered => { root.tooltip-ready = true; }
     }
+    Timer {
+        interval: 30000ms;
+        running: root.terrieflow-preview && root.terrieflow-subscription-revealed;
+        triggered => { root.terrieflow-subscription-revealed = false; }
+    }
     init => { Motion.reduced = root.reduced-motion; }
     changed reduced-motion => { Motion.reduced = root.reduced-motion; }
 
@@ -2325,6 +2368,10 @@ export component AppWindow inherits Window {
         // Search belongs to home; leaving the page closes it.
         if (root.visible-page != "home" && root.route-search-open) {
             root.close-route-search();
+        }
+        if (root.visible-page != "subscriptions") {
+            root.terrieflow-subscription-revealed = false;
+            root.terrieflow-subscription-copied = false;
         }
         // An armed "Удалить все данные" never survives leaving Settings.
         root.reset-data-armed = false;
@@ -2881,7 +2928,7 @@ export component AppWindow inherits Window {
                 if root.terrieflow-preview: NavItem { compact: false; icon-source: @image-url("../assets/server.svg"); label: "Маршруты"; active: root.visible-page == "routes"; enabled: !root.profile-menu-open; activated => { root.local-page = "routes"; root.close-panel(); } }
                 if root.terrieflow-preview: NavItem { compact: false; icon-source: @image-url("../assets/layers.svg"); label: "Раздельный доступ"; active: root.visible-page == "split"; enabled: !root.profile-menu-open; activated => { root.local-page = "split"; root.close-panel(); } }
                 NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/subscriptions.svg"); label: root.terrieflow-preview ? "Подписка" : @tr("Подписки"); badge: root.subscription-profiles.length > 1 ? "" + root.subscription-profiles.length : ""; active: root.visible-page == "subscriptions"; enabled: !root.profile-menu-open; activated => { root.local-page = "subscriptions"; root.close-panel(); } }
-                NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/diagnostics.svg"); label: root.terrieflow-preview ? "Диагностика" : @tr("Состояние"); active: root.visible-page == "status"; enabled: !root.profile-menu-open; activated => { root.local-page = "status"; root.open-panel("events"); } }
+                NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/diagnostics.svg"); label: root.terrieflow-preview ? "Диагностика" : @tr("Состояние"); active: root.visible-page == "status"; enabled: !root.profile-menu-open; activated => { root.local-page = "status"; if (root.terrieflow-preview) { root.close-panel(); } else { root.open-panel("events"); } } }
                 NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/settings.svg"); label: @tr("Настройки"); active: root.visible-page == "settings" || root.visible-page == "troubleshoot"; enabled: !root.profile-menu-open; activated => { root.local-page = "settings"; root.close-panel(); } }
 
                 Rectangle { vertical-stretch: 1; background: transparent; }
@@ -4544,7 +4591,120 @@ export component AppWindow inherits Window {
                 }
             }
 
-            if root.visible-page == "status": Rectangle {
+            if root.terrieflow-preview && root.visible-page == "status": Rectangle {
+                opacity: root.page-entering ? 0 : 1;
+                y: root.page-entering ? 6px : 0px;
+                animate opacity { duration: 180ms; easing: ease-out; }
+                animate y { duration: 220ms; easing: ease-out; }
+                background: transparent;
+                clip: true;
+
+                VerticalLayout {
+                    padding: 20px;
+                    spacing: 10px;
+
+                    VerticalLayout {
+                        height: 50px;
+                        spacing: 2px;
+                        Text { text: "Диагностика"; color: Theme.text-primary; font-size: 24px; font-weight: Theme.weight-title; }
+                        Text { text: "Проверка подключения и состояния компонентов"; color: Theme.text-secondary; font-size: 13px; overflow: elide; }
+                    }
+
+                    Rectangle {
+                        height: 88px;
+                        background: #0d2443;
+                        border-color: #259ef0;
+                        border-width: 1px;
+                        border-radius: 14px;
+                        Rectangle { x: 16px; y: 15px; width: 58px; height: 58px; border-radius: 29px; background: #139dff20; border-color: #18a8ff; border-width: 1px; Image { x: 15px; y: 15px; width: 28px; height: 28px; source: @image-url("../assets/shield-check.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; } }
+                        Text { x: 92px; y: 15px; width: parent.width - 330px; height: 27px; text: "Защита включена"; color: Theme.text-primary; font-size: 19px; font-weight: Theme.weight-bold; vertical-alignment: center; }
+                        Text { x: 92px; y: 44px; width: parent.width - 330px; height: 22px; text: "FI  Finland · 34 мс   ↓ 48.6 МБ/с   ↑ 6.2 МБ/с"; color: Theme.text-secondary; font-size: 12px; vertical-alignment: center; overflow: elide; }
+                        Rectangle {
+                            x: parent.width - 214px; y: 24px; width: 194px; height: 40px; border-radius: 20px; background: #123c36; border-color: Theme.accent-green; border-width: 1px;
+                            Rectangle { x: 16px; y: 16px; width: 8px; height: 8px; border-radius: 4px; background: Theme.accent-green; }
+                            Text { x: 34px; width: parent.width - 46px; height: parent.height; text: root.terrieflow-diagnostics-checked ? "Проверка завершена" : "Соединение в норме"; color: Theme.accent-green; font-size: 11px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
+                        }
+                    }
+
+                    HorizontalLayout {
+                        height: 68px;
+                        spacing: 8px;
+                        PreviewHealthTile { horizontal-stretch: 1; icon-source: @image-url("../assets/server.svg"); title: "Reality"; }
+                        PreviewHealthTile { horizontal-stretch: 1; icon-source: @image-url("../assets/status.svg"); title: "xHTTP"; }
+                        PreviewHealthTile { horizontal-stretch: 1; icon-source: @image-url("../assets/layers.svg"); title: "gRPC"; }
+                        PreviewHealthTile { horizontal-stretch: 1; icon-source: @image-url("../assets/gauge.svg"); title: "Hysteria2"; }
+                        PreviewHealthTile { horizontal-stretch: 1; icon-source: @image-url("../assets/diagnostics.svg"); title: "DNS"; }
+                        PreviewHealthTile { horizontal-stretch: 1; icon-source: @image-url("../assets/link.svg"); title: "TUN"; }
+                    }
+
+                    HorizontalLayout {
+                        vertical-stretch: 1;
+                        min-height: 220px;
+                        spacing: 10px;
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            background: Theme.surface;
+                            border-color: Theme.line;
+                            border-width: 1px;
+                            border-radius: 14px;
+                            clip: true;
+                            Text { x: 14px; y: 7px; width: parent.width - 60px; height: 28px; text: "Проверка серверов"; color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
+                            Image { x: parent.width - 34px; y: 13px; width: 16px; height: 16px; source: @image-url("../assets/refresh.svg"); colorize: Theme.text-muted; image-fit: contain; }
+                            VerticalLayout {
+                                x: 5px; y: 36px; width: parent.width - 10px; height: parent.height - 41px; spacing: 0px;
+                                PreviewServerRow { code: "FI"; country: "Finland"; latency: "34 мс"; quality: "Отлично"; }
+                                PreviewServerRow { code: "SE"; country: "Sweden"; latency: "38 мс"; quality: "Отлично"; }
+                                PreviewServerRow { code: "NL"; country: "Netherlands"; latency: "52 мс"; quality: "Отлично"; }
+                                PreviewServerRow { code: "DE"; country: "Germany"; latency: "68 мс"; quality: "Хорошо"; tone: #f5c451; tone-soft: #f5c45120; }
+                                PreviewServerRow { code: "US"; country: "United States"; latency: "142 мс"; quality: "Допустимо"; tone: #f59e42; tone-soft: #f59e4220; show-separator: false; }
+                            }
+                        }
+                        Rectangle {
+                            width: 350px;
+                            background: #091321;
+                            border-color: Theme.line;
+                            border-width: 1px;
+                            border-radius: 14px;
+                            clip: true;
+                            Image { x: 14px; y: 12px; width: 17px; height: 17px; source: @image-url("../assets/diagnostics.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; }
+                            Text { x: 42px; y: 7px; width: 190px; height: 28px; text: "Журнал диагностики"; color: Theme.text-primary; font-size: 12px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
+                            Text { x: parent.width - 86px; y: 7px; width: 72px; height: 28px; text: "Очистить"; color: Theme.text-muted; font-size: 10px; horizontal-alignment: right; vertical-alignment: center; }
+                            Rectangle { x: 0px; y: 38px; width: parent.width; height: 1px; background: Theme.line; }
+                            VerticalLayout {
+                                x: 14px; y: 46px; width: parent.width - 28px; height: parent.height - 54px; spacing: 3px;
+                                Text { text: "14:27:12   Начата диагностика сети…"; color: Theme.text-muted; font-size: 9px; }
+                                Text { text: "14:27:13   ● DNS ................ OK (23 мс)"; color: Theme.accent-green; font-size: 9px; }
+                                Text { text: "14:27:14   ● Маршрут Finland ..... OK"; color: Theme.accent-green; font-size: 9px; }
+                                Text { text: "14:27:15   ● Сервер ............... OK"; color: Theme.accent-green; font-size: 9px; }
+                                Text { text: "14:27:16   ● Reality .............. OK"; color: Theme.accent-green; font-size: 9px; }
+                                Text { text: "14:27:16   ● xHTTP ................ OK"; color: Theme.accent-green; font-size: 9px; }
+                                Text { text: "14:27:17   ● gRPC ................. OK"; color: Theme.accent-green; font-size: 9px; }
+                                Text { text: "14:27:17   ● Hysteria2 ............. OK"; color: Theme.accent-green; font-size: 9px; }
+                                Text { text: "14:27:18   ● TUN .................. OK"; color: Theme.accent-green; font-size: 9px; }
+                                Text { text: root.terrieflow-diagnostics-checked ? "14:27:19   Диагностика завершена." : "14:27:19   Подключение стабильно."; color: Theme.text-secondary; font-size: 9px; }
+                            }
+                        }
+                    }
+
+                    HorizontalLayout {
+                        height: 40px;
+                        spacing: 10px;
+                        Rectangle {
+                            horizontal-stretch: 1; background: #0e83d5; border-color: #34b9ff; border-width: 1px; border-radius: 10px;
+                            Image { x: parent.width / 2 - 102px; y: 11px; width: 18px; height: 18px; source: @image-url("../assets/diagnostics.svg"); colorize: #ffffff; image-fit: contain; }
+                            Text { x: 0px; width: parent.width; height: parent.height; text: root.terrieflow-diagnostics-checked ? "Проверить ещё раз" : "Проверить подключение"; color: #ffffff; font-size: 12px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; }
+                            TouchArea { mouse-cursor: pointer; clicked => { root.terrieflow-diagnostics-checked = true; } }
+                        }
+                        Rectangle {
+                            horizontal-stretch: 1; background: #10213a; border-color: #2a5f90; border-width: 1px; border-radius: 10px;
+                            Image { x: parent.width / 2 - 94px; y: 11px; width: 18px; height: 18px; source: @image-url("../assets/settings.svg"); colorize: Theme.text-primary; image-fit: contain; }
+                            Text { text: "Устранить неполадки"; color: Theme.text-primary; font-size: 12px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; }
+                        }
+                    }
+                }
+            }
+
+            if !root.terrieflow-preview && root.visible-page == "status": Rectangle {
                 opacity: root.page-entering ? 0 : 1;
                 y: root.page-entering ? 6px : 0px;
                 animate opacity { duration: 180ms; easing: ease-out; }
@@ -5109,7 +5269,7 @@ export component AppWindow inherits Window {
                         }
                         Text { x: 92px; y: 17px; width: parent.width - 260px; height: 26px; text: "Premium Pro"; color: Theme.text-primary; font-size: 20px; font-weight: Theme.weight-bold; vertical-alignment: center; }
                         Rectangle { x: 224px; y: 20px; width: 82px; height: 22px; border-radius: 11px; background: root.terrieflow-preview-grace ? #8b5cf633 : #26d99526; Text { text: root.terrieflow-preview-grace ? "Grace" : "Активна"; color: root.terrieflow-preview-grace ? #b69cff : Theme.accent-green; font-size: 10px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; } }
-                        Text { x: 92px; y: 49px; width: parent.width - 290px; height: 20px; text: root.terrieflow-preview-grace ? "Льготный доступ · осталось 71 ч 42 мин" : "Максимальная скорость · Все локации · До 5 устройств"; color: Theme.text-secondary; font-size: 12px; vertical-alignment: center; overflow: elide; }
+                        Text { x: 92px; y: 49px; width: parent.width - 290px; height: 20px; text: root.terrieflow-preview-grace ? "Льготный доступ · осталось 71 ч 42 мин" : "Все локации · До 5 устройств · Раздельный доступ"; color: Theme.text-secondary; font-size: 12px; vertical-alignment: center; overflow: elide; }
                         Text { x: parent.width - 170px; y: 18px; width: 150px; height: 54px; text: root.terrieflow-preview-grace ? "780 МБ\nиз 1 ГБ" : "12 дн 04 ч\n37 мин"; color: Theme.text-primary; font-size: 14px; font-weight: Theme.weight-semibold; horizontal-alignment: right; vertical-alignment: center; }
                     }
 
@@ -5131,9 +5291,8 @@ export component AppWindow inherits Window {
                         Rectangle {
                             horizontal-stretch: 1; background: root.terrieflow-preview-grace ? #211b48 : Theme.surface; border-color: root.terrieflow-preview-grace ? #7c5ce0 : Theme.line; border-width: 1px; border-radius: 12px;
                             Image { x: 14px; y: 19px; width: 28px; height: 28px; source: @image-url("../assets/shield-check.svg"); colorize: root.terrieflow-preview-grace ? #a78bfa : Theme.text-muted; image-fit: contain; }
-                            Text { x: 54px; y: 10px; width: parent.width - 136px; height: 20px; text: "Grace"; color: root.terrieflow-preview-grace ? #b69cff : Theme.text-muted; font-size: 10px; vertical-alignment: center; }
-                            Text { x: 54px; y: 31px; width: parent.width - 136px; height: 26px; text: root.terrieflow-preview-grace ? "Используется" : "Резерв · 72 ч"; color: root.terrieflow-preview-grace ? #c4b5fd : Theme.text-primary; font-size: 14px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
-                            PreviewSwitch { x: parent.width - 78px; y: 20px; checked <=> root.terrieflow-preview-grace; }
+                            Text { x: 54px; y: 10px; width: parent.width - 66px; height: 20px; text: root.terrieflow-preview-grace ? "Grace активен" : "Grace-резерв"; color: root.terrieflow-preview-grace ? #b69cff : Theme.text-muted; font-size: 10px; vertical-alignment: center; }
+                            Text { x: 54px; y: 31px; width: parent.width - 66px; height: 26px; text: root.terrieflow-preview-grace ? "71 ч 42 мин · 780 МБ" : "72 ч · 1 ГБ"; color: root.terrieflow-preview-grace ? #c4b5fd : Theme.text-primary; font-size: 14px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
                         }
                     }
 
@@ -5145,36 +5304,57 @@ export component AppWindow inherits Window {
                         border-radius: 14px;
                         clip: true;
                         Text { x: 14px; y: 8px; width: 180px; height: 26px; text: "Устройства"; color: Theme.text-primary; font-size: 14px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
-                        Text { x: 110px; y: 8px; width: 160px; height: 26px; text: "3 из 5 подключено"; color: Theme.text-muted; font-size: 10px; vertical-alignment: center; }
+                        Text { x: 110px; y: 8px; width: 160px; height: 26px; text: "Использовано 3 из 5"; color: Theme.text-muted; font-size: 10px; vertical-alignment: center; }
                         Rectangle { x: parent.width - 190px; y: 7px; width: 176px; height: 28px; border-radius: 8px; background: #10213a; border-color: Theme.line; border-width: 1px; Text { text: "Управление устройствами"; color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; } }
                         VerticalLayout {
                             x: 4px; y: 36px; width: parent.width - 8px; height: 150px; spacing: 0px;
-                            PreviewDeviceRow { icon-source: @image-url("../assets/app-icon.svg"); title: "Windows PC"; detail: "Windows 11 · Helsinki, Finland"; status: "Онлайн"; current: true; }
-                            PreviewDeviceRow { icon-source: @image-url("../assets/status.svg"); title: "iPhone"; detail: "iOS 17 · Stockholm, Sweden"; status: "Онлайн"; }
-                            PreviewDeviceRow { icon-source: @image-url("../assets/app-icon.svg"); title: "MacBook"; detail: "macOS 14 · Amsterdam, Netherlands"; status: "3 ч назад"; online: false; show-separator: false; }
+                            PreviewDeviceRow { icon-source: @image-url("../assets/app-icon.svg"); title: "Windows PC"; detail: "Windows 11 · активность сейчас"; status: "Онлайн"; current: true; }
+                            PreviewDeviceRow { icon-source: @image-url("../assets/status.svg"); title: "iPhone"; detail: "iOS 17 · активность 12 мин назад"; status: "Сегодня"; }
+                            PreviewDeviceRow { icon-source: @image-url("../assets/app-icon.svg"); title: "MacBook"; detail: "macOS 14 · последняя активность"; status: "3 ч назад"; online: false; show-separator: false; }
                         }
                     }
 
                     Rectangle {
                         vertical-stretch: 1;
-                        min-height: 94px;
+                        min-height: 126px;
                         background: Theme.surface;
                         border-color: Theme.line;
                         border-width: 1px;
                         border-radius: 14px;
-                        Text { x: 14px; y: 9px; width: 220px; height: 20px; text: "Ваша подписка"; color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; }
-                        Text { x: 14px; y: 29px; width: parent.width - 210px; height: 17px; text: "Ссылка для подключения и управления подпиской"; color: Theme.text-muted; font-size: 10px; overflow: elide; }
-                        Rectangle { x: 14px; y: 52px; width: Math.max(260px, parent.width - 420px); height: 34px; border-radius: 8px; background: #0a1525; border-color: Theme.line; border-width: 1px; Text { x: 11px; width: parent.width - 42px; height: parent.height; text: "https://terrieflow.app/s/demo-premium-pro"; color: Theme.text-secondary; font-size: 10px; vertical-alignment: center; overflow: elide; } Image { x: parent.width - 27px; y: 9px; width: 16px; height: 16px; source: @image-url("../assets/clipboard.svg"); colorize: Theme.text-muted; image-fit: contain; } }
+                        Text { x: 14px; y: 9px; width: 240px; height: 20px; text: "Подключение устройств"; color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; }
+                        Text { x: 14px; y: 28px; width: parent.width - 220px; height: 17px; text: "Ссылка и QR-код скрыты для защиты данных"; color: Theme.text-muted; font-size: 10px; overflow: elide; }
                         Rectangle {
-                            x: Math.max(286px, parent.width - 392px); y: 52px; width: 158px; height: 34px; border-radius: 8px; background: #0e83d5; border-color: #34b9ff; border-width: 1px;
+                            x: 14px; y: 48px; width: Math.max(250px, parent.width - 430px); height: 32px; border-radius: 8px; background: #0a1525; border-color: Theme.line; border-width: 1px;
+                            Text { x: 11px; width: parent.width - 46px; height: parent.height; text: root.terrieflow-subscription-revealed ? "https://terrieflow.app/s/demo-premium-pro" : "••••••••••••••••••••••••••••••••••pro"; color: root.terrieflow-subscription-revealed ? Theme.text-secondary : Theme.text-muted; font-size: 10px; vertical-alignment: center; overflow: elide; }
+                            Rectangle {
+                                x: parent.width - 34px; width: 34px; height: parent.height; border-radius: 7px; background: reveal-link-touch.has-hover ? #ffffff0d : transparent;
+                                Image { x: 9px; y: 8px; width: 16px; height: 16px; source: root.terrieflow-subscription-revealed ? @image-url("../assets/eye-off.svg") : @image-url("../assets/eye.svg"); colorize: Theme.text-secondary; image-fit: contain; }
+                                reveal-link-touch := TouchArea { mouse-cursor: pointer; clicked => { root.terrieflow-subscription-revealed = !root.terrieflow-subscription-revealed; } }
+                            }
+                        }
+                        Rectangle {
+                            x: Math.max(272px, parent.width - 406px); y: 48px; width: 184px; height: 32px; border-radius: 8px; background: #0e83d5; border-color: #34b9ff; border-width: 1px;
                             Text { text: root.terrieflow-subscription-copied ? "Скопировано" : "Скопировать ссылку"; color: #ffffff; font-size: 10px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; }
                             TouchArea { mouse-cursor: pointer; clicked => { root.terrieflow-subscription-copied = !root.terrieflow-subscription-copied; } }
                         }
                         Rectangle {
+                            x: 14px; y: 88px; width: 198px; height: 30px; border-radius: 8px; background: #10213a; border-color: Theme.line; border-width: 1px;
+                            Image { x: 12px; y: 7px; width: 16px; height: 16px; source: @image-url("../assets/link.svg"); colorize: Theme.text-secondary; image-fit: contain; }
+                            Text { x: 36px; width: parent.width - 46px; height: parent.height; text: "Открыть личный кабинет"; color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
+                        }
+                        Rectangle {
+                            x: 220px; y: 88px; width: 184px; height: 30px; border-radius: 8px; background: #10213a; border-color: Theme.line; border-width: 1px;
+                            Image { x: 12px; y: 7px; width: 16px; height: 16px; source: @image-url("../assets/refresh.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; }
+                            Text { x: 36px; width: parent.width - 46px; height: parent.height; text: "Обновить подписку"; color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
+                        }
+                        Text { x: 418px; y: 88px; width: parent.width - 638px; height: 30px; text: "Обновлено сегодня, 14:27"; color: Theme.text-muted; font-size: 9px; vertical-alignment: center; overflow: elide; }
+                        Rectangle {
                             x: parent.width - 206px; y: 10px; width: 192px; height: parent.height - 20px; border-radius: 10px; background: #0b1727; border-color: Theme.line; border-width: 1px;
-                            Image { x: 10px; y: (parent.height - 62px) / 2; width: 62px; height: 62px; source: @image-url("../assets/qr-preview.svg"); image-fit: contain; }
-                            Text { x: 84px; y: 20px; width: parent.width - 94px; height: 20px; text: "QR-код"; color: Theme.text-primary; font-size: 11px; font-weight: Theme.weight-semibold; }
-                            Text { x: 84px; y: 42px; width: parent.width - 94px; text: "Для быстрого подключения"; color: Theme.text-muted; font-size: 9px; wrap: word-wrap; }
+                            if root.terrieflow-subscription-revealed: Image { x: 10px; y: (parent.height - 68px) / 2; width: 68px; height: 68px; source: @image-url("../assets/qr-preview.svg"); image-fit: contain; }
+                            if !root.terrieflow-subscription-revealed: Rectangle { x: 10px; y: (parent.height - 68px) / 2; width: 68px; height: 68px; border-radius: 6px; background: #15243a; Image { x: 22px; y: 22px; width: 24px; height: 24px; source: @image-url("../assets/eye.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; } }
+                            Text { x: 88px; y: 25px; width: parent.width - 98px; height: 20px; text: root.terrieflow-subscription-revealed ? "QR-код" : "QR скрыт"; color: Theme.text-primary; font-size: 11px; font-weight: Theme.weight-semibold; }
+                            Text { x: 88px; y: 48px; width: parent.width - 98px; text: root.terrieflow-subscription-revealed ? "Для быстрого подключения" : "Нажмите, чтобы показать"; color: Theme.text-muted; font-size: 9px; wrap: word-wrap; }
+                            TouchArea { mouse-cursor: pointer; clicked => { root.terrieflow-subscription-revealed = !root.terrieflow-subscription-revealed; } }
                         }
                     }
                 }
@@ -6562,6 +6742,9 @@ export component AppWindow inherits Window {
     // supplies the matching resume edge without waking a tray-hidden window.
     changed minimized => {
         root.shell-active = !root.minimized;
+        if (root.minimized) {
+            root.terrieflow-subscription-revealed = false;
+        }
     }
 
     TouchArea {
