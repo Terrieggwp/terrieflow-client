@@ -238,6 +238,87 @@ component NavToggle inherits Rectangle {
     }
 }
 
+// Subscription lifetime summary used by the TerrieFlow visual preview. Regular unlimited
+// plans show time only; grace mode can reuse the secondary line for its temporary data cap.
+component PreviewSubscriptionCard inherits Rectangle {
+    in property <bool> grace: false;
+    height: 188px;
+    background: #0b1626;
+    border-color: #243a58;
+    border-width: 1px;
+    border-radius: 12px;
+
+    Text {
+        x: 14px;
+        y: 14px;
+        text: root.grace ? "Grace-доступ" : "Подписка";
+        color: Theme.text-primary;
+        font-size: 13px;
+        font-weight: Theme.weight-semibold;
+    }
+    Text {
+        x: 14px;
+        y: 36px;
+        text: root.grace ? "Льготный период активен" : "Premium Pro";
+        color: root.grace ? #a78bfa : Theme.text-secondary;
+        font-size: 12px;
+    }
+
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: 60px;
+        width: 68px;
+        height: 68px;
+        background: transparent;
+
+        Path {
+            width: parent.width;
+            height: parent.height;
+            viewbox-width: 100;
+            viewbox-height: 100;
+            commands: "M 50 8 A 42 42 0 1 1 49.9 8";
+            stroke: #1b2d49;
+            stroke-width: 10px;
+            stroke-line-cap: round;
+            fill: transparent;
+        }
+        Path {
+            width: parent.width;
+            height: parent.height;
+            viewbox-width: 100;
+            viewbox-height: 100;
+            commands: "M 50 8 A 42 42 0 0 1 65.8 88.9";
+            stroke: root.grace ? #8b5cf6 : Theme.accent-blue;
+            stroke-width: 10px;
+            stroke-line-cap: round;
+            fill: transparent;
+        }
+        Text {
+            y: 10px;
+            height: 28px;
+            text: "44%";
+            color: Theme.text-primary;
+            font-size: 15px;
+            font-weight: Theme.weight-semibold;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        Text {
+            y: 34px;
+            height: 18px;
+            text: "срока";
+            color: Theme.text-muted;
+            font-size: 9px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+
+    Rectangle { x: 14px; y: 140px; width: parent.width - 28px; height: 1px; background: Theme.line; }
+    Text { x: 14px; y: 146px; width: parent.width - 28px; text: root.grace ? "71 ч 42 мин 18 с" : "12 дн 04 ч 37 мин"; color: Theme.text-primary; font-size: 11px; font-weight: Theme.weight-semibold; overflow: elide; }
+    Text { x: 14px; y: 166px; width: parent.width - 28px; text: root.grace ? "780 МБ из 1 ГБ" : "до 26 окт., 18:52"; color: Theme.text-muted; font-size: 10px; overflow: elide; }
+}
+
 component SmallAction inherits Rectangle {
     in property <string> label;
     in property <bool> enabled: true;
@@ -1660,6 +1741,9 @@ export component AppWindow inherits Window {
     in property <bool> language-from-provider: false;
     // Icon-only navigation rail; collapsed on first run, remembered after.
     in-out property <bool> navigation-collapsed: false;
+    // Development-only shell and fixture data; enabled only by the isolated preview host.
+    in property <bool> terrieflow-preview: false;
+    in property <bool> terrieflow-preview-grace: false;
     in-out property <bool> shell-active: true;
     in property <bool> reduced-motion: false;
     in property <string> system-name: "Windows";
@@ -2649,20 +2733,32 @@ export component AppWindow inherits Window {
                 spacing: root.navigation-collapsed ? 8px : 4px;
 
                 NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/home.svg"); label: @tr("Главная"); active: root.visible-page == "home"; enabled: !root.profile-menu-open; activated => { root.local-page = "home"; root.close-panel(); } }
-                NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/status.svg"); label: @tr("Состояние"); active: root.visible-page == "status"; enabled: !root.profile-menu-open; activated => { root.local-page = "status"; root.open-panel("events"); } }
-                NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/subscriptions.svg"); label: @tr("Подписки"); badge: root.subscription-profiles.length > 1 ? "" + root.subscription-profiles.length : ""; active: root.visible-page == "subscriptions"; enabled: !root.profile-menu-open; activated => { root.local-page = "subscriptions"; root.close-panel(); } }
+                if root.terrieflow-preview: NavItem { compact: false; icon-source: @image-url("../assets/server.svg"); label: "Маршруты"; active: false; enabled: !root.profile-menu-open; activated => { root.local-page = "home"; root.close-panel(); } }
+                if root.terrieflow-preview: NavItem { compact: false; icon-source: @image-url("../assets/layers.svg"); label: "Раздельный доступ"; active: false; enabled: !root.profile-menu-open; activated => { root.local-page = "home"; root.close-panel(); } }
+                NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/subscriptions.svg"); label: root.terrieflow-preview ? "Подписка" : @tr("Подписки"); badge: root.subscription-profiles.length > 1 ? "" + root.subscription-profiles.length : ""; active: root.visible-page == "subscriptions"; enabled: !root.profile-menu-open; activated => { root.local-page = "subscriptions"; root.close-panel(); } }
+                NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/diagnostics.svg"); label: root.terrieflow-preview ? "Диагностика" : @tr("Состояние"); active: root.visible-page == "status"; enabled: !root.profile-menu-open; activated => { root.local-page = "status"; root.open-panel("events"); } }
                 NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/settings.svg"); label: @tr("Настройки"); active: root.visible-page == "settings" || root.visible-page == "troubleshoot"; enabled: !root.profile-menu-open; activated => { root.local-page = "settings"; root.close-panel(); } }
 
                 Rectangle { vertical-stretch: 1; background: transparent; }
 
-                Rectangle {
+                if root.terrieflow-preview: PreviewSubscriptionCard { grace: root.terrieflow-preview-grace; }
+
+                if root.terrieflow-preview: Rectangle {
+                    height: 44px;
+                    background: transparent;
+                    Rectangle { x: 4px; y: 8px; width: 9px; height: 9px; border-radius: 4.5px; background: Theme.accent-green; drop-shadow-blur: 8px; drop-shadow-color: #3ee59a80; }
+                    Text { x: 22px; y: 2px; width: parent.width - 22px; height: 22px; text: "Соединение активно"; color: Theme.text-secondary; font-size: 11px; vertical-alignment: center; overflow: elide; }
+                    Text { x: 4px; y: 24px; width: parent.width - 4px; height: 18px; text: "Windows 11 · v0.1 preview"; color: Theme.text-muted; font-size: 10px; vertical-alignment: center; overflow: elide; }
+                }
+
+                if !root.terrieflow-preview: Rectangle {
                     height: 1px;
                     background: Theme.line;
                     opacity: root.navigation-collapsed ? 0 : 1;
                     animate opacity { duration: 160ms; easing: ease-out; }
                 }
 
-                NavToggle {
+                if !root.terrieflow-preview: NavToggle {
                     collapsed: root.navigation-collapsed;
                     activated => {
                         root.navigation-collapsed = !root.navigation-collapsed;

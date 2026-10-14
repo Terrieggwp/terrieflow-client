@@ -1100,29 +1100,38 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
         (!isolated_preview).then(|| wire_troubleshoot(&ui, model.clone()));
     wire_data_reset(&ui);
     wire_panels(&ui, model.clone());
-    wire_event_filter(&ui, model.clone());
     wire_log_range(&ui);
-    wire_save_diagnostics(&ui, model.clone());
-    wire_catalog_group(&ui, model.clone());
-    wire_catalog_node(&ui, model.clone());
-    wire_route_search(&ui, model.clone());
-    let _latency_timer = wire_automatic_latency(&ui, model.clone());
-    wire_manual_latency(&ui, model.clone());
-    let _session_stats_timer = wire_session_stats(&ui, model.clone());
-    let _cores_ready_timer = wire_cores_ready_watch(&ui, model.clone());
-    let _connection_watch_timer = wire_connection_watch(&ui, model.clone());
-    wire_conflicting_apps_banner(&ui, model.clone());
-    let _conflicting_apps_timer = wire_conflicting_apps_scan(&ui, model.clone());
+    if !isolated_preview {
+        wire_event_filter(&ui, model.clone());
+        wire_save_diagnostics(&ui, model.clone());
+        wire_catalog_group(&ui, model.clone());
+        wire_catalog_node(&ui, model.clone());
+        wire_route_search(&ui, model.clone());
+        wire_manual_latency(&ui, model.clone());
+        wire_conflicting_apps_banner(&ui, model.clone());
+    }
+    let _latency_timer =
+        (!isolated_preview).then(|| wire_automatic_latency(&ui, model.clone()));
+    let _session_stats_timer =
+        (!isolated_preview).then(|| wire_session_stats(&ui, model.clone()));
+    let _cores_ready_timer =
+        (!isolated_preview).then(|| wire_cores_ready_watch(&ui, model.clone()));
+    let _connection_watch_timer =
+        (!isolated_preview).then(|| wire_connection_watch(&ui, model.clone()));
+    let _conflicting_apps_timer =
+        (!isolated_preview).then(|| wire_conflicting_apps_scan(&ui, model.clone()));
     if !isolated_preview {
         wire_windows_settings(&ui);
     }
-    wire_external_activations(
-        &ui,
-        activations,
-        model.clone(),
-        pending_subscription_consents.clone(),
-        pending_subscription_imports.clone(),
-    );
+    if !isolated_preview {
+        wire_external_activations(
+            &ui,
+            activations,
+            model.clone(),
+            pending_subscription_consents.clone(),
+            pending_subscription_imports.clone(),
+        );
+    }
     let tray_popup_open = Rc::new(Cell::new(false));
     let tray_popup_geometry = Rc::new(TrayPopupGeometry::new(loaded_preferences.tray_popup_size));
     let tray_popup_slot = {
@@ -1233,7 +1242,11 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
             false,
         );
     }
-    run_refresh(ui.as_weak(), model.clone(), profile_preferences);
+    if isolated_preview {
+        preview_mode::apply_demo(&ui);
+    } else {
+        run_refresh(ui.as_weak(), model.clone(), profile_preferences);
+    }
     if !isolated_preview && let Some(subscription_url) = launch_arguments.subscription_url {
         queue_subscription_import(
             &ui,
