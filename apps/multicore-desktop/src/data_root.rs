@@ -11,7 +11,11 @@ use std::path::PathBuf;
 
 #[cfg(not(test))]
 pub(crate) fn user_data_root() -> io::Result<PathBuf> {
-    multicore_platform::dirs::user_data_root()
+    if let Some(root) = crate::preview_mode::data_root() {
+        Ok(root)
+    } else {
+        multicore_platform::dirs::user_data_root()
+    }
 }
 
 #[cfg(test)]

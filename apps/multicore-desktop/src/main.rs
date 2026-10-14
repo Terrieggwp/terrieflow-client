@@ -23,6 +23,7 @@ mod logo_cache;
 #[cfg(windows)]
 mod native_crash;
 mod preferences;
+mod preview_mode;
 #[cfg(test)]
 mod preview_render;
 mod renderer_fallback;
@@ -846,6 +847,7 @@ fn main() -> Result<(), slint::PlatformError> {
 }
 
 fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
+    let isolated_preview = preview_mode::enabled();
     log_bundle::note_app_start();
     multicore_core::ensure_crypto_provider_installed();
     #[cfg(target_os = "linux")]
@@ -856,7 +858,7 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
             LaunchArguments::foreground()
         });
     #[cfg(windows)]
-    if let Err(error) = windows_settings::ensure_url_protocol_registration() {
+    if !isolated_preview && let Err(error) = windows_settings::ensure_url_protocol_registration() {
         eprintln!("URL protocol registration could not be repaired: {error}");
     }
     let activation = activation_for_launch_arguments(&launch_arguments);
@@ -885,14 +887,18 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
     };
     // An in-app update from 1.1.1 kept the installer's "MultiCore" entry and shortcuts.
     #[cfg(windows)]
-    windows_settings::migrate_legacy_brand();
+    if !isolated_preview {
+        windows_settings::migrate_legacy_brand();
+    }
     // The updater relaunches the new version from a `\\?\` path; an autostart value written
     // in that (or any older) spelling of this app is put back in the plain form, kept on.
     #[cfg(windows)]
-    match windows_settings::repair_launch_at_sign_in() {
-        Ok(true) => eprintln!("autostart command repaired for this executable"),
-        Ok(false) => {}
-        Err(error) => eprintln!("autostart command could not be repaired: {error}"),
+    if !isolated_preview {
+        match windows_settings::repair_launch_at_sign_in() {
+            Ok(true) => eprintln!("autostart command repaired for this executable"),
+            Ok(false) => {}
+            Err(error) => eprintln!("autostart command could not be repaired: {error}"),
+        }
     }
     #[cfg(target_os = "linux")]
     if let Some(appimage) = appimage_handoff::handed_off_from() {
@@ -911,12 +917,19 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
         language::detect_system_language(),
     );
     let (client, _bootstrap_guard): (Arc<dyn DaemonClient>, Option<bootstrap::Bootstrap>) =
-        match bootstrap::start() {
-            Ok(bootstrap) => (bootstrap.client(), Some(bootstrap)),
-            Err(error) => {
-                eprintln!("bootstrap failed: {error:?}");
-                let error = DaemonError::new(error.user_message());
-                (Arc::new(UnavailableDaemonClient::new(error)), None)
+        if isolated_preview {
+            let error = DaemonError::new(
+                "Предпросмотр интерфейса: сетевые функции отключены".to_owned(),
+            );
+            (Arc::new(UnavailableDaemonClient::new(error)), None)
+        } else {
+            match bootstrap::start() {
+                Ok(bootstrap) => (bootstrap.client(), Some(bootstrap)),
+                Err(error) => {
+                    eprintln!("bootstrap failed: {error:?}");
+                    let error = DaemonError::new(error.user_message());
+                    (Arc::new(UnavailableDaemonClient::new(error)), None)
+                }
             }
         };
 
@@ -967,11 +980,25 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
         ui.set_preference_error(preference_save_error().into());
     }
     apply_snapshot(&ui, &snapshot(&model.lock().expect("view model lock")));
+    if isolated_preview {
+        ui.set_status_eyebrow("Безопасный предпросмотр".into());
+        ui.set_headline("TerrieFlow Client".into());
+        ui.set_supporting(
+            "Сетевые функции, служба, TUN и системный прокси отключены.".into(),
+        );
+        ui.set_primary_enabled(false);
+        ui.set_auto_connect_on_startup(false);
+        ui.set_service_card_visible(false);
+    }
     ui.set_local_page(visible_page_name(&loaded_preferences.visible_page).into());
     ui.set_runtime_versions(env!("MULTICORE_RUNTIME_VERSIONS").into());
     ui.set_ambient_background_enabled(loaded_preferences.ambient_background);
-    ui.set_navigation_collapsed(loaded_preferences.navigation_collapsed);
-    ui.set_tun_enabled(loaded_preferences.tun_enabled);
+    ui.set_navigation_collapsed(if isolated_preview {
+        false
+    } else {
+        loaded_preferences.navigation_collapsed
+    });
+    ui.set_tun_enabled(!isolated_preview && loaded_preferences.tun_enabled);
     // The TUN-off (system proxy) mode exists on Windows only.
     ui.set_tun_toggle_available(cfg!(windows));
     // A connection that outlived the previous run was made in the saved mode.
@@ -1004,7 +1031,7 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
     if let Some(appimage) = appimage_handoff::handed_off_from() {
         ui.set_handoff_notice_for(appimage.to_string_lossy().as_ref().into());
     }
-    ui.set_auto_connect_on_startup(loaded_preferences.auto_connect_on_startup);
+    ui.set_auto_connect_on_startup(!isolated_preview && loaded_preferences.auto_connect_on_startup);
     ui.set_reduced_motion(reduced_motion_from_client_area_animation(
         client_area_animation_enabled(),
     ));
@@ -1018,40 +1045,59 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
     if let Some(version) = updater::take_update_confirmation() {
         ui.set_update_done_version(version.into());
     }
-    apply_launch_at_sign_in(&ui, windows_settings::query_launch_at_sign_in());
+    if isolated_preview {
+        ui.set_launch_at_sign_in_enabled(false);
+        ui.set_launch_at_sign_in_stale(false);
+        ui.set_launch_at_sign_in_error("Недоступно в режиме предпросмотра".into());
+    } else {
+        apply_launch_at_sign_in(&ui, windows_settings::query_launch_at_sign_in());
+    }
     apply_saved_placement(&ui, &loaded_preferences);
     let pending_subscription_imports = Arc::new(Mutex::new(PendingSubscriptionImports::default()));
     let pending_subscription_consents =
         Arc::new(Mutex::new(PendingSubscriptionConsents::default()));
-    wire_import(
-        &ui,
-        model.clone(),
-        profile_preferences.clone(),
-        pending_subscription_imports.clone(),
-    );
-    wire_deep_link_consent(
-        &ui,
-        pending_subscription_consents.clone(),
-        pending_subscription_imports.clone(),
-    );
-    let _pending_import_timer =
-        wire_pending_subscription_imports(&ui, model.clone(), pending_subscription_imports.clone());
-    wire_clipboard_import(&ui, model.clone());
+    if !isolated_preview {
+        wire_import(
+            &ui,
+            model.clone(),
+            profile_preferences.clone(),
+            pending_subscription_imports.clone(),
+        );
+        wire_deep_link_consent(
+            &ui,
+            pending_subscription_consents.clone(),
+            pending_subscription_imports.clone(),
+        );
+        wire_clipboard_import(&ui, model.clone());
+    }
+    let _pending_import_timer = (!isolated_preview).then(|| {
+        wire_pending_subscription_imports(
+            &ui,
+            model.clone(),
+            pending_subscription_imports.clone(),
+        )
+    });
     wire_local_proxy(&ui);
-    wire_subscription_refresh(&ui, model.clone(), profile_preferences.clone());
-    let _subscription_refresh_timer =
-        wire_automatic_subscription_refresh(&ui, model.clone(), profile_preferences.clone());
-    wire_profile_switcher(&ui, model.clone(), profile_preferences.clone());
+    if !isolated_preview {
+        wire_subscription_refresh(&ui, model.clone(), profile_preferences.clone());
+        wire_profile_switcher(&ui, model.clone(), profile_preferences.clone());
+    }
+    let _subscription_refresh_timer = (!isolated_preview).then(|| {
+        wire_automatic_subscription_refresh(&ui, model.clone(), profile_preferences.clone())
+    });
     let startup_connect_pending = Rc::new(Cell::new(true));
-    wire_primary_action(
-        &ui,
-        model.clone(),
-        profile_preferences.clone(),
-        startup_connect_pending.clone(),
-    );
-    wire_dashboard_action(&ui, model.clone());
-    wire_service_install(&ui);
-    let _troubleshoot_clock = wire_troubleshoot(&ui, model.clone());
+    if !isolated_preview {
+        wire_primary_action(
+            &ui,
+            model.clone(),
+            profile_preferences.clone(),
+            startup_connect_pending.clone(),
+        );
+        wire_dashboard_action(&ui, model.clone());
+        wire_service_install(&ui);
+    }
+    let _troubleshoot_clock =
+        (!isolated_preview).then(|| wire_troubleshoot(&ui, model.clone()));
     wire_data_reset(&ui);
     wire_panels(&ui, model.clone());
     wire_event_filter(&ui, model.clone());
@@ -1067,7 +1113,9 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
     let _connection_watch_timer = wire_connection_watch(&ui, model.clone());
     wire_conflicting_apps_banner(&ui, model.clone());
     let _conflicting_apps_timer = wire_conflicting_apps_scan(&ui, model.clone());
-    wire_windows_settings(&ui);
+    if !isolated_preview {
+        wire_windows_settings(&ui);
+    }
     wire_external_activations(
         &ui,
         activations,
@@ -1160,19 +1208,23 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
         preference_writer.clone(),
         preference_tracker.clone(),
     );
-    wire_updater(
-        &ui,
-        model.clone(),
-        update_state.clone(),
-        update_check_started_at.clone(),
-    );
-    let _update_check_timer = wire_periodic_update_check(
-        &ui,
-        model.clone(),
-        update_state.clone(),
-        update_check_started_at.clone(),
-    );
-    if updater::configured_repository().ok().flatten().is_some() {
+    if !isolated_preview {
+        wire_updater(
+            &ui,
+            model.clone(),
+            update_state.clone(),
+            update_check_started_at.clone(),
+        );
+    }
+    let _update_check_timer = (!isolated_preview).then(|| {
+        wire_periodic_update_check(
+            &ui,
+            model.clone(),
+            update_state.clone(),
+            update_check_started_at.clone(),
+        )
+    });
+    if !isolated_preview && updater::configured_repository().ok().flatten().is_some() {
         run_update_check(
             ui.as_weak(),
             model.clone(),
@@ -1182,7 +1234,7 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
         );
     }
     run_refresh(ui.as_weak(), model.clone(), profile_preferences);
-    if let Some(subscription_url) = launch_arguments.subscription_url {
+    if !isolated_preview && let Some(subscription_url) = launch_arguments.subscription_url {
         queue_subscription_import(
             &ui,
             &pending_subscription_consents,
@@ -1190,13 +1242,15 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
             subscription_url,
         );
     }
-    let _startup_connect_timer = wire_startup_auto_connect(
-        &ui,
-        model.clone(),
-        launch_mode,
-        loaded_preferences.auto_connect_on_startup,
-        startup_connect_pending,
-    );
+    let _startup_connect_timer = (!isolated_preview).then(|| {
+        wire_startup_auto_connect(
+            &ui,
+            model.clone(),
+            launch_mode,
+            loaded_preferences.auto_connect_on_startup,
+            startup_connect_pending,
+        )
+    });
     let starts_visible = initial_window_visible(launch_mode, tray_runtime.is_some());
     ui.set_shell_active(starts_visible);
     if starts_visible {
