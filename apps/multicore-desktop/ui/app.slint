@@ -303,20 +303,47 @@ component PreviewSubscriptionCard inherits Rectangle {
             horizontal-alignment: center;
             vertical-alignment: center;
         }
-        Text {
-            y: 34px;
-            height: 18px;
-            text: "срока";
-            color: Theme.text-muted;
-            font-size: 9px;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-        }
     }
 
     Rectangle { x: 14px; y: 140px; width: parent.width - 28px; height: 1px; background: Theme.line; }
     Text { x: 14px; y: 146px; width: parent.width - 28px; text: root.grace ? "71 ч 42 мин 18 с" : "12 дн 04 ч 37 мин"; color: Theme.text-primary; font-size: 11px; font-weight: Theme.weight-semibold; overflow: elide; }
     Text { x: 14px; y: 166px; width: parent.width - 28px; text: root.grace ? "780 МБ из 1 ГБ" : "до 26 окт., 18:52"; color: Theme.text-muted; font-size: 10px; overflow: elide; }
+}
+
+component PreviewModeCard inherits Rectangle {
+    in property <image> icon-source;
+    in property <string> title;
+    in property <string> detail;
+    in property <bool> selected: false;
+    callback activated();
+
+    height: 72px;
+    background: root.selected ? #10294a : mode-touch.has-hover ? #111f34 : Theme.surface;
+    border-color: root.selected ? Theme.accent-blue : Theme.line;
+    border-width: 1px;
+    border-radius: 12px;
+    animate background, border-color { duration: 140ms; easing: ease-out; }
+
+    Rectangle {
+        x: 14px;
+        y: 18px;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: root.selected ? #139dff26 : #ffffff0a;
+        Image {
+            x: 9px;
+            y: 9px;
+            width: 18px;
+            height: 18px;
+            source: root.icon-source;
+            colorize: root.selected ? Theme.accent-blue-hover : Theme.text-secondary;
+            image-fit: contain;
+        }
+    }
+    Text { x: 62px; y: 14px; width: parent.width - 74px; height: 22px; text: root.title; color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
+    Text { x: 62px; y: 36px; width: parent.width - 74px; height: 20px; text: root.detail; color: Theme.text-muted; font-size: 11px; vertical-alignment: center; overflow: elide; }
+    mode-touch := TouchArea { mouse-cursor: pointer; clicked => { root.activated(); } }
 }
 
 component SmallAction inherits Rectangle {
@@ -1744,6 +1771,8 @@ export component AppWindow inherits Window {
     // Development-only shell and fixture data; enabled only by the isolated preview host.
     in property <bool> terrieflow-preview: false;
     in property <bool> terrieflow-preview-grace: false;
+    in-out property <string> terrieflow-preview-mode: "auto";
+    in-out property <string> terrieflow-route-query;
     in-out property <bool> shell-active: true;
     in property <bool> reduced-motion: false;
     in property <string> system-name: "Windows";
@@ -2733,7 +2762,7 @@ export component AppWindow inherits Window {
                 spacing: root.navigation-collapsed ? 8px : 4px;
 
                 NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/home.svg"); label: @tr("Главная"); active: root.visible-page == "home"; enabled: !root.profile-menu-open; activated => { root.local-page = "home"; root.close-panel(); } }
-                if root.terrieflow-preview: NavItem { compact: false; icon-source: @image-url("../assets/server.svg"); label: "Маршруты"; active: false; enabled: !root.profile-menu-open; activated => { root.local-page = "home"; root.close-panel(); } }
+                if root.terrieflow-preview: NavItem { compact: false; icon-source: @image-url("../assets/server.svg"); label: "Маршруты"; active: root.visible-page == "routes"; enabled: !root.profile-menu-open; activated => { root.local-page = "routes"; root.close-panel(); } }
                 if root.terrieflow-preview: NavItem { compact: false; icon-source: @image-url("../assets/layers.svg"); label: "Раздельный доступ"; active: false; enabled: !root.profile-menu-open; activated => { root.local-page = "home"; root.close-panel(); } }
                 NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/subscriptions.svg"); label: root.terrieflow-preview ? "Подписка" : @tr("Подписки"); badge: root.subscription-profiles.length > 1 ? "" + root.subscription-profiles.length : ""; active: root.visible-page == "subscriptions"; enabled: !root.profile-menu-open; activated => { root.local-page = "subscriptions"; root.close-panel(); } }
                 NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/diagnostics.svg"); label: root.terrieflow-preview ? "Диагностика" : @tr("Состояние"); active: root.visible-page == "status"; enabled: !root.profile-menu-open; activated => { root.local-page = "status"; root.open-panel("events"); } }
@@ -3512,6 +3541,35 @@ export component AppWindow inherits Window {
                         }
                     }
 
+                    if root.has-profile && root.terrieflow-preview: HorizontalLayout {
+                        height: 72px;
+                        spacing: 10px;
+                        PreviewModeCard {
+                            horizontal-stretch: 1;
+                            icon-source: @image-url("../assets/server.svg");
+                            title: "Автовыбор";
+                            detail: "Лучший маршрут";
+                            selected: root.terrieflow-preview-mode == "auto";
+                            activated => { root.terrieflow-preview-mode = "auto"; }
+                        }
+                        PreviewModeCard {
+                            horizontal-stretch: 1;
+                            icon-source: @image-url("../assets/gauge.svg");
+                            title: "Макс. скорость";
+                            detail: "Минимальный пинг";
+                            selected: root.terrieflow-preview-mode == "speed";
+                            activated => { root.terrieflow-preview-mode = "speed"; }
+                        }
+                        PreviewModeCard {
+                            horizontal-stretch: 1;
+                            icon-source: @image-url("../assets/shield-check.svg");
+                            title: "Макс. доступность";
+                            detail: "Стабильное соединение";
+                            selected: root.terrieflow-preview-mode == "stable";
+                            activated => { root.terrieflow-preview-mode = "stable"; }
+                        }
+                    }
+
                     if root.has-profile: inline-routes := Rectangle {
                         vertical-stretch: 1;
                         min-height: 140px;
@@ -4162,6 +4220,97 @@ export component AppWindow inherits Window {
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            if root.terrieflow-preview && root.visible-page == "routes": Rectangle {
+                opacity: root.page-entering ? 0 : 1;
+                y: root.page-entering ? 6px : 0px;
+                animate opacity { duration: 180ms; easing: ease-out; }
+                animate y { duration: 220ms; easing: ease-out; }
+                background: transparent;
+                clip: true;
+
+                VerticalLayout {
+                    padding: 24px;
+                    spacing: 14px;
+
+                    VerticalLayout {
+                        height: 56px;
+                        spacing: 3px;
+                        Text { text: "Маршруты"; color: Theme.text-primary; font-size: 24px; font-weight: Theme.weight-title; }
+                        Text { text: "Выберите способ подключения или конкретный сервер"; color: Theme.text-secondary; font-size: 13px; }
+                    }
+
+                    Rectangle {
+                        height: 88px;
+                        background: #0d1d33;
+                        border-color: #238cff;
+                        border-width: 1px;
+                        border-radius: 14px;
+                        clip: true;
+                        Rectangle {
+                            x: 18px; y: 18px; width: 52px; height: 52px; border-radius: 26px;
+                            background: #139dff24; border-color: #139dff80; border-width: 1px;
+                            Image { x: 14px; y: 14px; width: 24px; height: 24px; source: @image-url("../assets/shield-check.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; }
+                        }
+                        Text { x: 86px; y: 17px; width: parent.width - 220px; height: 28px; text: "Текущий маршрут"; color: Theme.text-muted; font-size: 12px; vertical-alignment: center; }
+                        Text { x: 86px; y: 42px; width: parent.width - 220px; height: 28px; text: "Finland · Helsinki"; color: Theme.text-primary; font-size: 18px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
+                        Text { x: parent.width - 126px; y: 20px; width: 106px; height: 48px; text: "34 мс"; color: Theme.accent-green; font-size: 15px; font-weight: Theme.weight-semibold; horizontal-alignment: right; vertical-alignment: center; }
+                    }
+
+                    HorizontalLayout {
+                        height: 72px;
+                        spacing: 10px;
+                        PreviewModeCard { horizontal-stretch: 1; icon-source: @image-url("../assets/server.svg"); title: "Автовыбор"; detail: "Лучший маршрут"; selected: root.terrieflow-preview-mode == "auto"; activated => { root.terrieflow-preview-mode = "auto"; } }
+                        PreviewModeCard { horizontal-stretch: 1; icon-source: @image-url("../assets/gauge.svg"); title: "Макс. скорость"; detail: "Минимальный пинг"; selected: root.terrieflow-preview-mode == "speed"; activated => { root.terrieflow-preview-mode = "speed"; } }
+                        PreviewModeCard { horizontal-stretch: 1; icon-source: @image-url("../assets/shield-check.svg"); title: "Макс. доступность"; detail: "Стабильное соединение"; selected: root.terrieflow-preview-mode == "stable"; activated => { root.terrieflow-preview-mode = "stable"; } }
+                    }
+
+                    Rectangle {
+                        height: 40px;
+                        background: transparent;
+                        Text { x: 0px; width: 220px; height: parent.height; text: "Все серверы"; color: Theme.text-primary; font-size: 16px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
+                        Rectangle {
+                            x: parent.width - 300px; width: 300px; height: 40px; border-radius: 10px;
+                            background: #0b1626; border-color: route-preview-input.has-focus ? Theme.accent-blue : Theme.line; border-width: 1px;
+                            Image { x: 12px; y: 12px; width: 16px; height: 16px; source: @image-url("../assets/search.svg"); colorize: Theme.text-muted; image-fit: contain; }
+                            route-preview-input := TextInput {
+                                x: 38px; width: parent.width - 50px; height: parent.height;
+                                text <=> root.terrieflow-route-query;
+                                single-line: true; color: Theme.text-primary; font-size: 13px; vertical-alignment: center;
+                                accessible-label: "Поиск страны или сервера";
+                            }
+                            if root.terrieflow-route-query == "": Text { x: 38px; width: parent.width - 50px; height: parent.height; text: "Поиск страны или сервера…"; color: Theme.text-muted; font-size: 12px; vertical-alignment: center; }
+                        }
+                    }
+
+                    route-preview-list := ListView {
+                        vertical-stretch: 1;
+                        reduced-motion: true;
+                        row-count: root.catalog-nodes.length;
+                        row-height: 48px;
+                        card-background: Theme.surface;
+                        card-border-color: Theme.line;
+                        card-border-width: 1px;
+                        card-radius: 14px;
+                        footer-text: "6 локаций · данные предпросмотра";
+                        for node[index] in root.catalog-nodes: RouteNodeRow {
+                            height: 48px;
+                            show-separator: index < root.catalog-nodes.length - 1;
+                            icon: node.icon;
+                            icon-image: node.icon-image;
+                            icon-loading: false;
+                            reduced-motion: true;
+                            label: node.label;
+                            supporting-text: index == 0 ? "Helsinki" : index == 1 ? "Stockholm" : index == 2 ? "Amsterdam" : index == 3 ? "Frankfurt" : index == 4 ? "New York" : "Tirana";
+                            trailing-text: node.latency-text;
+                            trailing-tone: node.latency-tone;
+                            selected: node.selected;
+                            pending: false;
+                            enabled: false;
                         }
                     }
                 }
