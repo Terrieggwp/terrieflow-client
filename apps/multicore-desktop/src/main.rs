@@ -6795,7 +6795,7 @@ mod window_tests {
             "tone: string,",
             "callback toggle-group(string);",
             // Header wordmark + subscription, module with switch, segments, list, footer.
-            "text: \"MULTICORE\";",
+            "text: \"TerrieFlow\";",
             "connect-card := Rectangle",
             "card-mesh := Rectangle",
             "switch-track := Rectangle",

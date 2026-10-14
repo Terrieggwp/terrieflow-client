@@ -1470,11 +1470,11 @@ component QuotaLogo inherits Rectangle {
 }
 
 export component AppWindow inherits Window {
-    title: "MULTICORE";
-    icon: @image-url("../assets/app-icon.svg");
+    title: "TerrieFlow";
+    icon: @image-url("../assets/terrieflow-icon-temp.png");
     no-frame: true;
-    preferred-width: 840px;
-    preferred-height: 720px;
+    preferred-width: 1120px;
+    preferred-height: 760px;
     min-width: 700px;
     min-height: 620px;
     background: Theme.canvas;
@@ -1659,11 +1659,11 @@ export component AppWindow inherits Window {
     // The language follows the active subscription's `app-language` header.
     in property <bool> language-from-provider: false;
     // Icon-only navigation rail; collapsed on first run, remembered after.
-    in-out property <bool> navigation-collapsed: true;
+    in-out property <bool> navigation-collapsed: false;
     in-out property <bool> shell-active: true;
     in property <bool> reduced-motion: false;
     in property <string> system-name: "Windows";
-    in property <string> runtime-versions: "MULTICORE";
+    in property <string> runtime-versions: "TerrieFlow";
     // The window has keyboard focus (set by the host); the ambient waves rest while it does not.
     in property <bool> window-active: true;
     // Ambient waves drift at most ~5px/s at a few percent opacity, so four steps a second
@@ -1679,7 +1679,7 @@ export component AppWindow inherits Window {
     private property <int> first-run-trigger-focus-serial: 0;
     private property <int> power-action-focus-serial: 0;
     in property <bool> update-available: false;
-    in property <string> update-status: "MULTICORE 0.3.0";
+    in property <string> update-status: "TerrieFlow";
     in property <string> update-detail: @tr("Канал обновлений не настроен");
     in property <string> update-action-label;
     in property <bool> update-action-enabled: false;
@@ -2224,7 +2224,7 @@ export component AppWindow inherits Window {
 
             title-bar := Rectangle {
                 height: 44px;
-                background: #0a0c0f;
+                background: #07101c;
                 border-color: Theme.line;
                 border-width: 0px;
 
@@ -2252,7 +2252,7 @@ export component AppWindow inherits Window {
                         y: 12px - root.title-lift;
                         width: 20px;
                         height: 20px;
-                        source: @image-url("../assets/app-icon.svg");
+                        source: @image-url("../assets/terrieflow-icon-temp.png");
                         image-fit: contain;
                         animate x { duration: 240ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                     }
@@ -2262,13 +2262,13 @@ export component AppWindow inherits Window {
                         y: -root.title-lift;
                         width: 112px;
                         height: parent.height;
-                        text: "MULTICORE";
+                        text: "TerrieFlow";
                         color: Theme.text-primary;
                         font-family: Theme.font-family;
                         // The tray popup's wordmark: tighter, bolder, tracked caps.
-                        font-size: 13px;
-                        font-weight: Theme.weight-bold;
-                        letter-spacing: 0.6px;
+                        font-size: 15px;
+                        font-weight: Theme.weight-semibold;
+                        letter-spacing: 0px;
                         vertical-alignment: center;
                     }
 
@@ -2628,7 +2628,7 @@ export component AppWindow inherits Window {
 
                 TitleBarButton { x: parent.width - 132px; y: -root.resize-border; height: 44px + root.resize-border; kind: "minimize"; state-label: @tr("Свернуть окно"); activated => { if (root.profile-menu-open) { root.close-profile-menu(); } root.window-minimize(); } }
                 TitleBarButton { x: parent.width - 88px; y: -root.resize-border; height: 44px + root.resize-border; kind: root.maximized ? "restore" : "maximize"; state-label: @tr("Развернуть или восстановить окно"); activated => { if (root.profile-menu-open) { root.close-profile-menu(); } root.window-toggle-maximize(); } }
-                TitleBarButton { x: parent.width - 44px; y: -root.resize-border; height: 44px + root.resize-border; kind: "close"; state-label: @tr("Закрыть MULTICORE"); activated => { if (root.profile-menu-open) { root.close-profile-menu(); } root.window-close(); } }
+                TitleBarButton { x: parent.width - 44px; y: -root.resize-border; height: 44px + root.resize-border; kind: "close"; state-label: @tr("Закрыть TerrieFlow"); activated => { if (root.profile-menu-open) { root.close-profile-menu(); } root.window-close(); } }
             }
 
             HorizontalLayout {
@@ -2636,7 +2636,7 @@ export component AppWindow inherits Window {
 
         navigation-rail := Rectangle {
             width: root.rail-width-live >= 0px ? root.rail-width-live : root.navigation-collapsed ? 64px : 176px;
-            background: #0a0c0f;
+            background: #07101c;
             border-color: Theme.line;
             border-width: 0px;
             // Host-driven frames are already eased; only animate on its own.
@@ -3270,7 +3270,7 @@ export component AppWindow inherits Window {
                                     Image {
                                         width: 44px;
                                         height: 44px;
-                                        source: @image-url("../assets/app-icon.svg");
+                                        source: @image-url("../assets/terrieflow-icon-temp.png");
                                         opacity: 0.85;
                                         image-fit: contain;
                                         accessible-role: none;
@@ -5156,7 +5156,7 @@ export component AppWindow inherits Window {
                         alignment: center;
                         spacing: 2px;
                         handoff-toast-title := Text { text: @tr("Открыта установленная версия"); color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; overflow: elide; }
-                        handoff-toast-copy := Text { text: @tr("AppImage можно удалить — используется MULTICORE из системы"); color: Theme.text-secondary; font-size: Theme.type-metadata-size; wrap: word-wrap; }
+                        handoff-toast-copy := Text { text: @tr("AppImage можно удалить — используется TerrieFlow из системы"); color: Theme.text-secondary; font-size: Theme.type-metadata-size; wrap: word-wrap; }
                     }
                     VerticalLayout {
                         alignment: center;
@@ -5711,7 +5711,7 @@ export component AppWindow inherits Window {
                 spacing: 12px;
                 Text {
                     height: 26px;
-                    text: @tr("Обновить MULTICORE?");
+                    text: @tr("Обновить TerrieFlow?");
                     color: Theme.text-primary;
                     font-family: Theme.font-family;
                     font-size: Theme.type-label-size;

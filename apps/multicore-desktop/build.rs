@@ -121,6 +121,7 @@ export component ComponentCheck inherits Window {{
     println!("cargo:rerun-if-changed=assets/edit.svg");
     println!("cargo:rerun-if-changed=assets/diagnostics.svg");
     println!("cargo:rerun-if-changed=assets/app-icon.svg");
+    println!("cargo:rerun-if-changed=assets/terrieflow-icon-temp.png");
     println!("cargo:rerun-if-changed=assets/close.svg");
     println!("cargo:rerun-if-changed=assets/refresh.svg");
     println!("cargo:rerun-if-changed=assets/trash.svg");
@@ -179,7 +180,7 @@ fn compile_windows_resources(
     );
     resource_source.push_str(&windows_version_info(
         &multicore_app_version(manifest_dir),
-        "MULTICORE",
+        "TerrieFlow",
         "MultiCore.exe",
     ));
     std::fs::write(&resource_path, resource_source)
@@ -258,9 +259,9 @@ fn emit_runtime_versions(manifest_dir: &std::path::Path) {
         .and_then(|manifest| {
             let mihomo = pinned_component_version(&manifest, "mihomo")?;
             let xray = pinned_component_version(&manifest, "xray")?;
-            Some(format!("MULTICORE · Mihomo {mihomo} · Xray {xray}"))
+            Some(format!("TerrieFlow · Mihomo {mihomo} · Xray {xray}"))
         })
-        .unwrap_or_else(|| "MULTICORE".to_owned());
+        .unwrap_or_else(|| "TerrieFlow".to_owned());
     println!("cargo:rustc-env=MULTICORE_RUNTIME_VERSIONS={runtime_versions}");
 }
 

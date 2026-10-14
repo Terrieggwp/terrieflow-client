@@ -10315,7 +10315,7 @@ mod tests {
         let main = include_str!("main.rs");
 
         for required in [
-            "title: \"MULTICORE\";",
+            "title: \"TerrieFlow\";",
             "in-out property <string> subscription-draft;",
             "in-out property <bool> replace-editor-open: false;",
             "in-out property <int> import-success-serial: 0;",
@@ -10340,7 +10340,7 @@ mod tests {
             "title: \"Quiet Signal\";",
             "text: \"Quiet Signal\";",
             "BrandMark",
-            "text: \"MULTICORE\";",
+            "text: \"TerrieFlow\";",
             "text: \"Локально\";",
             "text: \"Подписка\";",
             "label: \"Заменить\";",

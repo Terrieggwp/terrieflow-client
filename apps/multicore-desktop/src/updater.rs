@@ -197,7 +197,7 @@ impl UpdateState {
     fn row_presentation(&self, runtime_idle: bool, configured: bool) -> UpdatePresentation {
         match self {
             Self::Unconfigured => UpdatePresentation {
-                status: format!("MULTICORE {}", env!("CARGO_PKG_VERSION")),
+                status: format!("TerrieFlow {}", env!("CARGO_PKG_VERSION")),
                 detail: tr!("Канал обновлений задаётся при сборке").into(),
                 action_label: String::new(),
                 action: UpdateAction::None,
@@ -217,7 +217,7 @@ impl UpdateState {
                 ..UpdatePresentation::default()
             },
             Self::Deferred => UpdatePresentation {
-                status: format!("MULTICORE {}", env!("CARGO_PKG_VERSION")),
+                status: format!("TerrieFlow {}", env!("CARGO_PKG_VERSION")),
                 detail: tr!("Проверим обновления чуть позже").into(),
                 action_label: tr!("Проверить").into(),
                 action: UpdateAction::Check,
@@ -228,7 +228,7 @@ impl UpdateState {
             },
             Self::Current => UpdatePresentation {
                 status: tr!("Установлена актуальная версия").into(),
-                detail: format!("MULTICORE {}", env!("CARGO_PKG_VERSION")),
+                detail: format!("TerrieFlow {}", env!("CARGO_PKG_VERSION")),
                 action_label: tr!("Проверить").into(),
                 action: UpdateAction::Check,
                 action_enabled: true,
