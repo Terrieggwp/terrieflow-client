@@ -1,0 +1,49 @@
+[package]
+name = "multicore-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+base64.workspace = true
+fs2 = "0.4"
+getrandom = "0.4"
+image.workspace = true
+multicore-i18n = { path = "../multicore-i18n" }
+quick-xml.workspace = true
+reqwest.workspace = true
+regex.workspace = true
+resvg.workspace = true
+rustls.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["raw_value"] }
+serde_yaml_ng.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+zeroize.workspace = true
+tokio = { workspace = true, features = ["io-util", "net", "process", "time"] }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1.1", features = ["fs", "process", "thread"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_Ndis",
+    "Win32_Networking_WinSock",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Storage_FileSystem",
+    "Win32_System_JobObjects",
+    "Win32_System_Pipes",
+    "Win32_System_Registry",
+    "Win32_System_RestartManager",
+    "Win32_System_Threading",
+    "Win32_System_WindowsProgramming",
+] }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { workspace = true, features = ["test-util"] }

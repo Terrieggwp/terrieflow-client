@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    echo "usage: $0 --stage <stage-dir> --output <dir> --formats <arch,deb,appimage,rpm>" >&2
+    exit 2
+}
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+STAGE=""
+OUTPUT=""
+FORMATS=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --stage) STAGE="$(cd "$2" && pwd)"; shift 2 ;;
+        --output) OUTPUT="$2"; shift 2 ;;
+        --formats) FORMATS="$2"; shift 2 ;;
+        *) usage ;;
+    esac
+done
+[[ -n "$STAGE" && -n "$OUTPUT" && -n "$FORMATS" ]] || usage
+[[ -x "$STAGE/usr/lib/multicore/multicore" ]] || { echo "$STAGE is not a MultiCore stage" >&2; exit 1; }
+mkdir -p "$OUTPUT"
+OUTPUT="$(cd "$OUTPUT" && pwd)"
+VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/apps/multicore-desktop/Cargo.toml" | head -1)"
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+
+APPIMAGETOOL_URL="https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage"
+APPIMAGETOOL_SHA256="ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
+
+build_arch() {
+    local work="$WORK/arch"
+    mkdir -p "$work"
+    tar --zstd -C "$(dirname "$STAGE")" --transform "s,^$(basename "$STAGE"),stage," \
+        --owner=0 --group=0 --numeric-owner -cf "$work/multicore-$VERSION-stage.tar.zst" "$(basename "$STAGE")"
+    local sha
+    sha="$(sha256sum "$work/multicore-$VERSION-stage.tar.zst" | cut -d' ' -f1)"
+    sed -e "s/@VERSION@/$VERSION/" -e "s/@SHA256@/$sha/" "$ROOT/packaging/linux/arch/PKGBUILD" > "$work/PKGBUILD"
+    cp "$ROOT/packaging/linux/arch/multicore.install" "$work/"
+    (cd "$work" && PKGDEST="$OUTPUT" makepkg --force --nodeps --noconfirm)
+}
+
+build_deb() {
+    local work="$WORK/deb/multicore_${VERSION}_amd64"
+    mkdir -p "$work/DEBIAN"
+    cp -a "$STAGE/." "$work/"
+    local size
+    size="$(du -sk --exclude=DEBIAN "$work" | cut -f1)"
+    sed -e "s/@VERSION@/$VERSION/" "$ROOT/packaging/linux/deb/control" > "$work/DEBIAN/control"
+    echo "Installed-Size: $size" >> "$work/DEBIAN/control"
+    install -m 0755 "$ROOT/packaging/linux/deb/postinst" "$ROOT/packaging/linux/deb/prerm" \
+        "$ROOT/packaging/linux/deb/postrm" "$work/DEBIAN/"
+    dpkg-deb --root-owner-group -Zxz --build "$work" "$OUTPUT/multicore_${VERSION}_amd64.deb"
+}
+
+build_rpm() {
+    local work="$WORK/rpm"
+    mkdir -p "$work"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+    # Repackage the shared Ubuntu 22.04 stage; do not compile or strip it here.
+    tar -C "$STAGE" --owner=0 --group=0 --numeric-owner \
+        -czf "$work/SOURCES/multicore-$VERSION-stage.tar.gz" .
+    sed -e "s/@VERSION@/$VERSION/" "$ROOT/packaging/linux/rpm/multicore.spec" > "$work/SPECS/multicore.spec"
+    rpmbuild -bb --target x86_64 --define "_topdir $work" "$work/SPECS/multicore.spec"
+    install -m 0644 "$work/RPMS/x86_64/multicore-$VERSION-1.x86_64.rpm" \
+        "$OUTPUT/multicore-$VERSION-1.x86_64.rpm"
+}
+
+build_appimage() {
+    local tool="$WORK/appimagetool"
+    curl -fsSL --proto '=https' --tlsv1.2 -o "$tool" "$APPIMAGETOOL_URL"
+    echo "$APPIMAGETOOL_SHA256  $tool" | sha256sum -c --quiet
+    chmod 0755 "$tool"
+    local appdir="$WORK/MultiCore.AppDir"
+    mkdir -p "$appdir"
+    cp -a "$STAGE/." "$appdir/"
+    # The AppImage keeps the on-demand pkexec host and never installs the system service.
+    rm -rf "$appdir/usr/lib/systemd"
+    install -m 0755 "$ROOT/packaging/linux/appimage/AppRun" "$appdir/AppRun"
+    cp "$STAGE/usr/share/applications/multicore.desktop" "$appdir/multicore.desktop"
+    cp "$STAGE/usr/share/icons/hicolor/scalable/apps/multicore.svg" "$appdir/multicore.svg"
+    ln -s multicore.svg "$appdir/.DirIcon"
+    # With an update channel compiled in, the AppImage also carries gh-releases-zsync update
+    # information and gets a .zsync file next to it, so AppImageUpdate can fetch the newest
+    # release as a delta. The in-app updater keeps using the versioned asset name.
+    local update_args=()
+    local image="MultiCore-$VERSION-x86_64.AppImage"
+    if [[ -n "${MULTICORE_UPDATE_REPOSITORY:-}" ]]; then
+        [[ "$MULTICORE_UPDATE_REPOSITORY" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]] || {
+            echo "invalid MULTICORE_UPDATE_REPOSITORY: $MULTICORE_UPDATE_REPOSITORY" >&2
+            exit 1
+        }
+        local owner="${MULTICORE_UPDATE_REPOSITORY%%/*}" repository="${MULTICORE_UPDATE_REPOSITORY#*/}"
+        update_args=(-u "gh-releases-zsync|$owner|$repository|latest|MultiCore-*x86_64.AppImage.zsync")
+    fi
+    # appimagetool writes the .zsync into its working directory.
+    (cd "$OUTPUT" && ARCH=x86_64 VERSION="$VERSION" "$tool" --appimage-extract-and-run --no-appstream \
+        ${update_args[@]+"${update_args[@]}"} "$appdir" "$image")
+    if [[ -n "${MULTICORE_UPDATE_REPOSITORY:-}" ]]; then
+        [[ -s "$OUTPUT/$image.zsync" ]] || { echo "appimagetool did not write $image.zsync" >&2; exit 1; }
+    fi
+}
+
+IFS=',' read -r -a requested <<<"$FORMATS"
+for format in "${requested[@]}"; do
+    case "$format" in
+        arch) build_arch ;;
+        deb) build_deb ;;
+        rpm) build_rpm ;;
+        appimage) build_appimage ;;
+        *) echo "unknown format $format" >&2; exit 2 ;;
+    esac
+done
+ls -l "$OUTPUT"

@@ -1,0 +1,180 @@
+param(
+    [string]$OutputDirectory = "artifacts/screenshots",
+    [int]$Port = 18787,
+    [string]$DesktopExecutablePath,
+    [ValidateSet("empty", "ready", "connected", "glow-hover", "populated-catalog", "announcement", "error", "selection-pending", "diagnostics", "settings", "settings-updates", "profiles-empty-small", "profiles-one-small", "profiles-many-small", "profiles-loading-small", "profiles-error-small", "profiles-empty-large", "profiles-one-large", "profiles-many-large", "profiles-loading-large", "profiles-error-large", "profiles-delete-small", "profiles-pending-small", "profiles-settings-many-small", "profiles-settings-many-large", "profiles-edit-large")]
+    [string[]]$OnlyScenario
+)
+
+$ErrorActionPreference = "Stop"
+$root = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
+$fixturePath = [System.IO.Path]::GetFullPath((Join-Path $root "scripts/preview-fixture.ps1"))
+$capturePath = [System.IO.Path]::GetFullPath((Join-Path $root "scripts/capture-preview.ps1"))
+$desktopPath = if ($DesktopExecutablePath) {
+    [System.IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($DesktopExecutablePath))
+} else {
+    [System.IO.Path]::GetFullPath((Join-Path $root "target/release/multicore-desktop.exe"))
+}
+$allowedDesktopRoot = [System.IO.Path]::GetFullPath((Join-Path $root "target"))
+$allowedDesktopPrefix = $allowedDesktopRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+$outputPath = [System.IO.Path]::GetFullPath((Join-Path $root $OutputDirectory))
+$allowedOutputRoot = [System.IO.Path]::GetFullPath((Join-Path $root "artifacts/screenshots"))
+$allowedOutputPrefix = $allowedOutputRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+$authorizationValue = "preview-local-only"
+
+if (-not (Test-Path -LiteralPath $desktopPath -PathType Leaf)) {
+    throw "Desktop executable not found: $desktopPath"
+}
+if (-not $desktopPath.StartsWith($allowedDesktopPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "DesktopExecutablePath must resolve inside $allowedDesktopRoot"
+}
+if ($outputPath -ne $allowedOutputRoot -and -not $outputPath.StartsWith($allowedOutputPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "OutputDirectory must resolve inside $allowedOutputRoot"
+}
+
+# A marker argument is ignored by the desktop but lets a later preview run
+# distinguish this script's stale desktop from a user-launched release binary.
+$previewMarker = "--quiet-signal-preview"
+$stalePreviewProcesses = @(Get-CimInstance Win32_Process | Where-Object {
+    ($_.ExecutablePath -ieq $desktopPath -and $_.CommandLine -like "*$previewMarker*") -or
+    ($_.Name -ieq "powershell.exe" -and $_.CommandLine -like "*$fixturePath*" -and $_.CommandLine -like "*-Port $Port*")
+})
+foreach ($stale in $stalePreviewProcesses) {
+    Stop-Process -Id $stale.ProcessId -Force -ErrorAction Stop
+    Wait-Process -Id $stale.ProcessId -Timeout 5 -ErrorAction SilentlyContinue
+}
+
+$listener = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+if ($null -ne $listener) {
+    $owners = $listener | Select-Object -ExpandProperty OwningProcess -Unique
+    $details = foreach ($owner in $owners) {
+        Get-CimInstance Win32_Process -Filter "ProcessId = $owner" | Select-Object ProcessId, ExecutablePath, CommandLine
+    }
+    throw "Preview port $Port is already occupied. Refusing to terminate an unowned process: $($details | Format-List | Out-String)"
+}
+
+$beforeRelated = @(Get-Process -Name "multicore-desktop", "multicore-daemon", "mihomo", "xray" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
+$scenarios = @(
+    @{ Name = "empty"; State = "empty"; Width = 700; Height = 660; SelectionDelay = 0; SelectRoute = $false; OpenDiagnostics = $false; OpenSettings = $false },
+    @{ Name = "ready"; State = "ready"; Width = 820; Height = 760; SelectionDelay = 0; SelectRoute = $false; OpenDiagnostics = $false; OpenSettings = $false },
+    @{ Name = "glow-hover"; State = "ready"; Width = 820; Height = 760; SelectionDelay = 0; SelectRoute = $false; OpenDiagnostics = $false; OpenSettings = $false; HoverConnection = $true },
+    @{ Name = "connected"; State = "connected"; Width = 900; Height = 760; SelectionDelay = 0; SelectRoute = $false; OpenDiagnostics = $false; OpenSettings = $false },
+    @{ Name = "populated-catalog"; State = "ready"; Width = 900; Height = 760; SelectionDelay = 0; SelectRoute = $false; OpenDiagnostics = $false; OpenSettings = $false },
+    @{ Name = "announcement"; State = "ready"; Width = 900; Height = 760; SelectionDelay = 0; SelectRoute = $false; OpenDiagnostics = $false; OpenSettings = $false; Announcement = $true },
+    @{ Name = "error"; State = "error"; Width = 700; Height = 660; SelectionDelay = 0; SelectRoute = $false; OpenDiagnostics = $false; OpenSettings = $false },
+    @{ Name = "selection-pending"; State = "connected"; Width = 820; Height = 760; SelectionDelay = 5000; SelectRoute = $true; OpenDiagnostics = $false; OpenSettings = $false },
+    @{ Name = "diagnostics"; State = "connected"; Width = 900; Height = 760; SelectionDelay = 0; SelectRoute = $false; OpenDiagnostics = $true; OpenSettings = $false },
+    @{ Name = "settings"; State = "ready"; Width = 820; Height = 760; SelectionDelay = 0; SelectRoute = $false; OpenDiagnostics = $false; OpenSettings = $true },
+    @{ Name = "settings-updates"; State = "ready"; Width = 820; Height = 760; SelectionDelay = 0; SelectRoute = $false; OpenDiagnostics = $false; OpenSettings = $true; OpenUpdates = $true },
+    @{ Name = "profiles-empty-small"; State = "ready"; ProfileState = "empty"; Width = 700; Height = 620; SelectionDelay = 0; OpenProfiles = $true },
+    @{ Name = "profiles-one-small"; State = "ready"; ProfileState = "one"; Width = 700; Height = 620; SelectionDelay = 0; OpenProfiles = $true },
+    @{ Name = "profiles-many-small"; State = "ready"; ProfileState = "many"; Width = 700; Height = 620; SelectionDelay = 0; OpenProfiles = $true },
+    @{ Name = "profiles-loading-small"; State = "ready"; ProfileState = "loading"; Width = 700; Height = 620; SelectionDelay = 0; OpenProfiles = $true },
+    @{ Name = "profiles-error-small"; State = "ready"; ProfileState = "error"; Width = 700; Height = 620; SelectionDelay = 0; OpenProfiles = $true },
+    @{ Name = "profiles-empty-large"; State = "ready"; ProfileState = "empty"; Width = 840; Height = 720; SelectionDelay = 0; OpenProfiles = $true },
+    @{ Name = "profiles-one-large"; State = "ready"; ProfileState = "one"; Width = 840; Height = 720; SelectionDelay = 0; OpenProfiles = $true },
+    @{ Name = "profiles-many-large"; State = "ready"; ProfileState = "many"; Width = 840; Height = 720; SelectionDelay = 0; OpenProfiles = $true },
+    @{ Name = "profiles-loading-large"; State = "ready"; ProfileState = "loading"; Width = 840; Height = 720; SelectionDelay = 0; OpenProfiles = $true },
+    @{ Name = "profiles-error-large"; State = "ready"; ProfileState = "error"; Width = 840; Height = 720; SelectionDelay = 0; OpenProfiles = $true },
+    @{ Name = "profiles-delete-small"; State = "ready"; ProfileState = "one"; Width = 700; Height = 620; SelectionDelay = 0; OpenSubscriptionSettings = $true; ConfirmProfileDelete = $true },
+    @{ Name = "profiles-pending-small"; State = "ready"; ProfileState = "one"; ProfileDelay = 5000; Width = 700; Height = 620; SelectionDelay = 0; OpenSubscriptionSettings = $true; RefreshProfile = $true },
+    @{ Name = "profiles-settings-many-small"; State = "ready"; ProfileState = "many"; Width = 700; Height = 620; SelectionDelay = 0; OpenSubscriptionSettings = $true },
+    @{ Name = "profiles-settings-many-large"; State = "ready"; ProfileState = "many"; Width = 840; Height = 720; SelectionDelay = 0; OpenSubscriptionSettings = $true },
+    @{ Name = "profiles-edit-large"; State = "ready"; ProfileState = "many"; Width = 840; Height = 720; SelectionDelay = 0; OpenSubscriptionSettings = $true; EditProfile = $true }
+)
+if ($OnlyScenario.Count -gt 0) {
+    $scenarios = @($scenarios | Where-Object { $_.Name -in $OnlyScenario })
+}
+$captureFileNames = @($scenarios | ForEach-Object { "preview-$($_.Name)-$($_.Width)x$($_.Height).png" })
+
+New-Item -ItemType Directory -Force -Path $outputPath | Out-Null
+foreach ($captureFileName in $captureFileNames) {
+    $captureFile = Join-Path $outputPath $captureFileName
+    if (Test-Path -LiteralPath $captureFile -PathType Leaf) {
+        Remove-Item -LiteralPath $captureFile -Force
+    }
+}
+
+foreach ($scenario in $scenarios) {
+    $fixture = $null
+    $desktop = $null
+    try {
+        $fixtureInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $fixtureInfo.FileName = "powershell.exe"
+        $announcementArgument = if ($scenario.ContainsKey("Announcement") -and $scenario.Announcement) { " -Announcement" } else { "" }
+        $profileStateArgument = if ($scenario.ContainsKey("ProfileState")) { " -ProfileState $($scenario.ProfileState)" } else { "" }
+        $profileDelayArgument = if ($scenario.ContainsKey("ProfileDelay")) { " -ProfileDelayMilliseconds $($scenario.ProfileDelay)" } else { "" }
+        $fixtureInfo.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$fixturePath`" -Port $Port -InitialState $($scenario.State) -SelectionDelayMilliseconds $($scenario.SelectionDelay) -AuthorizationValue $authorizationValue$announcementArgument$profileStateArgument$profileDelayArgument"
+        $fixtureInfo.UseShellExecute = $false
+        $fixtureInfo.CreateNoWindow = $true
+        $fixtureInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+
+        $fixture = [System.Diagnostics.Process]::Start($fixtureInfo)
+        Start-Sleep -Milliseconds 500
+        if ($fixture.HasExited) {
+            throw "Fixture exited before the $($scenario.Name) capture."
+        }
+
+        $desktopInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $desktopInfo.FileName = $desktopPath
+        $desktopInfo.Arguments = $previewMarker
+        $desktopInfo.UseShellExecute = $false
+        $desktopInfo.EnvironmentVariables["MULTICORE_DAEMON_URL"] = "http://127.0.0.1:$Port"
+        $desktopInfo.EnvironmentVariables["MULTICORE_DAEMON_TOKEN"] = $authorizationValue
+        $desktopInfo.EnvironmentVariables["MULTICORE_PREVIEW_INSTANCE"] = "1"
+        $desktop = [System.Diagnostics.Process]::Start($desktopInfo)
+
+        $captureArgs = @(
+            "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $capturePath,
+            "-ProcessId", $desktop.Id,
+            "-OutputPath", (Join-Path $outputPath "preview-$($scenario.Name)-$($scenario.Width)x$($scenario.Height).png"),
+            "-Width", $scenario.Width,
+            "-Height", $scenario.Height,
+            "-ExpectedState", $scenario.Name
+        )
+        if ($scenario.SelectRoute) { $captureArgs += "-SelectSecondRoute" }
+        if ($scenario.ContainsKey("HoverConnection") -and $scenario.HoverConnection) { $captureArgs += "-HoverConnection" }
+        if ($scenario.OpenDiagnostics) { $captureArgs += "-OpenDiagnostics" }
+        if ($scenario.OpenSettings) { $captureArgs += "-OpenSettings" }
+        if ($scenario.ContainsKey("OpenUpdates") -and $scenario.OpenUpdates) { $captureArgs += "-OpenUpdates" }
+        if ($scenario.ContainsKey("OpenProfiles") -and $scenario.OpenProfiles) { $captureArgs += "-OpenProfiles" }
+        if ($scenario.ContainsKey("OpenSubscriptionSettings") -and $scenario.OpenSubscriptionSettings) { $captureArgs += "-OpenSubscriptionSettings" }
+        if ($scenario.ContainsKey("EditProfile") -and $scenario.EditProfile) { $captureArgs += "-EditProfile" }
+        if ($scenario.ContainsKey("ConfirmProfileDelete") -and $scenario.ConfirmProfileDelete) { $captureArgs += "-ConfirmProfileDelete" }
+        if ($scenario.ContainsKey("RefreshProfile") -and $scenario.RefreshProfile) { $captureArgs += "-RefreshProfile" }
+        & powershell.exe @captureArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "Capture helper failed for $($scenario.Name)."
+        }
+    } finally {
+        if ($null -ne $desktop -and -not $desktop.HasExited) {
+            [void]$desktop.CloseMainWindow()
+            if (-not $desktop.WaitForExit(3000)) {
+                $desktop.Kill()
+                $desktop.WaitForExit()
+            }
+        }
+        if ($null -ne $fixture -and -not $fixture.HasExited) {
+            $fixture.Kill()
+            $fixture.WaitForExit()
+        }
+    }
+}
+
+$listenerAfter = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+if ($null -ne $listenerAfter) {
+    throw "Preview fixture still owns port $Port after cleanup."
+}
+$afterRelated = @(Get-Process -Name "multicore-desktop", "multicore-daemon", "mihomo", "xray" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
+$newRelated = @($afterRelated | Where-Object { $_ -notin $beforeRelated })
+if ($newRelated.Count -gt 0) {
+    throw "Preview run left related process IDs active: $($newRelated -join ', ')"
+}
+$staleAfter = @(Get-CimInstance Win32_Process | Where-Object {
+    ($_.ExecutablePath -ieq $desktopPath -and $_.CommandLine -like "*$previewMarker*") -or
+    ($_.Name -ieq "powershell.exe" -and $_.CommandLine -like "*$fixturePath*" -and $_.CommandLine -like "*-Port $Port*")
+})
+if ($staleAfter.Count -gt 0) {
+    throw "Preview run left fixture/desktop processes active: $($staleAfter.ProcessId -join ', ')"
+}
+Write-Output "Preview capture cleanup verified: fixture port free and no related process from this run remains."

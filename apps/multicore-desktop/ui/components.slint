@@ -1,0 +1,826 @@
+import { Theme } from "theme.slint";
+import "../assets/fonts/Twemoji.Mozilla.ttf";
+
+export component PrimaryAction inherits Rectangle {
+    in property <string> label;
+    in property <string> state-label: label;
+    in property <bool> enabled: true;
+    in property <int> focus-epoch: 0;
+    callback activated();
+
+    changed focus-epoch => {
+        if (root.focus-epoch > 0) {
+            action-focus.focus();
+        }
+    }
+
+    min-width: Theme.interactive-min;
+    horizontal-stretch: 0;
+    max-width: 184px;
+    min-height: Theme.interactive-min;
+    preferred-height: Theme.interactive-min;
+    max-height: Theme.interactive-min;
+    background: root.enabled
+        ? action-touch.pressed
+            ? Theme.accent-blue-pressed
+            : action-touch.has-hover ? Theme.accent-blue-hover : Theme.accent-blue
+        : Theme.elevated;
+    border-color: action-focus.has-focus ? Theme.focus : root.enabled ? root.background : Theme.line;
+    border-width: action-focus.has-focus ? Theme.focus-width : 1px;
+    border-radius: 14px;
+    opacity: root.enabled ? 1 : 0.55;
+    accessible-role: button;
+    accessible-label: root.state-label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        if (root.enabled) {
+            root.activated();
+        }
+    }
+
+    action-label := Text {
+        x: Theme.space-4;
+        y: -1px;
+        width: parent.width - Theme.space-4 * 2;
+        height: parent.height;
+        text: root.label;
+        color: root.enabled ? Theme.text-primary : Theme.text-muted;
+        font-family: Theme.font-family;
+        font-size: Theme.type-label-size;
+        font-weight: Theme.weight-semibold;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        overflow: elide;
+        accessible-role: none;
+    }
+
+    action-focus := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: true;
+        focus-on-tab-navigation: true;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.activated();
+                return accept;
+            }
+            return reject;
+        }
+
+        action-touch := TouchArea {
+            enabled: root.enabled;
+            clicked => { root.activated(); }
+        }
+    }
+}
+
+// Icon slot whose image may still be downloading. While it loads, a muted
+// circle of the slot's size pulses slowly; the image cross-fades in when it
+// arrives. animation-tick() is read only while the placeholder is pulsing, so
+// a settled slot schedules no frames. A row re-created with its image already
+// loaded shows it at once (an animated binding does not animate its first value).
+export component IconLoadingSlot inherits Rectangle {
+    in property <image> icon-image;
+    in property <bool> icon-loading: false;
+    in property <bool> reduced-motion: false;
+    property <bool> has-image: root.icon-image.width > 0;
+    property <bool> placeholder-shown: root.icon-loading && !root.has-image;
+    property <bool> pulsing: root.placeholder-shown && !root.reduced-motion;
+    property <float> placeholder-fade: root.placeholder-shown ? 1 : 0;
+    animate placeholder-fade { duration: root.reduced-motion ? 0ms : 160ms; easing: ease-out; }
+    background: transparent;
+    accessible-role: none;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-radius: min(self.width, self.height) / 2;
+        background: Theme.text-muted.with-alpha(0.24);
+        // 0.35 <-> 0.6, each way over 1.8 s (a sine is already ease-in-out).
+        opacity: root.placeholder-fade * (root.pulsing
+            ? 0.35 + 0.25 * (1 - Math.cos(animation-tick() / 3600ms * 360deg)) / 2
+            : 0.45);
+    }
+
+    Image {
+        width: parent.width;
+        height: parent.height;
+        source: root.icon-image;
+        image-fit: contain;
+        opacity: root.has-image ? 1 : 0;
+        animate opacity { duration: root.reduced-motion ? 0ms : 160ms; easing: ease-out; }
+        accessible-role: none;
+    }
+}
+
+export component QuietChip inherits Rectangle {
+    in property <string> icon;
+    in property <image> icon-image;
+    // The icon image is still downloading: a placeholder holds the icon's place.
+    in property <bool> icon-loading: false;
+    in property <bool> reduced-motion: false;
+    // The tab has an icon slot: an image, a loading placeholder or a glyph.
+    property <bool> has-icon-slot: root.icon != "" || root.icon-image.width > 0 || root.icon-loading;
+    // The icon and label are centred as one group; a centred label with a
+    // left-pinned icon left a gap that varied with the label's length.
+    property <length> content-x: !root.has-icon-slot ? Theme.space-4 : max(Theme.space-3, (root.width - 22px - chip-label.preferred-width) / 2);
+    in property <string> label;
+    in property <string> selected-state-label: @tr("выбрано");
+    in property <string> state-label:
+        root.label + (root.selected ? ", " + root.selected-state-label : "");
+    in property <bool> enabled: true;
+    in property <bool> modal-enabled: true;
+    in property <bool> selected: false;
+    in property <bool> focus-on-init: false;
+    in property <int> focus-epoch: 0;
+    // Widest a tab grows to show its whole label; only absurdly long names elide.
+    in property <length> max-natural-width: 220px;
+    // Icon and full label with 16px on each side: the track scrolls rather than
+    // squeeze a tab below this.
+    out property <length> natural-width: min(root.max-natural-width,
+        chip-label.preferred-width + 2 * Theme.space-4 + (root.has-icon-slot ? 22px : 0px) + 2px);
+    callback activated();
+    // The tab became the selected one (or was created selected): its track may scroll it into view.
+    callback selected-shown();
+    // Keyboard focus reached the tab.
+    callback focus-shown();
+    // The selected tab moved or resized within its track.
+    callback selected-moved();
+
+    init => {
+        if (root.focus-on-init) {
+            chip-focus.focus();
+        }
+        if (root.selected) {
+            root.selected-shown();
+        }
+    }
+    changed focus-epoch => {
+        if (root.focus-epoch > 0) {
+            chip-focus.focus();
+        }
+    }
+    changed selected => {
+        if (root.selected) {
+            root.selected-shown();
+        }
+    }
+    // Layout changes (the track switching to natural widths, a resize) move the selected tab.
+    changed x => {
+        if (root.selected) {
+            root.selected-moved();
+        }
+    }
+    changed width => {
+        if (root.selected) {
+            root.selected-moved();
+        }
+    }
+
+    // Set by a track whose tabs do not all fit: the tab keeps its natural width
+    // and the track scrolls instead of squeezing it.
+    in property <bool> natural-sizing: false;
+
+    // One segment of the route-group segmented control: segments share the
+    // track's width; the selected one is a raised pill inside the track.
+    min-width: root.natural-sizing ? root.natural-width : 96px;
+    horizontal-stretch: 1;
+    min-height: 32px;
+    preferred-width: root.natural-sizing
+        ? root.natural-width
+        : chip-label.preferred-width + Theme.space-3 * 2 + (root.has-icon-slot ? 22px : 0px);
+    preferred-height: 32px;
+    background: root.selected ? Theme.elevated : chip-touch.has-hover && root.enabled && root.modal-enabled ? #ffffff08 : transparent;
+    border-color: Theme.focus;
+    border-width: chip-focus.has-focus ? Theme.focus-width : 0px;
+    border-radius: 8px;
+    clip: true;
+    animate background { duration: 140ms; easing: ease-out; }
+    opacity: root.enabled ? 1 : 0.5;
+    accessible-role: button;
+    accessible-label: root.state-label;
+    accessible-enabled: root.enabled && root.modal-enabled;
+    accessible-action-default => {
+        if (root.enabled && root.modal-enabled) {
+            root.activated();
+        }
+    }
+
+    chip-cursor-wash := Rectangle {
+        property <length> cursor-x: chip-touch.mouse-x;
+        property <length> cursor-y: chip-touch.mouse-y;
+        property <color> cursor-color: root.selected ? #4c9dff1c : #4c9dff12;
+        background: @radial-gradient(
+            circle 72px at cursor-x cursor-y,
+            cursor-color 0%,
+            #00000000 100%
+        );
+        opacity: chip-touch.has-hover ? 1 : 0;
+        animate opacity { duration: 160ms; easing: ease-out; }
+    }
+
+    if root.has-icon-slot: IconLoadingSlot {
+        x: root.content-x + 1px;
+        y: (parent.height - self.height) / 2;
+        width: 15px;
+        height: 15px;
+        icon-image: root.icon-image;
+        icon-loading: root.icon-loading;
+        reduced-motion: root.reduced-motion;
+    }
+
+    if root.icon != "" && root.icon-image.width == 0: Text {
+        x: root.content-x;
+        width: 20px;
+        height: parent.height;
+        text: root.icon;
+        color: root.selected ? Theme.accent-blue-hover : Theme.text-secondary;
+        font-family: Theme.emoji-font-family;
+        font-size: Theme.type-label-size;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        // Shown only once loading has ended without an image.
+        opacity: root.icon-loading ? 0 : 1;
+        animate opacity { duration: root.reduced-motion ? 0ms : 160ms; easing: ease-out; }
+        accessible-role: none;
+    }
+
+    chip-label := Text {
+        x: !root.has-icon-slot ? Theme.space-4 : root.content-x + 22px;
+        width: parent.width - self.x - Theme.space-4;
+        height: parent.height;
+        text: root.label;
+        color: root.selected || chip-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+        font-family: Theme.font-family;
+        font-size: Theme.type-metadata-size;
+        font-weight: root.selected ? Theme.weight-semibold : Theme.weight-medium;
+        horizontal-alignment: !root.has-icon-slot ? center : left;
+        animate color { duration: 140ms; easing: ease-out; }
+        vertical-alignment: center;
+        overflow: elide;
+        accessible-role: none;
+    }
+
+    chip-focus := FocusScope {
+        enabled: root.enabled && root.modal-enabled;
+        focus-on-click: true;
+        focus-on-tab-navigation: true;
+        focus-gained(reason) => { root.focus-shown(); }
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.activated();
+                return accept;
+            }
+            return reject;
+        }
+
+        chip-touch := TouchArea {
+            enabled: root.enabled && root.modal-enabled;
+            clicked => { root.activated(); }
+        }
+    }
+}
+
+export component RouteNodeRow inherits Rectangle {
+    in property <string> icon;
+    in property <image> icon-image;
+    // The icon image is still downloading: a placeholder holds the flag's place.
+    in property <bool> icon-loading: false;
+    in property <bool> reduced-motion: false;
+    in property <string> label;
+    in property <string> supporting-text;
+    in property <string> trailing-text;
+    in property <string> trailing-tone: "neutral";
+    // No latency yet: a placeholder holds the value's place (pulsing while
+    // a measurement runs) instead of the number appearing from nowhere.
+    in property <bool> trailing-measuring: false;
+    in property <string> selected-state-label: @tr("выбрано");
+    in property <string> pending-state-label: @tr("выбор применяется");
+    in property <string> state-label:
+        root.label
+        + (root.supporting-text == "" ? "" : ", " + root.supporting-text)
+        + (root.trailing-text == "" ? "" : ", " + root.trailing-text)
+        + (root.pending
+            ? ", " + root.pending-state-label
+            : root.selected ? ", " + root.selected-state-label : "");
+    in property <bool> enabled: true;
+    in property <bool> selected: false;
+    in property <bool> pending: false;
+    // iOS-style grouped list: a hairline under every row but the last,
+    // inset to where the label starts.
+    in property <bool> show-separator: false;
+    callback activated();
+    // Right click: re-measure this route's latency only (no context menu).
+    callback secondary-activated();
+    // In a virtualized ListView: Tab/Shift+Tab and the arrow keys move focus one row
+    // (+1 or -1) through the list, rows out of view included; false past either end, where
+    // Tab leaves the list as usual.
+    callback step-focus(int) -> bool;
+    // The list wants this row focused (it may have just been created for that).
+    in property <bool> focus-request: false;
+    callback focus-request-taken();
+
+    // Row of an inset grouped list: bare flag, label, latency; the selected row
+    // is tinted with a blue leading bar (no check mark), others tint on hover.
+    min-width: Theme.interactive-min;
+    min-height: Theme.interactive-min;
+    preferred-height: 48px;
+    max-height: 48px;
+    background: root.selected ? Theme.elevated : row-touch.has-hover && root.enabled ? #ffffff06 : transparent;
+    border-color: Theme.focus;
+    border-width: row-focus.has-focus ? Theme.focus-width : 0px;
+    border-radius: row-focus.has-focus ? 10px : 0px;
+    clip: true;
+    animate background { duration: 140ms; easing: ease-out; }
+    accessible-role: button;
+    accessible-label: root.state-label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        if (root.enabled) {
+            root.activated();
+        }
+    }
+
+    row-cursor-wash := Rectangle {
+        property <length> cursor-x: row-touch.mouse-x;
+        property <length> cursor-y: row-touch.mouse-y;
+        property <color> cursor-color: root.selected ? #4c9dff1a : #4c9dff0e;
+        background: @radial-gradient(
+            circle 140px at cursor-x cursor-y,
+            cursor-color 0%,
+            #00000000 100%
+        );
+        opacity: row-touch.has-hover ? 1 : 0;
+        animate opacity { duration: 180ms; easing: ease-out; }
+    }
+
+    selection-bar := Rectangle {
+        x: 0;
+        y: (parent.height - self.height) / 2;
+        width: 3px;
+        height: root.selected ? 20px : 8px;
+        border-radius: 1.5px;
+        background: Theme.accent-blue;
+        opacity: root.selected ? 1 : 0;
+        animate opacity, height { duration: 180ms; easing: ease-out; }
+    }
+
+    // Bare flag in a fixed 30px slot, so labels stay aligned without a tile.
+    Rectangle {
+        x: 12px;
+        y: (parent.height - self.height) / 2;
+        width: 30px;
+        height: 30px;
+        background: transparent;
+
+        IconLoadingSlot {
+            x: 4px;
+            y: 4px;
+            width: 22px;
+            height: 22px;
+            icon-image: root.icon-image;
+            icon-loading: root.icon-loading;
+            reduced-motion: root.reduced-motion;
+        }
+
+        if root.icon-image.width == 0: Text {
+            text: root.icon;
+            color: root.selected ? Theme.accent-blue-hover : Theme.text-secondary;
+            font-family: Theme.emoji-font-family;
+            font-size: Theme.type-value-size;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            // Shown only once loading has ended without an image.
+            opacity: root.icon-loading ? 0 : 1;
+            animate opacity { duration: root.reduced-motion ? 0ms : 160ms; easing: ease-out; }
+            accessible-role: none;
+        }
+    }
+
+    Text {
+        x: 56px;
+        y: root.supporting-text == "" ? 0 : 2px;
+        width: parent.width - self.x - trailing-label.width - 36px;
+        height: root.supporting-text == "" ? parent.height : 24px;
+        text: root.label;
+        color: root.selected || row-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+        font-family: Theme.font-family;
+        font-size: Theme.type-label-size;
+        font-weight: root.selected ? Theme.weight-semibold : Theme.weight-medium;
+        animate color { duration: 140ms; easing: ease-out; }
+        vertical-alignment: center;
+        overflow: elide;
+        accessible-role: none;
+    }
+
+    if root.supporting-text != "": Text {
+        x: 56px;
+        y: 23px;
+        width: parent.width - self.x - trailing-label.width - 36px;
+        text: root.supporting-text;
+        color: Theme.text-muted;
+        font-family: Theme.font-family;
+        font-size: Theme.type-metadata-size;
+        font-weight: Theme.weight-regular;
+        overflow: elide;
+        accessible-role: none;
+    }
+
+    // Only the shift that makes room for the pending "…" is animated, never x
+    // itself: x follows the window width, and an `animate x` would ease every
+    // resize step behind the edge. On Windows it froze outright while the edge
+    // was dragged, because Slint's animation clock only advances between
+    // winit event-loop iterations and the system's modal size loop runs none,
+    // so the column jumped into place only when the mouse was released.
+    property <length> trailing-inset: root.pending ? 44px : 20px;
+    animate trailing-inset { duration: 140ms; easing: ease-out; }
+
+    trailing-label := Text {
+        x: parent.width - self.width - root.trailing-inset;
+        width: 76px;
+        height: parent.height;
+        text: root.trailing-text;
+        color: root.trailing-tone == "success"
+            ? Theme.accent-green
+            : root.trailing-tone == "warning"
+                ? Theme.warning
+                : root.trailing-tone == "danger" ? Theme.error : Theme.text-muted;
+        font-family: Theme.font-family;
+        font-size: Theme.type-metadata-size;
+        font-weight: Theme.weight-semibold;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+
+    if root.trailing-text == "": Rectangle {
+        x: parent.width - self.width - (root.pending ? 44px : 20px);
+        y: (parent.height - self.height) / 2;
+        width: 34px;
+        height: 8px;
+        border-radius: 4px;
+        background: Theme.text-muted;
+        opacity: root.trailing-measuring
+            ? 0.14 + 0.12 * (1 + sin(animation-tick() / 1200ms * 360deg)) / 2
+            : 0.14;
+        accessible-role: none;
+    }
+
+    if root.pending: Text {
+        x: parent.width - 34px;
+        width: 20px;
+        height: parent.height;
+        text: "…";
+        color: Theme.warning;
+        font-family: Theme.font-family;
+        font-size: Theme.type-label-size;
+        font-weight: Theme.weight-bold;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+
+    if root.show-separator: Rectangle {
+        x: 56px;
+        y: parent.height - 1px;
+        width: parent.width - 56px;
+        height: 1px;
+        background: #ffffff0f;
+    }
+
+    // Focus is taken once the row exists and the event loop runs again, never while the
+    // list is still being laid out.
+    Timer {
+        interval: 1ms;
+        running: root.focus-request;
+        triggered => {
+            row-focus.focus();
+            root.focus-request-taken();
+        }
+    }
+
+    row-focus := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: true;
+        focus-on-tab-navigation: true;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.activated();
+                return accept;
+            }
+            if (event.modifiers.control || event.modifiers.alt || event.modifiers.meta) {
+                return reject;
+            }
+            if ((event.text == Key.Tab && !event.modifiers.shift) || event.text == Key.DownArrow) {
+                return root.step-focus(1) ? accept : reject;
+            }
+            if (event.text == Key.Backtab || event.text == Key.Tab || event.text == Key.UpArrow) {
+                return root.step-focus(-1) ? accept : reject;
+            }
+            return reject;
+        }
+
+        row-touch := TouchArea {
+            enabled: root.enabled;
+            clicked => { root.activated(); }
+            pointer-event(event) => {
+                if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up
+                    && self.has-hover) {
+                    root.secondary-activated();
+                }
+            }
+        }
+    }
+}
+
+// Vertical scroll area with a thin overlay scrollbar. The bar takes no room: it stays hidden
+// at rest, fades in while the pointer is over the area or the content moves, and widens under
+// the pointer (drag it, or click the track to page). Wheel and touchpad scroll the content;
+// Slint itself scrolls a control that gains keyboard focus into view.
+export component OverlayScroll inherits Rectangle {
+    in property <bool> reduced-motion: false;
+    // An inner scroll area owns the pointer: show only its bar, never two at once.
+    in property <bool> suppress-hover: false;
+    // Gap between the thumb's travel and the area's top and bottom edges.
+    in property <length> bar-inset: 4px;
+    out property <length> visible-width: flick.width;
+    out property <length> visible-height: flick.height;
+    in-out property <length> viewport-y <=> flick.viewport-y;
+    out property <length> viewport-height: flick.viewport-height;
+    out property <length> max-scroll: Math.max(0px, flick.viewport-height - flick.height);
+    // Content has moved up under whatever sits above the area (a header hairline can show).
+    out property <bool> scrolled: flick.viewport-y < -0.5px;
+    out property <bool> hovered: hover.has-hover;
+
+    private property <bool> scrollable: root.max-scroll > 0.5px;
+    private property <bool> moving: false;
+    private property <int> idle-ticks: 0;
+    private property <bool> bar-shown: root.scrollable
+        && (root.moving || bar-touch.pressed || bar-touch.has-hover || (hover.has-hover && !root.suppress-hover));
+    private property <length> track: root.height - 2 * root.bar-inset;
+    private property <length> thumb-height: Math.min(root.track, Math.max(32px, root.track * flick.height / Math.max(1px, flick.viewport-height)));
+    private property <length> drag-start-offset;
+
+    vertical-stretch: 1;
+    horizontal-stretch: 1;
+    min-height: 0px;
+    background: transparent;
+
+    // Content that shrank (a shorter phase, a removed row) must not leave the view past its end.
+    changed max-scroll => {
+        if (-flick.viewport-y > root.max-scroll) {
+            flick.viewport-y = -root.max-scroll;
+        }
+    }
+    changed viewport-y => {
+        root.moving = true;
+        root.idle-ticks = 0;
+    }
+
+    Timer {
+        interval: 300ms;
+        running: root.moving;
+        triggered => {
+            root.idle-ticks += 1;
+            if (root.idle-ticks >= 3) {
+                root.moving = false;
+            }
+        }
+    }
+
+    // Wraps the content, so it stays hovered over child controls while they still get every click.
+    hover := TouchArea {
+        width: parent.width;
+        height: parent.height;
+        flick := Flickable {
+            width: parent.width;
+            height: parent.height;
+            interactive: false;
+            @children
+        }
+    }
+
+    thumb := Rectangle {
+        width: bar-touch.has-hover || bar-touch.pressed ? 6px : 4px;
+        height: root.thumb-height;
+        x: parent.width - 3px - self.width;
+        y: root.bar-inset + (root.track - self.height) * (-flick.viewport-y / Math.max(1px, root.max-scroll));
+        border-radius: self.width / 2;
+        background: #ffffff;
+        opacity: !root.bar-shown ? 0 : bar-touch.pressed ? 0.40 : bar-touch.has-hover ? 0.30 : 0.18;
+        animate opacity { duration: root.reduced-motion ? 0ms : root.bar-shown ? 120ms : 360ms; easing: ease-out; }
+        animate width { duration: root.reduced-motion ? 0ms : 120ms; easing: ease-out; }
+    }
+
+    bar-touch := TouchArea {
+        x: parent.width - self.width;
+        width: 10px;
+        height: parent.height;
+        enabled: root.scrollable;
+        pointer-event(event) => {
+            if (event.button != PointerEventButton.left || event.kind != PointerEventKind.down) {
+                return;
+            }
+            if (self.mouse-y >= thumb.y && self.mouse-y <= thumb.y + thumb.height) {
+                root.drag-start-offset = -flick.viewport-y;
+            } else {
+                // Track click: one page towards the pointer, then drag from there.
+                flick.viewport-y = -Math.max(0px, Math.min(root.max-scroll,
+                    -flick.viewport-y + (self.mouse-y < thumb.y ? -1 : 1) * flick.height * 0.9));
+                root.drag-start-offset = -flick.viewport-y;
+            }
+        }
+        moved => {
+            if (self.pressed && root.track > root.thumb-height) {
+                flick.viewport-y = -Math.max(0px, Math.min(root.max-scroll,
+                    root.drag-start-offset + (self.mouse-y - self.pressed-y) * root.max-scroll / (root.track - root.thumb-height)));
+            }
+        }
+    }
+}
+
+// A long list that instantiates only the rows in view: the Slint compiler virtualizes a `for`
+// placed directly in an element whose type is named `ListView` and which has the viewport and
+// visible size properties below (std-widgets' own ListView works the same way). Rows must all
+// be `row-height` tall. Looks and scrolls like OverlayScroll. The inset grouped card behind the
+// rows is drawn only over the part in view (plus room for its corners): a shape as tall as a
+// list of thousands of rows overflows the software renderer's 16-bit coordinates. An optional
+// footer line follows the card, scrolling with it.
+export component ListView inherits Rectangle {
+    in property <bool> reduced-motion: false;
+    in property <length> bar-inset: 4px;
+    in property <int> row-count;
+    in property <length> row-height;
+    in property <brush> card-background: transparent;
+    in property <brush> card-border-color: transparent;
+    in property <length> card-border-width: 0px;
+    in property <length> card-radius: 0px;
+    in property <string> footer-text;
+    out property <length> visible-width: flick.width;
+    // Where rows are laid out: the whole area, less the part of the footer scrolled into view
+    // (so Slint's list layout neither leaves a gap above it nor scrolls it back out).
+    out property <length> visible-height: flick.height - root.footer-shown-height;
+    in-out property <length> viewport-width <=> flick.viewport-width;
+    // Set by Slint's list layout to the rows' height; the footer scrolls in below them.
+    in-out property <length> viewport-height;
+    in-out property <length> viewport-y <=> flick.viewport-y;
+    out property <length> content-height: root.row-count * root.row-height;
+    out property <length> max-scroll: Math.max(0px, root.content-height + root.footer-height - flick.height);
+    out property <bool> scrolled: flick.viewport-y < -0.5px;
+    out property <bool> hovered: hover.has-hover;
+    // The row keyboard focus is moving to (see `request-focus`).
+    in-out property <int> focus-index: -1;
+    in-out property <bool> focus-pending: false;
+
+    private property <length> footer-height: root.footer-text == "" ? 0px : 8px + footer.preferred-height;
+    private property <length> footer-shown-height: Math.max(0px, Math.min(root.footer-height,
+        -flick.viewport-y + flick.height - root.content-height));
+    private property <bool> scrollable: root.max-scroll > 0.5px;
+    private property <bool> moving: false;
+    private property <int> idle-ticks: 0;
+    private property <bool> bar-shown: root.scrollable
+        && (root.moving || bar-touch.pressed || bar-touch.has-hover || hover.has-hover);
+    private property <length> track: root.height - 2 * root.bar-inset;
+    private property <length> thumb-height: Math.min(root.track, Math.max(32px, root.track * flick.height / Math.max(1px, root.content-height + root.footer-height)));
+    private property <length> drag-start-offset;
+    // Where the view was when last seen.
+    private property <length> seen-viewport-y: 0px;
+    // The scroll position the card is placed for: a copy of the viewport's, kept by `changed
+    // viewport-y` (which runs before every frame), never a binding to it. The scrolled area sits
+    // in the card, so a binding would make the area's position depend on its own scroll
+    // position, and Slint's smooth wheel scroll, which bounds itself by that area's geometry
+    // while it computes the scroll position, panics with "Recursion detected" (1.1.4 closed on
+    // the first wheel notch over a route list).
+    private property <length> card-viewport-y: 0px;
+
+    vertical-stretch: 1;
+    horizontal-stretch: 1;
+    min-height: 0px;
+    background: transparent;
+    // The card runs past the edges by its corner radius when scrolled.
+    clip: true;
+    accessible-role: list;
+
+    // Scrolls row `index` into view, so that it exists, and has it take keyboard focus.
+    // False past either end of the list.
+    public function request-focus(index: int) -> bool {
+        if (index < 0 || index >= root.row-count) {
+            return false;
+        }
+        if (index * root.row-height < -flick.viewport-y) {
+            flick.viewport-y = -index * root.row-height;
+        } else if ((index + 1) * root.row-height > -flick.viewport-y + flick.height) {
+            flick.viewport-y = -Math.min(root.max-scroll, (index + 1) * root.row-height - flick.height);
+        }
+        root.focus-index = index;
+        root.focus-pending = true;
+        return true;
+    }
+
+    // Content that shrank (another group, a removed row) must not leave the view past its end.
+    changed max-scroll => {
+        if (-flick.viewport-y > root.max-scroll) {
+            flick.viewport-y = -root.max-scroll;
+        }
+    }
+    changed viewport-y => {
+        root.moving = true;
+        root.idle-ticks = 0;
+        // Slint's list layout lands a long jump (a fast wheel spin, a thumb drag: more than a
+        // screen and a half) on a row boundary. One that ends within a row of the end was
+        // headed for the end: finish it, or the footer stays hidden.
+        if (root.footer-height > 0px
+            && Math.abs(flick.viewport-y - root.seen-viewport-y) > flick.height * 1.5
+            && -flick.viewport-y > root.max-scroll - root.row-height
+            && -flick.viewport-y < root.max-scroll - 0.5px
+            && Math.mod(-flick.viewport-y / 1px, root.row-height / 1px) < 0.01) {
+            flick.viewport-y = -root.max-scroll;
+        }
+        root.seen-viewport-y = flick.viewport-y;
+        root.card-viewport-y = flick.viewport-y;
+    }
+
+    Timer {
+        interval: 300ms;
+        running: root.moving;
+        triggered => {
+            root.idle-ticks += 1;
+            if (root.idle-ticks >= 3) {
+                root.moving = false;
+            }
+        }
+    }
+
+    // Wraps the content, so it stays hovered over child controls while they still get every click.
+    hover := TouchArea {
+        width: parent.width;
+        height: parent.height;
+        card := Rectangle {
+            property <length> slack: root.card-radius + root.card-border-width + 2px;
+            y: Math.max(root.card-viewport-y, -self.slack);
+            width: parent.width;
+            height: Math.max(0px, Math.min(root.card-viewport-y + root.content-height, root.height + self.slack) - self.y);
+            background: root.card-background;
+            border-color: root.card-border-color;
+            border-width: root.card-border-width;
+            border-radius: root.card-radius;
+            clip: true;
+            flick := Flickable {
+                y: -card.y;
+                width: parent.width;
+                height: root.height;
+                viewport-height: root.viewport-height + root.footer-height;
+                interactive: false;
+                @children
+            }
+        }
+        footer := Text {
+            x: 4px;
+            y: flick.viewport-y + root.content-height + 8px;
+            width: parent.width - self.x;
+            visible: root.footer-text != "";
+            text: root.footer-text;
+            color: Theme.text-muted;
+            font-size: Theme.type-metadata-size;
+            accessible-role: text;
+            accessible-live-region: polite;
+        }
+    }
+
+    thumb := Rectangle {
+        width: bar-touch.has-hover || bar-touch.pressed ? 6px : 4px;
+        height: root.thumb-height;
+        x: parent.width - 3px - self.width;
+        y: root.bar-inset + (root.track - self.height) * (-flick.viewport-y / Math.max(1px, root.max-scroll));
+        border-radius: self.width / 2;
+        background: #ffffff;
+        opacity: !root.bar-shown ? 0 : bar-touch.pressed ? 0.40 : bar-touch.has-hover ? 0.30 : 0.18;
+        animate opacity { duration: root.reduced-motion ? 0ms : root.bar-shown ? 120ms : 360ms; easing: ease-out; }
+        animate width { duration: root.reduced-motion ? 0ms : 120ms; easing: ease-out; }
+    }
+
+    bar-touch := TouchArea {
+        x: parent.width - self.width;
+        width: 10px;
+        height: parent.height;
+        enabled: root.scrollable;
+        pointer-event(event) => {
+            if (event.button != PointerEventButton.left || event.kind != PointerEventKind.down) {
+                return;
+            }
+            if (self.mouse-y >= thumb.y && self.mouse-y <= thumb.y + thumb.height) {
+                root.drag-start-offset = -flick.viewport-y;
+            } else {
+                // Track click: one page towards the pointer, then drag from there.
+                flick.viewport-y = -Math.max(0px, Math.min(root.max-scroll,
+                    -flick.viewport-y + (self.mouse-y < thumb.y ? -1 : 1) * flick.height * 0.9));
+                root.drag-start-offset = -flick.viewport-y;
+            }
+        }
+        moved => {
+            if (self.pressed && root.track > root.thumb-height) {
+                flick.viewport-y = -Math.max(0px, Math.min(root.max-scroll,
+                    root.drag-start-offset + (self.mouse-y - self.pressed-y) * root.max-scroll / (root.track - root.thumb-height)));
+            }
+        }
+    }
+}

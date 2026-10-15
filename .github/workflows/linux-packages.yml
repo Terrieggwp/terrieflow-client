@@ -1,0 +1,139 @@
+name: Linux packages
+
+on:
+  workflow_call:
+    inputs:
+      update-repository:
+        description: GitHub repository compiled in as the update channel
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  debian-appimage:
+    runs-on: [self-hosted, Linux, X64, debian13]
+    timeout-minutes: 90
+    steps:
+      - name: Recover host workspace ownership
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          runner_work="$(realpath -e -- "$(dirname -- "${RUNNER_TEMP:?}")")"
+          expected="$runner_work/multicore/multicore"
+          workspace="$(realpath -e -- "${GITHUB_WORKSPACE:?}")"
+          [[ "$runner_work" != / && "$workspace" == "$expected" && -d "$workspace" ]] || {
+            echo "Refusing ownership recovery outside the expected repository workspace" >&2
+            exit 1
+          }
+          runner_uid="$(id -u)"
+          runner_gid="$(id -g)"
+          [[ "$runner_uid" =~ ^[0-9]+$ && "$runner_uid" != 0 && "$runner_gid" =~ ^[0-9]+$ ]] || {
+            echo "Ownership recovery requires a non-root host runner user" >&2
+            exit 1
+          }
+          stat -c 'Workspace owner before recovery: %u:%g %n' -- "$expected"
+          find "$expected" -maxdepth 2 -uid 0 -printf 'Root-owned entry before recovery: %U:%G %p\n' || true
+          sudo chown -hR -P -- "$runner_uid:$runner_gid" "$expected"
+          stat -c 'Workspace owner after recovery: %u:%g %n' -- "$expected"
+          find "$expected" -maxdepth 2 -uid 0 -printf 'Root-owned entry after recovery: %U:%G %p\n'
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install package verification tools
+        run: |
+          sudo apt-get update
+          sudo apt-get -o DPkg::Lock::Timeout=180 install -y --no-install-recommends zstd file
+      - name: Build Debian package and AppImage in Ubuntu 22.04
+        env:
+          UPDATE_REPOSITORY: ${{ inputs.update-repository }}
+        run: |
+          if [ -n "$UPDATE_REPOSITORY" ]; then
+            export MULTICORE_UPDATE_REPOSITORY="$UPDATE_REPOSITORY"
+          fi
+          ./scripts/package-linux-in-docker.sh --output dist/linux --formats deb,appimage
+      - name: Verify Debian package and AppImage
+        run: ./scripts/test-linux-package-contract.sh --stage target/linux-stage-ubuntu --packages dist/linux --formats deb,appimage
+      - name: Archive stage for Arch and RPM packages
+        run: tar --zstd -C target -cf linux-stage.tar.zst linux-stage-ubuntu
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-packages-debian-appimage
+          path: dist/linux/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-stage
+          path: linux-stage.tar.zst
+          if-no-files-found: error
+          retention-days: 1
+
+  arch:
+    needs: debian-appimage
+    runs-on: [self-hosted, Linux, X64, debian13]
+    timeout-minutes: 30
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: linux-stage
+      - name: Build Arch package
+        run: |
+          pacman -Syu --noconfirm --needed zstd
+          useradd --create-home builder
+          mkdir -p target
+          tar --zstd -xf linux-stage.tar.zst -C target
+          chown -R builder: .
+          su builder -c './scripts/build-linux-packages.sh --stage target/linux-stage-ubuntu --output dist/linux --formats arch'
+      - name: Verify Arch package
+        run: ./scripts/test-linux-package-contract.sh --stage target/linux-stage-ubuntu --packages dist/linux --formats arch
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-packages-arch
+          path: dist/linux/
+          if-no-files-found: error
+
+  rpm:
+    needs: debian-appimage
+    runs-on: [self-hosted, Linux, X64, debian13]
+    timeout-minutes: 30
+    container: fedora:43
+    steps:
+      - name: Install RPM build and verification tools
+        run: |
+          dnf install -y git rpm-build redhat-rpm-config zstd tar gzip cpio file desktop-file-utils diffutils binutils python3 findutils coreutils
+          git --version
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: linux-stage
+      - name: Build and verify Fedora RPM
+        env:
+          UPDATE_REPOSITORY: ${{ inputs.update-repository }}
+        run: |
+          mkdir -p target
+          tar --zstd -xf linux-stage.tar.zst -C target
+          if [ -n "$UPDATE_REPOSITORY" ]; then
+            LC_ALL=C grep -aFq -- "$UPDATE_REPOSITORY" target/linux-stage-ubuntu/usr/lib/multicore/multicore
+            echo "Verified compiled update repository: $UPDATE_REPOSITORY"
+          fi
+          ./scripts/test-rpm-packaging-contract.sh
+          ./scripts/build-linux-packages.sh --stage target/linux-stage-ubuntu --output dist/linux --formats rpm
+          ./scripts/test-linux-package-contract.sh --stage target/linux-stage-ubuntu --packages dist/linux --formats rpm
+          sha256sum dist/linux/*.rpm
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-packages-rpm
+          path: dist/linux/*.rpm
+          if-no-files-found: error

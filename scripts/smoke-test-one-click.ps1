@@ -1,0 +1,256 @@
+[CmdletBinding()]
+param(
+    [string]$PackagePath,
+    [string]$DesktopExecutableName = 'MultiCore.exe',
+    [string]$DiagnosticErrorPath,
+    [switch]$Background,
+    [switch]$CrashCleanup
+)
+
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+
+public static class MultiCoreSmokeNative {
+    public delegate bool EnumWindowsCallback(IntPtr window, IntPtr state);
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsCallback callback, IntPtr state);
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern int GetWindowText(IntPtr window, StringBuilder text, int maximum);
+    [DllImport("user32.dll")]
+    public static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+}
+'@
+
+if (-not $PackagePath) {
+    $PackagePath = Join-Path (Split-Path -Parent $PSScriptRoot) 'dist\multicore-windows-x64'
+}
+
+function Get-ExactProcess {
+    param([string]$ExecutablePath)
+    $expected = [IO.Path]::GetFullPath($ExecutablePath)
+    @(Get-CimInstance Win32_Process | Where-Object {
+        $_.ExecutablePath -and
+        [IO.Path]::GetFullPath($_.ExecutablePath).Equals($expected, [StringComparison]::OrdinalIgnoreCase)
+    })
+}
+
+function Get-MultiCoreWindow {
+    param([int]$ProcessId)
+    $matches = New-Object 'System.Collections.Generic.List[System.IntPtr]'
+    $callback = [MultiCoreSmokeNative+EnumWindowsCallback] {
+        param([IntPtr]$window, [IntPtr]$state)
+        [uint32]$owner = 0
+        [void][MultiCoreSmokeNative]::GetWindowThreadProcessId($window, [ref]$owner)
+        if ($owner -eq $ProcessId -and [MultiCoreSmokeNative]::IsWindowVisible($window)) {
+            $title = New-Object Text.StringBuilder 256
+            [void][MultiCoreSmokeNative]::GetWindowText($window, $title, $title.Capacity)
+            if ($title.ToString() -ceq 'MULTICORE') { $matches.Add($window) }
+        }
+        return $true
+    }
+    [void][MultiCoreSmokeNative]::EnumWindows($callback, [IntPtr]::Zero)
+    @($matches)
+}
+
+$package = (Resolve-Path -LiteralPath $PackagePath).Path
+$desktopExe = [IO.Path]::GetFullPath((Join-Path $package $DesktopExecutableName))
+$daemonExe = [IO.Path]::GetFullPath((Join-Path $package 'runtime\multicore-daemon.exe'))
+$coreHostExe = [IO.Path]::GetFullPath((Join-Path $package 'runtime\multicore-core-host.exe'))
+$xrayExe = [IO.Path]::GetFullPath((Join-Path $package 'cores\xray.exe'))
+$mihomoExe = [IO.Path]::GetFullPath((Join-Path $package 'cores\mihomo.exe'))
+foreach ($file in @($desktopExe, $daemonExe, $coreHostExe, $xrayExe, $mihomoExe)) {
+    if (-not [IO.File]::Exists($file)) { throw "Package executable is missing: $file" }
+    if ((Get-Item -LiteralPath $file -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw "Package executable is a reparse point: $file"
+    }
+}
+if ($Background -and $CrashCleanup) { throw 'Background and CrashCleanup modes are mutually exclusive' }
+
+$desktopNames = @('MultiCore.exe', [IO.Path]::GetFileName($desktopExe))
+$existingSingletons = @(Get-CimInstance Win32_Process | Where-Object {
+    $desktopNames -contains $_.Name
+})
+if ($existingSingletons.Count -ne 0) {
+    throw 'Refusing to disturb an existing MultiCore singleton; close it before running the smoke test'
+}
+foreach ($path in @($desktopExe, $daemonExe, $coreHostExe, $xrayExe, $mihomoExe)) {
+    if (@(Get-ExactProcess $path).Count -ne 0) {
+        throw "Refusing to adopt a pre-existing exact-package process: $path"
+    }
+}
+
+$smokeRoot = Join-Path ([IO.Path]::GetTempPath()) ('multicore-task4-smoke-' + [Guid]::NewGuid().ToString('N'))
+[IO.Directory]::CreateDirectory($smokeRoot) | Out-Null
+$hadLocal = Test-Path Env:LOCALAPPDATA
+$savedLocal = $env:LOCALAPPDATA
+$hadUrl = Test-Path Env:MULTICORE_DAEMON_URL
+$savedUrl = $env:MULTICORE_DAEMON_URL
+$hadToken = Test-Path Env:MULTICORE_DAEMON_TOKEN
+$savedToken = $env:MULTICORE_DAEMON_TOKEN
+$hadController = Test-Path Env:MULTICORE_MIHOMO_CONTROLLER_ADDR
+$savedController = $env:MULTICORE_MIHOMO_CONTROLLER_ADDR
+$hadSmokeClose = Test-Path Env:MULTICORE_SMOKE_EXIT_ON_CLOSE
+$savedSmokeClose = $env:MULTICORE_SMOKE_EXIT_ON_CLOSE
+$desktop = $null
+$daemonPid = $null
+$windows = @()
+$succeeded = $false
+
+try {
+    $env:LOCALAPPDATA = $smokeRoot
+    Remove-Item Env:MULTICORE_DAEMON_URL -ErrorAction SilentlyContinue
+    Remove-Item Env:MULTICORE_DAEMON_TOKEN -ErrorAction SilentlyContinue
+    $env:MULTICORE_MIHOMO_CONTROLLER_ADDR = '127.0.0.1:19090'
+    $env:MULTICORE_SMOKE_EXIT_ON_CLOSE = '1'
+
+    $startArguments = @{
+        FilePath = $desktopExe
+        WorkingDirectory = $package
+        PassThru = $true
+    }
+    if ($DiagnosticErrorPath) {
+        $startArguments.RedirectStandardError = [IO.Path]::GetFullPath($DiagnosticErrorPath)
+    }
+    if ($Background) {
+        $startArguments.ArgumentList = @('--background')
+    }
+    $desktop = Start-Process @startArguments
+    if ($Background) {
+        Start-Sleep -Milliseconds 250
+        $desktop.Refresh()
+        if ($desktop.HasExited) { throw 'Background desktop exited before daemon bootstrap' }
+    } else {
+        $windowDeadline = [DateTime]::UtcNow.AddSeconds(20)
+        do {
+            Start-Sleep -Milliseconds 100
+            $desktop.Refresh()
+            $windows = @(Get-MultiCoreWindow $desktop.Id)
+        } until ($desktop.HasExited -or $windows.Count -eq 1 -or [DateTime]::UtcNow -ge $windowDeadline)
+        if ($desktop.HasExited -or $windows.Count -ne 1) {
+            throw 'GUI did not appear after the authenticated bootstrap deadline'
+        }
+    }
+
+    $childDeadline = [DateTime]::UtcNow.AddSeconds(10)
+    do {
+        $children = @(Get-CimInstance Win32_Process | Where-Object {
+            $_.ParentProcessId -eq $desktop.Id -and
+            $_.ExecutablePath -and
+            [IO.Path]::GetFullPath($_.ExecutablePath).Equals($daemonExe, [StringComparison]::OrdinalIgnoreCase)
+        })
+        if ($children.Count -ne 1) { Start-Sleep -Milliseconds 100 }
+    } until ($children.Count -eq 1 -or [DateTime]::UtcNow -ge $childDeadline)
+    if ($children.Count -ne 1) { throw "Expected one exact daemon child; observed $($children.Count)" }
+    $daemonPid = [int]$children[0].ProcessId
+
+    $listenerDeadline = [DateTime]::UtcNow.AddSeconds(10)
+    do {
+        $listeners = @(Get-NetTCPConnection -State Listen -OwningProcess $daemonPid -ErrorAction SilentlyContinue |
+            Where-Object { $_.LocalAddress -eq '127.0.0.1' })
+        if ($listeners.Count -ne 1) { Start-Sleep -Milliseconds 100 }
+    } until ($listeners.Count -eq 1 -or [DateTime]::UtcNow -ge $listenerDeadline)
+    if ($listeners.Count -ne 1) { throw "Expected one daemon loopback listener; observed $($listeners.Count)" }
+
+    # Do not POST /v1/connect here: that is a live UAC/TUN action and remains a
+    # manual release gate. This non-live smoke proves normal launch does not
+    # start the privileged host before the user explicitly chooses Connect.
+    $coreHostsBeforeConnect = @(Get-ExactProcess $coreHostExe)
+    if ($coreHostsBeforeConnect.Count -ne 0) {
+        throw "Core host started before explicit Connect; observed $($coreHostsBeforeConnect.Count)"
+    }
+    $coresBeforeConnect = @((Get-ExactProcess $xrayExe) + (Get-ExactProcess $mihomoExe))
+    if ($coresBeforeConnect.Count -ne 0) {
+        throw "Core executable started before explicit Connect; observed $($coresBeforeConnect.Count)"
+    }
+
+    $status = $null
+    try {
+        $response = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 -Uri ("http://127.0.0.1:{0}/v1/status" -f $listeners[0].LocalPort)
+        $status = [int]$response.StatusCode
+    } catch {
+        if ($_.Exception.Response) {
+            $status = [int]$_.Exception.Response.StatusCode
+        } else {
+            throw
+        }
+    }
+    if ($status -ne 401) { throw "Tokenless daemon status returned $status instead of 401" }
+
+    if ($Background) {
+        $ownedDesktop = @(Get-ExactProcess $desktopExe | Where-Object { $_.ProcessId -eq $desktop.Id })
+        if ($ownedDesktop.Count -ne 1) { throw 'Background desktop ownership changed before cleanup' }
+        Stop-Process -Id $desktop.Id
+        if (-not $desktop.WaitForExit(10000)) { throw 'Background desktop did not exit by exact PID' }
+        $shutdown = 'background-exact-pid'
+    } elseif ($CrashCleanup) {
+        Stop-Process -Id $desktop.Id -Force
+        if (-not $desktop.WaitForExit(5000)) { throw 'Desktop process could not be terminated by exact PID' }
+        $shutdown = 'forced-crash-check'
+    } else {
+        if (-not [MultiCoreSmokeNative]::PostMessage($windows[0], 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)) {
+            throw 'Desktop rejected the normal close request'
+        }
+        if (-not $desktop.WaitForExit(10000)) { throw 'Desktop did not exit after the normal close request' }
+        $shutdown = 'graceful'
+    }
+    $leakDeadline = [DateTime]::UtcNow.AddSeconds(5)
+    do {
+        $leaks = @()
+        foreach ($path in @($desktopExe, $daemonExe, $coreHostExe, $xrayExe, $mihomoExe)) {
+            $leaks += @(Get-ExactProcess $path)
+        }
+        if ($leaks.Count -ne 0) { Start-Sleep -Milliseconds 100 }
+    } until ($leaks.Count -eq 0 -or [DateTime]::UtcNow -ge $leakDeadline)
+    if ($leaks.Count -ne 0) {
+        $leaks | Select-Object ProcessId, ParentProcessId, ExecutablePath
+        throw 'An exact-package process remained after desktop shutdown'
+    }
+
+    $succeeded = $true
+    [pscustomobject]@{
+        DesktopPid = $desktop.Id
+        DaemonPid = $daemonPid
+        ApiPort = $listeners[0].LocalPort
+        TokenlessStatus = $status
+        CoreHostBeforeConnect = 'absent'
+        LiveConnectUac = 'manual release gate (not exercised)'
+        LaunchMode = $(if ($Background) { 'background' } else { 'foreground' })
+        DesktopShutdown = $shutdown
+        Cleanup = 'verified'
+    } | Format-List
+} finally {
+    if ($desktop -and -not $desktop.HasExited) {
+        Stop-Process -Id $desktop.Id -Force -ErrorAction SilentlyContinue
+        [void]$desktop.WaitForExit(5000)
+    }
+    if ($daemonPid) {
+        $exactDaemon = @(Get-ExactProcess $daemonExe | Where-Object { $_.ProcessId -eq $daemonPid })
+        if ($exactDaemon.Count -eq 1) {
+            Stop-Process -Id $daemonPid -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    if ($hadLocal) { $env:LOCALAPPDATA = $savedLocal } else { Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue }
+    if ($hadUrl) { $env:MULTICORE_DAEMON_URL = $savedUrl } else { Remove-Item Env:MULTICORE_DAEMON_URL -ErrorAction SilentlyContinue }
+    if ($hadToken) { $env:MULTICORE_DAEMON_TOKEN = $savedToken } else { Remove-Item Env:MULTICORE_DAEMON_TOKEN -ErrorAction SilentlyContinue }
+    if ($hadController) { $env:MULTICORE_MIHOMO_CONTROLLER_ADDR = $savedController } else { Remove-Item Env:MULTICORE_MIHOMO_CONTROLLER_ADDR -ErrorAction SilentlyContinue }
+    if ($hadSmokeClose) { $env:MULTICORE_SMOKE_EXIT_ON_CLOSE = $savedSmokeClose } else { Remove-Item Env:MULTICORE_SMOKE_EXIT_ON_CLOSE -ErrorAction SilentlyContinue }
+
+    if ($succeeded) {
+        $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
+        $smokeFull = [IO.Path]::GetFullPath($smokeRoot)
+        if ($smokeFull.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -and
+            [IO.Path]::GetFileName($smokeFull).StartsWith('multicore-task4-smoke-', [StringComparison]::Ordinal)) {
+            Remove-Item -LiteralPath $smokeFull -Recurse -Force
+        }
+    }
+}

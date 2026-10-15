@@ -1,0 +1,413 @@
+//! The service updates the Windows install itself: it downloads the release zip, checks the
+//! GitHub digest and the in-zip `SHA256SUMS.txt`, and hands over to `multicore-updater` running
+//! as SYSTEM, which swaps `current`, restarts the service and relaunches the desktop in the
+//! user's session. Linux packages are updated by the package manager instead.
+//!
+//! The session and the user's update directory handed to the updater come from the
+//! authenticated client (its token's session in `user_key`, its known-folder `data_root`),
+//! never from the request.
+//!
+//! A connected desktop updates in two steps so the user stays online during the download:
+//! `StageUpdate` downloads and verifies with the cores running, the desktop then disconnects,
+//! and `Update` hands the staged release (re-checked against its verified digest) over. A
+//! client that only sends `Update` (1.1.1) gets the one-step download-then-install as before.
+
+use std::path::PathBuf;
+use std::sync::{Mutex, PoisonError};
+
+use multicore_core::elevation_protocol::BrokerErrorCode;
+use multicore_core::service_protocol::{ServiceResponse, ServiceUpdateStage};
+use multicore_release::{Version, verify_archive_file};
+
+use super::core_loop::ClientIdentity;
+
+/// How far the running update got: written by the updater, which downloads outside the
+/// service's lock, and read for `UpdateProgress` on another client channel.
+pub(crate) struct UpdateProgress {
+    state: Mutex<(ServiceUpdateStage, u64, u64)>,
+}
+
+impl Default for UpdateProgress {
+    fn default() -> Self {
+        Self {
+            state: Mutex::new((ServiceUpdateStage::Idle, 0, 0)),
+        }
+    }
+}
+
+impl UpdateProgress {
+    fn set(&self, stage: ServiceUpdateStage, received: u64, total: u64) {
+        *self.state.lock().unwrap_or_else(PoisonError::into_inner) = (stage, received, total);
+    }
+
+    /// `received` of `total` bytes are in (`total` 0 while the release is still fetched).
+    pub(crate) fn downloading(&self, received: u64, total: u64) {
+        self.set(ServiceUpdateStage::Downloading, received, total);
+    }
+
+    /// The download is complete; its size and digests are being checked.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    pub(crate) fn verifying(&self) {
+        self.set(ServiceUpdateStage::Verifying, 0, 0);
+    }
+
+    pub(crate) fn idle(&self) {
+        self.set(ServiceUpdateStage::Idle, 0, 0);
+    }
+
+    pub(crate) fn response(&self) -> ServiceResponse {
+        let (stage, received, total) = *self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        ServiceResponse::UpdateProgress {
+            stage,
+            received,
+            total,
+        }
+    }
+}
+
+/// A release the service downloaded and verified (GitHub digest and the in-zip
+/// `SHA256SUMS.txt`), waiting for `Update` to hand it to the updater. `StageUpdate` leaves one
+/// behind while the tunnel keeps running; every field comes from the service's own fetch of the
+/// pinned repository's release, never from the client.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub(crate) struct StagedRelease {
+    pub(crate) version: String,
+    pub(crate) archive: PathBuf,
+    pub(crate) size: u64,
+    pub(crate) sha256: String,
+}
+
+#[cfg_attr(not(windows), allow(dead_code))]
+impl StagedRelease {
+    /// Whether `Update { version }` may skip the download: the same release, and the archive
+    /// still has the verified size and digest (it sat on disk since it was staged).
+    pub(crate) fn reusable_for(&self, version: &str) -> bool {
+        self.version == version
+            && verify_archive_file(&self.archive, self.size, &self.sha256).is_ok()
+    }
+}
+
+/// Only a strictly newer release is accepted.
+pub(crate) fn plan_update(current: &str, requested: &str) -> Result<(), BrokerErrorCode> {
+    let current = Version::parse(current).map_err(|_| BrokerErrorCode::NotReady)?;
+    let requested = Version::parse(requested).map_err(|_| BrokerErrorCode::InvalidRequest)?;
+    if requested > current {
+        Ok(())
+    } else {
+        Err(BrokerErrorCode::InvalidRequest)
+    }
+}
+
+/// Windows user keys are `"<token session>:<sid>"`; a Unix key (`"uid:<uid>"`) has none.
+pub(crate) fn session_of(client: &ClientIdentity) -> Option<u32> {
+    client.user_key.split_once(':')?.0.parse().ok()
+}
+
+#[cfg(windows)]
+pub(crate) use production::ProductionUpdater;
+
+#[cfg(windows)]
+mod production {
+    use std::{
+        fs::{self, File},
+        io::Write,
+        os::windows::{
+            io::{AsRawHandle, OwnedHandle},
+            process::CommandExt,
+        },
+        path::{Path, PathBuf},
+        process::{Command, Stdio},
+        sync::Arc,
+        thread,
+        time::Duration,
+    };
+
+    use multicore_core::elevation_protocol::BrokerErrorCode;
+    use multicore_release::{
+        GitHubRelease, Repository, extract_verified_bundle, verify_archive_file,
+    };
+    use windows_sys::Win32::{
+        Foundation::WAIT_OBJECT_0,
+        System::Threading::{CREATE_NO_WINDOW, DETACHED_PROCESS, SetEvent, WaitForSingleObject},
+    };
+
+    use super::{ClientIdentity, StagedRelease, UpdateProgress, plan_update, session_of};
+    use crate::service::core_loop::ServiceUpdater;
+
+    const RELEASE_BODY_LIMIT: usize = 512 * 1024;
+    const USER_AGENT: &str = concat!("multicore-service/", env!("MULTICORE_APP_VERSION"));
+    /// Must match the desktop's `updater::update_directory()` (`<data root>\updates`).
+    const USER_UPDATE_DIRECTORY: &str = "updates";
+    /// Time for the connection to answer `UpdateStarted` before the service stops itself.
+    const HANDOVER_DELAY: Duration = Duration::from_secs(2);
+
+    pub(crate) struct ProductionUpdater {
+        service_directory: PathBuf,
+        package_root: PathBuf,
+        stop: Arc<OwnedHandle>,
+        runtime: Option<tokio::runtime::Runtime>,
+        staged: Option<StagedRelease>,
+        launched: bool,
+        progress: Arc<UpdateProgress>,
+    }
+
+    impl ProductionUpdater {
+        /// `package_root` is the install's `current` directory (the updater's `--target`).
+        pub(crate) fn new(
+            service_directory: PathBuf,
+            package_root: PathBuf,
+            stop: Arc<OwnedHandle>,
+        ) -> Self {
+            Self {
+                service_directory,
+                package_root,
+                stop,
+                runtime: tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .ok(),
+                staged: None,
+                launched: false,
+                progress: Arc::default(),
+            }
+        }
+
+        fn update_directory(&self) -> PathBuf {
+            self.service_directory.join("update")
+        }
+
+        fn fetch(&self, repository: &Repository) -> Result<GitHubRelease, BrokerErrorCode> {
+            let runtime = self.runtime.as_ref().ok_or(BrokerErrorCode::NotReady)?;
+            runtime.block_on(async {
+                let client = reqwest::Client::builder()
+                    .connect_timeout(Duration::from_secs(8))
+                    .timeout(Duration::from_secs(30))
+                    .redirect(reqwest::redirect::Policy::limited(2))
+                    .build()
+                    .map_err(|_| BrokerErrorCode::NotReady)?;
+                let mut response = client
+                    .get(repository.latest_release_api_url())
+                    .header("Accept", "application/vnd.github+json")
+                    .header("X-GitHub-Api-Version", "2022-11-28")
+                    .header("User-Agent", USER_AGENT)
+                    .send()
+                    .await
+                    .map_err(|_| BrokerErrorCode::NotReady)?;
+                if !response.status().is_success() {
+                    return Err(BrokerErrorCode::NotReady);
+                }
+                let mut body = Vec::new();
+                while let Some(chunk) = response
+                    .chunk()
+                    .await
+                    .map_err(|_| BrokerErrorCode::NotReady)?
+                {
+                    body.extend_from_slice(&chunk);
+                    if body.len() > RELEASE_BODY_LIMIT {
+                        return Err(BrokerErrorCode::InvalidRequest);
+                    }
+                }
+                GitHubRelease::parse_for_repository(repository, &body)
+                    .map_err(|_| BrokerErrorCode::InvalidRequest)
+            })
+        }
+
+        fn download(
+            &self,
+            release: &GitHubRelease,
+            destination: &Path,
+        ) -> Result<(), BrokerErrorCode> {
+            let runtime = self.runtime.as_ref().ok_or(BrokerErrorCode::NotReady)?;
+            runtime.block_on(async {
+                let client = reqwest::Client::builder()
+                    .connect_timeout(Duration::from_secs(8))
+                    .timeout(Duration::from_secs(600))
+                    .redirect(reqwest::redirect::Policy::custom(|attempt| {
+                        let allowed = attempt.url().scheme() == "https"
+                            && matches!(
+                                attempt.url().host_str(),
+                                Some("github.com")
+                                    | Some("release-assets.githubusercontent.com")
+                                    | Some("objects.githubusercontent.com")
+                            );
+                        if allowed && attempt.previous().len() < 5 {
+                            attempt.follow()
+                        } else {
+                            attempt.stop()
+                        }
+                    }))
+                    .build()
+                    .map_err(|_| BrokerErrorCode::NotReady)?;
+                let mut response = client
+                    .get(release.asset().download_url())
+                    .header("User-Agent", USER_AGENT)
+                    .send()
+                    .await
+                    .map_err(|_| BrokerErrorCode::NotReady)?;
+                if !response.status().is_success() {
+                    return Err(BrokerErrorCode::NotReady);
+                }
+                let mut output =
+                    File::create(destination).map_err(|_| BrokerErrorCode::NotReady)?;
+                let mut written = 0_u64;
+                while let Some(chunk) = response
+                    .chunk()
+                    .await
+                    .map_err(|_| BrokerErrorCode::NotReady)?
+                {
+                    // A service stop (SCM stop or shutdown) abandons the download.
+                    if self.stopping() {
+                        return Err(BrokerErrorCode::NotReady);
+                    }
+                    written += chunk.len() as u64;
+                    if written > release.asset().size() {
+                        return Err(BrokerErrorCode::InvalidRequest);
+                    }
+                    output
+                        .write_all(&chunk)
+                        .map_err(|_| BrokerErrorCode::NotReady)?;
+                    self.progress.downloading(written, release.asset().size());
+                }
+                output.flush().map_err(|_| BrokerErrorCode::NotReady)?;
+                Ok(())
+            })
+        }
+
+        fn stopping(&self) -> bool {
+            (unsafe { WaitForSingleObject(self.stop.as_raw_handle(), 0) }) == WAIT_OBJECT_0
+        }
+
+        fn stage(&mut self, version: &str) -> Result<StagedRelease, BrokerErrorCode> {
+            let repository = option_env!("MULTICORE_UPDATE_REPOSITORY")
+                .and_then(|value| Repository::parse(value).ok())
+                .ok_or(BrokerErrorCode::Unsupported)?;
+            multicore_core::ensure_crypto_provider_installed();
+            self.progress.downloading(0, 0);
+            let release = self.fetch(&repository)?;
+            if release.version().to_string() != version {
+                return Err(BrokerErrorCode::InvalidRequest);
+            }
+            let update_dir = self.update_directory();
+            let _ = fs::remove_dir_all(&update_dir);
+            fs::create_dir_all(&update_dir).map_err(|_| BrokerErrorCode::NotReady)?;
+            let archive = update_dir.join(format!("multicore-{version}.zip"));
+            self.progress.downloading(0, release.asset().size());
+            self.download(&release, &archive)?;
+            self.progress.verifying();
+            verify_archive_file(
+                &archive,
+                release.asset().size(),
+                release.asset().sha256_hex(),
+            )
+            .map_err(|_| BrokerErrorCode::InvalidRequest)?;
+            // The in-zip SHA256SUMS.txt check: extract once into a scratch directory.
+            let check = update_dir.join("verify");
+            let verified = extract_verified_bundle(&archive, &check);
+            let _ = fs::remove_dir_all(&check);
+            verified.map_err(|_| BrokerErrorCode::InvalidRequest)?;
+            Ok(StagedRelease {
+                version: version.to_owned(),
+                archive,
+                size: release.asset().size(),
+                sha256: release.asset().sha256_hex().to_owned(),
+            })
+        }
+    }
+
+    impl ServiceUpdater for ProductionUpdater {
+        fn prepare(
+            &mut self,
+            client: &ClientIdentity,
+            version: &str,
+        ) -> Result<(), BrokerErrorCode> {
+            if self.launched {
+                return Err(BrokerErrorCode::NotReady);
+            }
+            plan_update(env!("MULTICORE_APP_VERSION"), version)?;
+            session_of(client)
+                .filter(|session| *session != 0)
+                .ok_or(BrokerErrorCode::InvalidRequest)?;
+            // `Update` after a `StageUpdate`: the tunnel is already down, so hand over the
+            // release that was verified while it was still up instead of downloading again.
+            self.progress.verifying();
+            let reusable = self
+                .staged
+                .as_ref()
+                .is_some_and(|staged| staged.reusable_for(version));
+            let prepared = if reusable {
+                Ok(())
+            } else {
+                self.staged = None;
+                self.stage(version).map(|staged| {
+                    self.staged = Some(staged);
+                })
+            };
+            self.progress.idle();
+            prepared
+        }
+
+        fn progress(&self) -> Option<Arc<UpdateProgress>> {
+            Some(self.progress.clone())
+        }
+
+        fn begin(&mut self, client: &ClientIdentity, version: &str) -> Result<(), BrokerErrorCode> {
+            if self.launched {
+                return Err(BrokerErrorCode::NotReady);
+            }
+            let staged = self
+                .staged
+                .take()
+                .filter(|staged| staged.version == version)
+                .ok_or(BrokerErrorCode::NotReady)?;
+            // The token session of the verified client. A daemon started with `runas` inside
+            // another user's console session relaunches the desktop for that console user
+            // (`WTSQueryUserToken(session)` in the updater); harmless, the update itself is the
+            // same verified release either way.
+            let session = session_of(client)
+                .filter(|session| *session != 0)
+                .ok_or(BrokerErrorCode::InvalidRequest)?;
+            let update_dir = self.update_directory();
+            let helper = update_dir.join("multicore-updater.exe");
+            fs::copy(
+                self.package_root
+                    .join("runtime")
+                    .join("multicore-updater.exe"),
+                &helper,
+            )
+            .map_err(|_| BrokerErrorCode::NotReady)?;
+            Command::new(&helper)
+                .arg("--wait-pid")
+                .arg(std::process::id().to_string())
+                .arg("--archive")
+                .arg(&staged.archive)
+                .arg("--target")
+                .arg(&self.package_root)
+                .arg("--size")
+                .arg(staged.size.to_string())
+                .arg("--sha256")
+                .arg(&staged.sha256)
+                .arg("--version")
+                .arg(&staged.version)
+                .arg("--service-session")
+                .arg(session.to_string())
+                .arg("--user-update-dir")
+                .arg(client.data_root.join(USER_UPDATE_DIRECTORY))
+                .current_dir(&update_dir)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS)
+                .spawn()
+                .map_err(|_| BrokerErrorCode::NotReady)?;
+            self.launched = true;
+            // The updater waits for this process to exit before touching `current`, and
+            // starts the service again afterwards (or after a rollback).
+            let stop = self.stop.clone();
+            thread::spawn(move || {
+                thread::sleep(HANDOVER_DELAY);
+                unsafe { SetEvent(stop.as_raw_handle()) };
+            });
+            Ok(())
+        }
+    }
+}

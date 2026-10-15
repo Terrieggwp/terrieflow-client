@@ -1,0 +1,330 @@
+param(
+    [string]$Address = "127.0.0.1",
+    [int]$Port = 18787,
+    [ValidateSet("empty", "ready", "connected", "error")]
+    [string]$InitialState = "ready",
+    [ValidateSet("empty", "one", "many", "loading", "error")]
+    [string]$ProfileState = "many",
+    [int]$ProfileDelayMilliseconds = 0,
+    [int]$SelectionDelayMilliseconds = 0,
+    [switch]$Announcement,
+    [string]$AuthorizationValue = "preview-local-only"
+)
+
+$ErrorActionPreference = "Stop"
+
+if ($Address -ne "127.0.0.1") {
+    throw "The preview fixture binds only to 127.0.0.1."
+}
+if ($SelectionDelayMilliseconds -lt 0 -or $SelectionDelayMilliseconds -gt 15000) {
+    throw "SelectionDelayMilliseconds must be between 0 and 15000."
+}
+
+$listener = [System.Net.Sockets.TcpListener]::new(
+    [System.Net.IPAddress]::Loopback,
+    $Port
+)
+$listener.Start()
+
+$state = $InitialState
+$selectedNode = "node-auto"
+$utf8 = [System.Text.UTF8Encoding]::new($false)
+$copy = @'
+{
+  "automatic": "\ud83c\udf0d Auto",
+  "route_a": "\ud83c\udde6\ud83c\uddf1 Albania [al]",
+  "route_b": "\ud83c\udde9\ud83c\uddea Germany [de]",
+  "reserve_route": "\ud83c\uddf8\ud83c\uddea Sweden [se]",
+  "main_group": "\ud83c\udf0d \u0421\u0435\u0440\u0432\u0435\u0440",
+  "reserve_group": "\ud83c\udfae \u0418\u0433\u0440\u044b",
+  "manual_route": "\u0411\u0435\u0437 VPN",
+  "announcement": "\u041f\u043b\u0430\u043d\u043e\u0432\u044b\u0435 \u0440\u0430\u0431\u043e\u0442\u044b \u0441\u0435\u0433\u043e\u0434\u043d\u044f \u0432 23:00",
+  "local_profile": "\u041b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u043f\u0440\u043e\u0444\u0438\u043b\u044c",
+  "work_profile": "\u0420\u0430\u0431\u043e\u0447\u0438\u0439",
+  "travel_profile": "\u041f\u043e\u0435\u0437\u0434\u043a\u0438",
+  "reserve_profile": "\u0420\u0435\u0437\u0435\u0440\u0432",
+  "error": "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u0443\u044e \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0443. \u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435 \u043f\u043e\u043f\u044b\u0442\u043a\u0443.",
+  "log_xray": "\u041b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0435 SOCKS-\u043c\u043e\u0441\u0442\u044b \u0433\u043e\u0442\u043e\u0432\u044b.",
+  "log_mihomo": "\u041a\u043e\u043d\u0442\u0440\u043e\u043b\u043b\u0435\u0440 \u0438 TUN MultiCore \u0433\u043e\u0442\u043e\u0432\u044b."
+}
+'@ | ConvertFrom-Json
+$serviceLogoPath = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\apps\multicore-desktop\assets\app-icon.svg"))
+$profileRows = @()
+if ($ProfileState -ne "empty") {
+    $profileRows += @{
+        id = "profile-main"
+        active = $true
+        available = $true
+        display_name = $copy.local_profile
+        used_bytes = 939449482934
+        total_bytes = $null
+        expires_at_unix = 1792851157
+        service_logo_path = $serviceLogoPath
+    }
+}
+if ($ProfileDelayMilliseconds -lt 0 -or $ProfileDelayMilliseconds -gt 15000) {
+    throw "ProfileDelayMilliseconds must be between 0 and 15000."
+}
+if ($ProfileState -in @("many", "loading", "error")) {
+    $profileRows += @{
+        id = "profile-work"
+        active = $false
+        available = $true
+        display_name = $copy.work_profile
+        used_bytes = 64424509440
+        total_bytes = 214748364800
+        expires_at_unix = 1795529557
+        service_logo_path = $null
+    }
+    $profileRows += @{
+        id = "profile-travel"
+        active = $false
+        available = $false
+        display_name = $copy.travel_profile
+        used_bytes = $null
+        total_bytes = $null
+        expires_at_unix = $null
+        service_logo_path = $null
+    }
+    foreach ($index in 1..3) {
+        $profileRows += @{
+            id = "profile-reserve-$index"
+            active = $false
+            available = $true
+            display_name = "$($copy.reserve_profile) $index"
+            used_bytes = (10737418240 * $index)
+            total_bytes = 107374182400
+            expires_at_unix = 1795529557
+            service_logo_path = $null
+        }
+    }
+}
+$activeProfileId = if ($profileRows.Count -gt 0) { "profile-main" } else { $null }
+
+function Get-Subscriptions {
+    return @{
+        active_profile_id = $activeProfileId
+        profiles = @($profileRows)
+    }
+}
+
+function Get-Catalog {
+    if ($state -eq "empty") {
+        return @{ revision = 1; groups = @() }
+    }
+
+    $nodes = @(
+        @{ id = "node-auto"; label = $copy.automatic; selected = ($selectedNode -eq "node-auto"); delay_ms = 34 },
+        @{ id = "node-primary"; label = $copy.route_a; selected = ($selectedNode -eq "node-primary"); delay_ms = 48 },
+        @{ id = "node-backup"; label = $copy.route_b; selected = ($selectedNode -eq "node-backup"); delay_ms = 81 },
+        @{ id = "node-reserve"; label = $copy.reserve_route; selected = ($selectedNode -eq "node-reserve"); delay_ms = 126 }
+    )
+    return @{
+        revision = 7
+        groups = @(
+            @{ id = "group-main"; label = $copy.main_group; selected = $true; nodes = $nodes },
+            @{ id = "group-reserve"; label = $copy.reserve_group; selected = $false; nodes = @(
+                @{ id = "node-reserve-auto"; label = $copy.automatic; selected = $true; delay_ms = 57 },
+                @{ id = "node-reserve-manual"; label = $copy.manual_route; selected = $false; delay_ms = 93 }
+            ) }
+        )
+    }
+}
+
+function Get-Status {
+    $node = switch ($selectedNode) {
+        "node-primary" { $copy.route_a }
+        "node-backup" { $copy.route_b }
+        "node-reserve" { $copy.reserve_route }
+        default { $copy.automatic }
+    }
+    return @{
+        state = $state
+        active_profile_id = if ($state -eq "empty") { $null } else { $activeProfileId }
+        profile = if ($state -eq "empty") { $null } else { $copy.local_profile }
+        current_node = if ($state -eq "empty") { $null } else { $node }
+        message = if ($state -eq "error") { $copy.error } else { $null }
+        degraded = $false
+        subscription = if ($state -eq "empty") { $null } else {
+            @{
+                source_name = "subscription.example"
+                display_name = "MultiCore Preview"
+                uploaded_bytes = 1073741824
+                downloaded_bytes = 938375741110
+                used_bytes = 939449482934
+                total_bytes = $null
+                expires_at_unix = 1792851157
+                updated_at_unix = 1789405200
+                announcement_text = if ($Announcement) { $copy.announcement } else { $null }
+                announcement_tone = if ($Announcement) { "info" } else { $null }
+                service_logo_path = $serviceLogoPath
+                refresh_available = $true
+            }
+        }
+    }
+}
+
+function Send-JsonResponse([System.Net.Sockets.NetworkStream]$Stream, [int]$Status, $Body) {
+    $json = $Body | ConvertTo-Json -Depth 8 -Compress
+    $bodyBytes = $utf8.GetBytes($json)
+    $reason = if ($Status -eq 200) { "OK" } elseif ($Status -eq 401) { "Unauthorized" } else { "Not Found" }
+    $headers = "HTTP/1.1 $Status $reason`r`nContent-Type: application/json; charset=utf-8`r`nContent-Length: $($bodyBytes.Length)`r`nConnection: close`r`n`r`n"
+    $headerBytes = [System.Text.Encoding]::ASCII.GetBytes($headers)
+    $Stream.Write($headerBytes, 0, $headerBytes.Length)
+    $Stream.Write($bodyBytes, 0, $bodyBytes.Length)
+    $Stream.Flush()
+}
+
+Write-Host "MultiCore preview fixture listening on http://${Address}:$Port in $InitialState/$ProfileState state"
+
+try {
+    while ($true) {
+        $client = $listener.AcceptTcpClient()
+        try {
+            $stream = $client.GetStream()
+            $reader = [System.IO.StreamReader]::new($stream, $utf8, $false, 4096, $true)
+            $requestLine = $reader.ReadLine()
+            if ([string]::IsNullOrWhiteSpace($requestLine)) {
+                continue
+            }
+
+            $authorization = ""
+            $contentLength = 0
+            while ($true) {
+                $line = $reader.ReadLine()
+                if ([string]::IsNullOrEmpty($line)) { break }
+                if ($line.StartsWith("Authorization:", [System.StringComparison]::OrdinalIgnoreCase)) {
+                    $authorization = $line.Substring($line.IndexOf(":") + 1).Trim()
+                }
+                if ($line.StartsWith("Content-Length:", [System.StringComparison]::OrdinalIgnoreCase)) {
+                    $contentLength = [int]$line.Substring($line.IndexOf(":") + 1).Trim()
+                }
+            }
+
+            $body = ""
+            if ($contentLength -gt 0) {
+                $buffer = [char[]]::new($contentLength)
+                $read = $reader.ReadBlock($buffer, 0, $contentLength)
+                if ($read -gt 0) {
+                    $body = -join $buffer[0..($read - 1)]
+                }
+            }
+
+            if ($authorization -cne "Bearer $AuthorizationValue") {
+                Send-JsonResponse $stream 401 @{ code = "unauthorized"; message = "Unauthorized"; correlation_id = "preview" }
+                continue
+            }
+
+            $parts = $requestLine.Split(" ")
+            $method = $parts[0]
+            $path = $parts[1]
+
+            if ($method -eq "GET" -and $path.StartsWith("/v1/status")) {
+                Send-JsonResponse $stream 200 (Get-Status)
+            } elseif ($method -eq "GET" -and $path -eq "/v1/subscriptions") {
+                if ($ProfileState -eq "loading") {
+                    Start-Sleep -Milliseconds 5000
+                }
+                if ($ProfileState -eq "error") {
+                    Send-JsonResponse $stream 500 @{ code = "profiles_unavailable"; message = "Unavailable"; correlation_id = "preview" }
+                } else {
+                    Send-JsonResponse $stream 200 (Get-Subscriptions)
+                }
+            } elseif ($method -eq "PUT" -and $path -match '^/v1/subscriptions/([^/]+)/activate$') {
+                if ($ProfileDelayMilliseconds -gt 0) { Start-Sleep -Milliseconds $ProfileDelayMilliseconds }
+                $targetId = [System.Uri]::UnescapeDataString($Matches[1])
+                $target = @($profileRows | Where-Object { $_.id -eq $targetId })
+                if ($target.Count -eq 0) {
+                    Send-JsonResponse $stream 404 @{ code = "profile_not_found"; message = "Not found"; correlation_id = "preview" }
+                } else {
+                    $activeProfileId = $targetId
+                    foreach ($profile in $profileRows) { $profile.active = ($profile.id -eq $targetId) }
+                    Send-JsonResponse $stream 200 (Get-Status)
+                }
+            } elseif ($method -eq "POST" -and $path -match '^/v1/subscriptions/([^/]+)/refresh$') {
+                if ($ProfileDelayMilliseconds -gt 0) { Start-Sleep -Milliseconds $ProfileDelayMilliseconds }
+                $targetId = [System.Uri]::UnescapeDataString($Matches[1])
+                if (@($profileRows | Where-Object { $_.id -eq $targetId }).Count -eq 0) {
+                    Send-JsonResponse $stream 404 @{ code = "profile_not_found"; message = "Not found"; correlation_id = "preview" }
+                } else {
+                    Send-JsonResponse $stream 200 (Get-Subscriptions)
+                }
+            } elseif ($method -eq "PUT" -and $path -match '^/v1/subscriptions/([^/]+)/source$') {
+                if ($ProfileDelayMilliseconds -gt 0) { Start-Sleep -Milliseconds $ProfileDelayMilliseconds }
+                $targetId = [System.Uri]::UnescapeDataString($Matches[1])
+                if (@($profileRows | Where-Object { $_.id -eq $targetId }).Count -eq 0) {
+                    Send-JsonResponse $stream 404 @{ code = "profile_not_found"; message = "Not found"; correlation_id = "preview" }
+                } else {
+                    Send-JsonResponse $stream 200 (Get-Subscriptions)
+                }
+            } elseif ($method -eq "DELETE" -and $path -match '^/v1/subscriptions/([^/]+)$') {
+                if ($ProfileDelayMilliseconds -gt 0) { Start-Sleep -Milliseconds $ProfileDelayMilliseconds }
+                $targetId = [System.Uri]::UnescapeDataString($Matches[1])
+                $profileRows = @($profileRows | Where-Object { $_.id -ne $targetId })
+                if ($activeProfileId -eq $targetId) {
+                    $activeProfileId = if ($profileRows.Count -gt 0) { [string]$profileRows[0].id } else { $null }
+                    foreach ($profile in $profileRows) { $profile.active = ($profile.id -eq $activeProfileId) }
+                }
+                Send-JsonResponse $stream 200 (Get-Status)
+            } elseif ($method -eq "POST" -and $path.StartsWith("/v1/connect")) {
+                $state = "connected"
+                Send-JsonResponse $stream 200 (Get-Status)
+            } elseif ($method -eq "POST" -and $path.StartsWith("/v1/disconnect")) {
+                $state = "ready"
+                Send-JsonResponse $stream 200 (Get-Status)
+            } elseif ($method -eq "POST" -and $path.StartsWith("/v1/subscriptions/import")) {
+                $state = "ready"
+                Send-JsonResponse $stream 200 (Get-Status)
+            } elseif ($method -eq "POST" -and $path.StartsWith("/v1/subscriptions/refresh")) {
+                Send-JsonResponse $stream 200 (Get-Status)
+            } elseif ($method -eq "GET" -and $path.StartsWith("/v1/catalog")) {
+                Send-JsonResponse $stream 200 (Get-Catalog)
+            } elseif ($method -eq "POST" -and $path.StartsWith("/v1/latencies")) {
+                Send-JsonResponse $stream 200 @{
+                    entries = @(
+                        @{ group_id = "group-main"; node_id = "node-auto"; latency_ms = 34; status = "ok" },
+                        @{ group_id = "group-main"; node_id = "node-primary"; latency_ms = 48; status = "ok" },
+                        @{ group_id = "group-main"; node_id = "node-backup"; latency_ms = 81; status = "ok" },
+                        @{ group_id = "group-main"; node_id = "node-reserve"; latency_ms = 126; status = "ok" },
+                        @{ group_id = "group-reserve"; node_id = "node-reserve-auto"; latency_ms = 57; status = "ok" },
+                        @{ group_id = "group-reserve"; node_id = "node-reserve-manual"; latency_ms = 93; status = "ok" }
+                    )
+                }
+            } elseif ($method -eq "GET" -and $path.StartsWith("/v1/events")) {
+                Send-JsonResponse $stream 200 @{
+                    epoch = "preview-session"
+                    events = @()
+                }
+            } elseif ($method -eq "GET" -and $path.StartsWith("/v1/diagnostics")) {
+                Send-JsonResponse $stream 200 @{
+                    xray = "ready"
+                    mihomo = "ready"
+                    tun = "ready"
+                    mappings = @(
+                        @{ proxy_name = "Sweden [se]"; address = "127.0.0.1:32001"; xray_label = "Xray · Sweden" },
+                        @{ proxy_name = "Germany [de]"; address = "127.0.0.1:32002"; xray_label = "Xray · Germany" }
+                    )
+                    logs = @(
+                        @{ id = 1; timestamp = "21:48:11"; component = "xray"; level = "info"; message = $copy.log_xray },
+                        @{ id = 2; timestamp = "21:48:12"; component = "mihomo"; level = "info"; message = $copy.log_mihomo }
+                    )
+                }
+            } elseif ($method -eq "PUT" -and $path.StartsWith("/v1/selections/")) {
+                if ($body) {
+                    $selection = $body | ConvertFrom-Json
+                    $selectedNode = [string]$selection.node_id
+                }
+                if ($SelectionDelayMilliseconds -gt 0) {
+                    Start-Sleep -Milliseconds $SelectionDelayMilliseconds
+                }
+                Send-JsonResponse $stream 200 (Get-Catalog)
+            } else {
+                Send-JsonResponse $stream 404 @{ code = "not_found"; message = "Not found"; correlation_id = "preview" }
+            }
+        } finally {
+            $client.Dispose()
+        }
+    }
+} finally {
+    $listener.Stop()
+}

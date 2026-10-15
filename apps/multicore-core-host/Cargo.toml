@@ -1,0 +1,56 @@
+[package]
+name = "multicore-core-host"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "multicore-core-host"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+multicore-core = { path = "../../crates/multicore-core" }
+multicore-release = { path = "../../crates/multicore-update" }
+getrandom = "0.4"
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tokio = { workspace = true, features = ["io-util", "net", "signal", "time"] }
+zeroize.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+multicore-platform = { path = "../../crates/multicore-platform" }
+rustix = { version = "1.1", features = ["fs", "net", "process"] }
+
+[target.'cfg(windows)'.dependencies]
+reqwest.workspace = true
+windows-sys = { version = "0.61", features = [
+    "Win32_Devices_DeviceAndDriverInstallation",
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Com",
+    "Win32_System_Environment",
+    "Win32_System_IO",
+    "Win32_System_Pipes",
+    "Win32_System_RemoteDesktop",
+    "Win32_System_Services",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+    "Win32_UI_Shell",
+] }
+
+[dev-dependencies]
+sha2.workspace = true
+tempfile = "3"
+
+[target.'cfg(unix)'.dev-dependencies]
+multicore-platform = { path = "../../crates/multicore-platform", features = ["test-support"] }
+
+[build-dependencies]
+embed-resource = "=3.0.11"

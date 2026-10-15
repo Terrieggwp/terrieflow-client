@@ -1,0 +1,1198 @@
+import { ListView } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { IconLoadingSlot } from "components.slint";
+import "../assets/fonts/Twemoji.Mozilla.ttf";
+
+export struct TrayMenuRow {
+    id: string,
+    group-id: string,
+    icon: string,
+    icon-image: image,
+    // The daemon is still downloading the icon image: show the loading placeholder.
+    icon-loading: bool,
+    label: string,
+    // Groups: the selected node's label. Nodes: the latency text.
+    detail: string,
+    // Nodes: latency tone ("success" | "warning" | "danger" | "neutral").
+    tone: string,
+    // Groups: the group shown in the popup. Nodes: the selected route.
+    selected: bool,
+    enabled: bool,
+    // Nodes: re-measuring this route alone (right click).
+    measuring: bool,
+}
+
+// Quiet footer action: lucide icon + label, soft wash on hover, focus ring.
+component TrayTextAction inherits Rectangle {
+    in property <string> label;
+    in property <image> icon;
+    in property <bool> muted: false;
+    callback activated();
+
+    height: 36px;
+    border-radius: 8px;
+    background: text-touch.has-hover ? #ffffff0a : transparent;
+    border-color: Theme.focus;
+    border-width: text-focus.has-focus ? Theme.focus-width : 0px;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.activated(); }
+    animate background { duration: 120ms; easing: ease-out; }
+
+    HorizontalLayout {
+        alignment: center;
+        spacing: 7px;
+        VerticalLayout {
+            alignment: center;
+            Image {
+                width: 15px;
+                height: 15px;
+                source: root.icon;
+                colorize: text-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+                image-fit: contain;
+                accessible-role: none;
+            }
+        }
+        Text {
+            text: root.label;
+            color: text-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+            font-size: 12.5px;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+
+    text-focus := FocusScope {
+        focus-on-click: true;
+        focus-on-tab-navigation: true;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.activated();
+                return accept;
+            }
+            return reject;
+        }
+        text-touch := TouchArea { clicked => { root.activated(); } }
+    }
+}
+
+// Segment of the route-group track (the group's icon image, when it has one, and its name);
+// the shown group is a raised pill.
+component TraySegment inherits Rectangle {
+    in property <string> label;
+    in property <image> icon-image;
+    // The icon image is still downloading: a placeholder holds the icon's place.
+    in property <bool> icon-loading: false;
+    in property <bool> reduced-motion: false;
+    in property <bool> selected;
+    in property <bool> enabled: true;
+    property <bool> has-icon: root.icon-image.width > 0 || root.icon-loading;
+    property <length> icon-space: root.has-icon ? 19px : 0px;
+    // Icon and full name with 10px on each side; the track scrolls rather than squeeze below it.
+    out property <length> natural-width: min(180px, segment-label.preferred-width + 20px + root.icon-space + 2px);
+    callback activated();
+    callback selected-shown();
+    callback focus-shown();
+    callback selected-moved();
+
+    init => {
+        if (root.selected) {
+            root.selected-shown();
+        }
+    }
+    changed selected => {
+        if (root.selected) {
+            root.selected-shown();
+        }
+    }
+    changed x => {
+        if (root.selected) {
+            root.selected-moved();
+        }
+    }
+    changed width => {
+        if (root.selected) {
+            root.selected-moved();
+        }
+    }
+
+    // Set by a track whose segments do not all fit at an equal share: the segment
+    // keeps its natural width and the track scrolls instead of squeezing it.
+    in property <bool> natural-sizing: false;
+    min-width: root.natural-sizing ? root.natural-width : 0px;
+    preferred-width: root.natural-sizing ? root.natural-width : 0px;
+    horizontal-stretch: 1;
+    height: 26px;
+    border-radius: 7px;
+    background: root.selected ? Theme.elevated : segment-touch.has-hover && root.enabled ? #ffffff08 : transparent;
+    border-color: Theme.focus;
+    border-width: segment-focus.has-focus ? Theme.focus-width : 0px;
+    opacity: root.enabled ? 1 : 0.5;
+    accessible-role: button;
+    accessible-label: root.label + (root.selected ? @tr(", выбрано") : "");
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.activated(); } }
+    animate background { duration: 140ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+
+    // With an icon, icon and name are centred as one group.
+    property <length> label-width: min(segment-label.preferred-width, self.width - 20px - root.icon-space);
+    property <length> content-x: max(10px, (self.width - root.icon-space - self.label-width) / 2);
+    if root.has-icon: IconLoadingSlot {
+        x: root.content-x;
+        y: (parent.height - self.height) / 2;
+        width: 14px;
+        height: 14px;
+        icon-image: root.icon-image;
+        icon-loading: root.icon-loading;
+        reduced-motion: root.reduced-motion;
+    }
+
+    segment-label := Text {
+        x: root.has-icon ? root.content-x + root.icon-space : 6px;
+        width: root.has-icon ? root.label-width : parent.width - 12px;
+        height: parent.height;
+        text: root.label;
+        color: root.selected || segment-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+        font-size: 12px;
+        font-weight: root.selected ? Theme.weight-semibold : Theme.weight-medium;
+        horizontal-alignment: root.has-icon ? left : center;
+        vertical-alignment: center;
+        overflow: elide;
+        accessible-role: none;
+    }
+
+    segment-focus := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: true;
+        focus-on-tab-navigation: true;
+        focus-gained(reason) => { root.focus-shown(); }
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.activated();
+                return accept;
+            }
+            return reject;
+        }
+        segment-touch := TouchArea { enabled: root.enabled; clicked => { root.activated(); } }
+    }
+}
+
+// Row of the inset grouped node list: bare flag, name, graded latency; the
+// selected route is tinted with a blue leading bar (no check mark).
+component TrayNodeRow inherits Rectangle {
+    in property <string> icon;
+    in property <image> icon-image;
+    // The icon image is still downloading: a placeholder holds the flag's place.
+    in property <bool> icon-loading: false;
+    in property <string> label;
+    in property <string> latency;
+    in property <string> tone: "neutral";
+    in property <bool> selected;
+    in property <bool> enabled: true;
+    in property <bool> show-separator: false;
+    // Re-measuring this route (right click): a pulsing pill holds the latency's place.
+    in property <bool> measuring: false;
+    in property <bool> reduced-motion: false;
+    callback activated();
+    // Right click: re-measure this route's latency only.
+    callback secondary-activated();
+    // Tab/Shift+Tab and the arrow keys move focus one row (+1 or -1) through the list, rows
+    // out of view included; false past either end, where Tab leaves the list as usual.
+    callback step-focus(int) -> bool;
+    // The list wants this row focused (it may have just been created for that).
+    in property <bool> focus-request: false;
+    callback focus-request-taken();
+
+    height: 44px;
+    background: root.selected ? Theme.elevated : node-touch.has-hover && root.enabled ? #ffffff06 : transparent;
+    border-color: Theme.focus;
+    border-width: node-focus.has-focus ? Theme.focus-width : 0px;
+    accessible-role: button;
+    accessible-label: root.label + (root.latency == "" ? "" : ", " + root.latency) + (root.selected ? @tr(", выбрано") : "");
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.activated(); } }
+    animate background { duration: 140ms; easing: ease-out; }
+
+    Rectangle {
+        x: 0;
+        y: (parent.height - self.height) / 2;
+        width: 3px;
+        height: root.selected ? 20px : 8px;
+        border-radius: 1.5px;
+        background: Theme.accent-blue;
+        opacity: root.selected ? 1 : 0;
+        animate opacity, height { duration: 180ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+    }
+
+    IconLoadingSlot {
+        x: 12px;
+        y: (parent.height - self.height) / 2;
+        width: 20px;
+        height: 20px;
+        icon-image: root.icon-image;
+        icon-loading: root.icon-loading;
+        reduced-motion: root.reduced-motion;
+    }
+    if root.icon != "" && root.icon-image.width == 0: Text {
+        x: 10px;
+        width: 24px;
+        height: parent.height;
+        text: root.icon;
+        color: Theme.text-secondary;
+        font-family: Theme.emoji-font-family;
+        font-size: 15px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        // Shown only once loading has ended without an image.
+        opacity: root.icon-loading ? 0 : 1;
+        animate opacity { duration: root.reduced-motion ? 0ms : 160ms; easing: ease-out; }
+        accessible-role: none;
+    }
+
+    Text {
+        x: 42px;
+        width: parent.width - self.x - latency-label.width - 22px;
+        height: parent.height;
+        text: root.label;
+        color: root.selected || node-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+        font-size: 13px;
+        font-weight: root.selected ? Theme.weight-semibold : Theme.weight-regular;
+        vertical-alignment: center;
+        overflow: elide;
+        accessible-role: none;
+    }
+
+    if root.latency == "" && root.measuring: Rectangle {
+        x: parent.width - self.width - 14px;
+        y: (parent.height - self.height) / 2;
+        width: 30px;
+        height: 8px;
+        border-radius: 4px;
+        background: Theme.text-muted;
+        opacity: root.reduced-motion
+            ? 0.2
+            : 0.14 + 0.12 * (1 + sin(animation-tick() / 1200ms * 360deg)) / 2;
+        accessible-role: none;
+    }
+
+    latency-label := Text {
+        x: parent.width - self.width - 14px;
+        width: Math.min(self.preferred-width, 88px);
+        height: parent.height;
+        text: root.latency;
+        color: root.tone == "success" ? Theme.accent-green
+            : root.tone == "warning" ? Theme.warning
+            : root.tone == "danger" ? Theme.error
+            : Theme.text-muted;
+        font-size: 12px;
+        font-weight: Theme.weight-semibold;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+
+    // Hairline inset to where the name starts; none under the last row.
+    if root.show-separator: Rectangle {
+        x: 42px;
+        y: parent.height - 1px;
+        width: parent.width - 42px;
+        height: 1px;
+        background: #ffffff0f;
+    }
+
+    // Focus is taken once the row exists and the event loop runs again, never while the
+    // list is still being laid out.
+    Timer {
+        interval: 1ms;
+        running: root.focus-request;
+        triggered => {
+            node-focus.focus();
+            root.focus-request-taken();
+        }
+    }
+
+    node-focus := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: true;
+        focus-on-tab-navigation: true;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.activated();
+                return accept;
+            }
+            if (event.modifiers.control || event.modifiers.alt || event.modifiers.meta) {
+                return reject;
+            }
+            if ((event.text == Key.Tab && !event.modifiers.shift) || event.text == Key.DownArrow) {
+                return root.step-focus(1) ? accept : reject;
+            }
+            if (event.text == Key.Backtab || event.text == Key.Tab || event.text == Key.UpArrow) {
+                return root.step-focus(-1) ? accept : reject;
+            }
+            return reject;
+        }
+        node-touch := TouchArea {
+            enabled: root.enabled;
+            clicked => { root.activated(); }
+            pointer-event(event) => {
+                if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up
+                    && self.has-hover) {
+                    root.secondary-activated();
+                }
+            }
+        }
+    }
+}
+
+export component TrayPopup inherits Window {
+    // User-resizable from the edges away from the tray (see grow-up/grow-left);
+    // the default is also the minimum. The host keeps it inside the work area.
+    preferred-width: 304px;
+    preferred-height: 460px;
+    min-width: 304px;
+    min-height: 460px;
+    max-width: 520px;
+    max-height: 900px;
+    no-frame: true;
+    always-on-top: true;
+    background: Theme.canvas;
+    default-font-family: Theme.font-family;
+
+    // Tooltip-style status line, kept for assistive technology.
+    in property <string> status-text: @tr("Готово");
+    in property <string> connection-label: @tr("Подключиться");
+    in property <bool> connection-enabled: true;
+    in property <bool> connected: false;
+    in property <bool> has-profile: true;
+    in property <[TrayMenuRow]> group-rows;
+    in property <[TrayMenuRow]> node-rows;
+    // Mirrored from the main window while the popup is open.
+    in property <string> subscription-title;
+    in property <string> subscription-remaining;
+    in property <string> subscription-days;
+    in property <float> subscription-used-fraction: 0;
+    // No traffic limit: no usage bar under the header.
+    in property <bool> subscription-unlimited: true;
+    in property <string> subscription-quota-tone: "accent";
+    in property <bool> subscription-failed: false;
+    in property <string> toggle-title: @tr("Защита выключена");
+    in property <bool> toggle-on: false;
+    in property <bool> toggle-busy: false;
+    in property <bool> toggle-detail-is-exit: true;
+    in property <string> status-tone: "neutral";
+    in property <string> supporting;
+    in property <string> exit-name;
+    in property <string> exit-icon;
+    in property <image> exit-icon-image;
+    in property <string> exit-latency;
+    in property <string> session-uptime;
+    in property <bool> reduced-motion: false;
+    // Edges that resize the popup: the ones away from the tray corner it hangs from.
+    in property <bool> grow-up: true;
+    in property <bool> grow-left: true;
+    // "v" (top/bottom edge), "h" (side edge) or "c" (corner) while dragged.
+    in-out property <string> resize-active;
+
+    callback toggle-connection();
+    // Drag on a resize edge: pointer offset from the press point, in the popup.
+    callback resize-start(string);
+    callback resize-drag(length, length);
+    callback resize-end();
+    // Shows that group's nodes (the same group the home screen shows).
+    callback toggle-group(string);
+    callback select-node(string, string);
+    // Right click on a route: (group id, node id) re-measures that route only.
+    callback measure-node(string, string);
+    // The provider's dumb-mode: one group, so no group tabs.
+    in property <bool> dumb-mode: false;
+    callback open-main();
+    callback add-subscription();
+    callback exit-app();
+    callback dismiss();
+
+    // Optimistic switch, as on the home screen: the knob and title follow the
+    // press at once; the real state takes over when the daemon reports it.
+    private property <string> toggle-intent: "none";
+    private property <bool> shown-on: root.toggle-intent == "on" ? true
+        : root.toggle-intent == "off" ? false
+        : root.toggle-on;
+    private property <bool> shown-busy: root.toggle-busy || root.toggle-intent != "none";
+    private property <string> shown-title: root.toggle-intent == "on" ? @tr("Подключение…")
+        : root.toggle-intent == "off" ? @tr("Отключение…")
+        : root.toggle-title;
+    private property <string> shown-tone: root.toggle-intent != "none" ? "neutral" : root.status-tone;
+    function press-toggle() {
+        if (!root.connection-enabled) {
+            return;
+        }
+        if (!root.toggle-busy) {
+            root.toggle-intent = root.toggle-on ? "off" : "on";
+        }
+        root.toggle-connection();
+    }
+    changed toggle-busy => { root.toggle-intent = "none"; }
+    changed toggle-on => { root.toggle-intent = "none"; }
+    changed status-tone => { root.toggle-intent = "none"; }
+    toggle-intent-expiry := Timer {
+        interval: 8s;
+        running: root.toggle-intent != "none";
+        triggered => { root.toggle-intent = "none"; }
+    }
+
+    popup-focus := FocusScope {
+        width: parent.width;
+        height: parent.height;
+        key-pressed(event) => {
+            if (event.text == Key.Escape) {
+                root.dismiss();
+                return accept;
+            }
+            return reject;
+        }
+
+        popup-card := Rectangle {
+            x: 1px;
+            y: 1px;
+            width: parent.width - 2px;
+            height: parent.height - 2px;
+            background: Theme.canvas;
+            border-color: #ffffff0f;
+            border-width: 1px;
+            border-radius: 12px;
+            clip: true;
+
+            // Header: wordmark left, active subscription right.
+            tray-header := Rectangle {
+                x: 0;
+                y: 0;
+                width: parent.width;
+                height: 46px;
+                Image {
+                    x: 14px;
+                    y: (parent.height - self.height) / 2;
+                    width: 18px;
+                    height: 18px;
+                    source: @image-url("../assets/app-icon.svg");
+                    image-fit: contain;
+                    accessible-role: none;
+                }
+                Text {
+                    x: 40px;
+                    height: parent.height;
+                    text: "TerrieFlow";
+                    color: Theme.text-primary;
+                    font-size: 12.5px;
+                    font-weight: Theme.weight-bold;
+                    letter-spacing: 0.5px;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+                // Active subscription with compact traffic, as on the title chip.
+                HorizontalLayout {
+                    x: 132px;
+                    width: parent.width - self.x - 14px;
+                    height: parent.height;
+                    alignment: end;
+                    spacing: 0px;
+                    if root.has-profile: Text {
+                        horizontal-stretch: 1;
+                        max-width: self.preferred-width;
+                        text: root.subscription-title;
+                        color: Theme.text-secondary;
+                        font-size: 11.5px;
+                        font-weight: Theme.weight-medium;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    if root.has-profile: Text {
+                        text: root.subscription-failed ? @tr(" · Не удалось обновить")
+                            : " · " + root.subscription-remaining + " · " + root.subscription-days;
+                        color: root.subscription-failed || root.subscription-quota-tone == "danger" ? Theme.error : Theme.text-muted;
+                        font-size: 11.5px;
+                        vertical-alignment: center;
+                    }
+                    if !root.has-profile: Text {
+                        text: @tr("Нет подписки");
+                        color: Theme.text-muted;
+                        font-size: 11.5px;
+                        vertical-alignment: center;
+                    }
+                }
+                Rectangle {
+                    x: 0;
+                    y: parent.height - 1px;
+                    width: parent.width;
+                    height: 1px;
+                    background: Theme.line;
+                }
+                // Thin usage bar along the header's bottom edge (limited traffic only).
+                if root.has-profile && !root.subscription-unlimited: Rectangle {
+                    x: 0;
+                    y: parent.height - 2px;
+                    width: parent.width;
+                    height: 2px;
+                    background: #ffffff0d;
+                    Rectangle {
+                        x: 0;
+                        width: parent.width * Math.max(0, Math.min(1, root.subscription-used-fraction));
+                        height: parent.height;
+                        background: root.subscription-quota-tone == "danger" ? Theme.error
+                            : root.subscription-quota-tone == "warning" ? Theme.warning
+                            : Theme.accent-blue;
+                    }
+                }
+            }
+
+            // Connection module: shield, state, exit line and the switch.
+            if root.has-profile: connect-card := Rectangle {
+                x: 10px;
+                y: 56px;
+                width: parent.width - 20px;
+                height: 68px;
+                background: Theme.surface;
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: root.shown-busy ? #4c9dff59
+                    : root.shown-tone == "success" ? #3ccb7f59
+                    : root.shown-tone == "danger" ? #f06a6a66
+                    : root.shown-tone == "warning" ? #e7aa4566
+                    : #ffffff0a;
+                clip: true;
+                animate border-color { duration: 220ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+
+                // Cursor-reactive cell mesh, only while the pointer is over the card.
+                card-mesh := Rectangle {
+                    property <bool> active: card-touch.has-hover;
+                    property <length> cursor-x: card-touch.mouse-x;
+                    property <length> cursor-y: card-touch.mouse-y;
+                    property <color> glow-strong: root.shown-tone == "success" ? #22c55e32 : root.shown-tone == "danger" ? #f06a6a32 : #0091ff3d;
+                    property <color> glow-medium: root.shown-tone == "success" ? #22c55e1d : root.shown-tone == "danger" ? #f06a6a1d : #0091ff24;
+                    property <color> grid-line: root.shown-tone == "success" ? #8ea39758 : root.shown-tone == "danger" ? #a3939358 : #8f9eae58;
+                    background: @radial-gradient(
+                        circle 120px at cursor-x cursor-y,
+                        glow-strong 0%,
+                        glow-medium 36%,
+                        #00000000 76%
+                    );
+                    opacity: self.active ? 1 : 0;
+                    visible: self.opacity > 0;
+                    animate opacity { duration: 160ms; easing: ease-out; }
+
+                    for _[grid-x] in Math.ceil(self.width / 8px): Rectangle {
+                        x: grid-x * 8px;
+                        y: 0;
+                        width: 8px;
+                        height: parent.height;
+                        background: transparent;
+                        for _[grid-y] in 9: Rectangle {
+                            property <float> dx: (grid-x * 8px + 4px - card-mesh.cursor-x) / 120px;
+                            property <float> dy: (grid-y * 8px + 4px - card-mesh.cursor-y) / 52px;
+                            property <float> distance: Math.sqrt(self.dx * self.dx + self.dy * self.dy);
+                            x: 0;
+                            y: grid-y * 8px;
+                            width: 8px;
+                            height: 8px;
+                            background: transparent;
+                            border-width: 0.5px;
+                            border-color: card-mesh.grid-line;
+                            opacity: card-mesh.active ? Math.max(0, 1 - self.distance) : 0;
+                        }
+                    }
+                }
+
+                shield-badge := Rectangle {
+                    x: 12px;
+                    y: (parent.height - self.height) / 2;
+                    width: 38px;
+                    height: 38px;
+                    border-radius: 10px;
+                    background: root.shown-busy ? Theme.elevated
+                        : root.shown-tone == "success" ? #3ccb7f24
+                        : root.shown-tone == "danger" ? #f06a6a24
+                        : root.shown-tone == "warning" ? #e7aa4524
+                        : Theme.elevated;
+                    animate background { duration: 220ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+
+                    // Breathing ring only while connecting/disconnecting.
+                    if root.shown-busy && !root.reduced-motion: Rectangle {
+                        property <float> phase: (1 + Math.sin(animation-tick() / 1400ms * 360deg)) / 2;
+                        x: -3px;
+                        y: -3px;
+                        width: parent.width + 6px;
+                        height: parent.height + 6px;
+                        border-radius: 13px;
+                        border-width: 1.5px;
+                        border-color: Theme.accent-blue;
+                        background: transparent;
+                        opacity: 0.15 + 0.45 * self.phase;
+                    }
+
+                    Image {
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        width: 20px;
+                        height: 20px;
+                        source: root.shown-busy ? @image-url("../assets/shield.svg")
+                            : root.shown-tone == "success" ? @image-url("../assets/shield-check.svg")
+                            : root.shown-tone == "danger" || root.shown-tone == "warning" ? @image-url("../assets/shield-alert.svg")
+                            : @image-url("../assets/shield-off.svg");
+                        colorize: root.shown-busy ? Theme.accent-blue
+                            : root.shown-tone == "success" ? Theme.accent-green
+                            : root.shown-tone == "danger" ? Theme.error
+                            : root.shown-tone == "warning" ? Theme.warning
+                            : Theme.text-muted;
+                        image-fit: contain;
+                        accessible-role: none;
+                    }
+                }
+
+                VerticalLayout {
+                    x: 62px;
+                    width: parent.width - self.x - 70px;
+                    height: parent.height;
+                    alignment: center;
+                    spacing: 3px;
+                    Text {
+                        text: root.shown-title;
+                        color: Theme.text-primary;
+                        font-size: 14px;
+                        font-weight: Theme.weight-semibold;
+                        overflow: elide;
+                    }
+                    if root.toggle-detail-is-exit: HorizontalLayout {
+                        spacing: 4px;
+                        alignment: start;
+                        if root.exit-icon-image.width > 0: VerticalLayout {
+                            alignment: center;
+                            Image { width: 12px; height: 12px; source: root.exit-icon-image; image-fit: contain; accessible-role: none; }
+                        }
+                        if root.exit-icon != "" && root.exit-icon-image.width == 0: Text { text: root.exit-icon; color: Theme.text-secondary; font-family: Theme.emoji-font-family; font-size: 11px; vertical-alignment: center; accessible-role: none; }
+                        // A wider popup gives a long exit name more room.
+                        if root.exit-name != "": Text { max-width: Math.max(110px, root.width - 194px); text: root.exit-name; color: Theme.text-secondary; font-size: 11.5px; vertical-alignment: center; overflow: elide; }
+                        if root.exit-latency != "": Text { text: "· " + root.exit-latency; color: Theme.text-muted; font-size: 11.5px; vertical-alignment: center; }
+                        if root.session-uptime != "": Text { text: "· " + root.session-uptime; color: Theme.text-muted; font-size: 11.5px; vertical-alignment: center; accessible-label: @tr("Время сессии {}", root.session-uptime); }
+                    }
+                    if !root.toggle-detail-is-exit: Text {
+                        text: root.supporting;
+                        color: root.shown-tone == "danger" ? #f0a3a3 : Theme.text-secondary;
+                        font-size: 11.5px;
+                        overflow: elide;
+                    }
+                }
+
+                // The home screen's "energy rail + power orb" switch, scaled for the tray:
+                // green when on; matte with a blue outline while busy; matte when off.
+                // Solid fills only (gradients ignore border-radius in the software renderer).
+                switch-track := Rectangle {
+                    property <bool> hovered: card-touch.has-hover
+                        && card-touch.mouse-x >= self.x - 6px && card-touch.mouse-x <= self.x + self.width + 6px
+                        && card-touch.mouse-y >= self.y - 6px && card-touch.mouse-y <= self.y + self.height + 6px;
+                    property <bool> lit: root.shown-on && !root.shown-busy;
+                    x: parent.width - self.width - 12px;
+                    y: (parent.height - self.height) / 2;
+                    width: 58px;
+                    height: 32px;
+                    background: transparent;
+                    opacity: root.connection-enabled || root.shown-busy ? 1 : 0.4;
+                    animate opacity { duration: 180ms; easing: ease-in-out; }
+
+                    Rectangle {
+                        x: 4px;
+                        y: (parent.height - self.height) / 2;
+                        width: parent.width - 8px;
+                        height: 22px;
+                        border-radius: self.height / 2;
+                        background: switch-track.lit ? #28a863 : #1a1e24;
+                        border-color: switch-focus.has-focus ? Theme.focus
+                            : root.shown-busy ? #4c9dff99
+                            : switch-track.lit ? #ffffff26
+                            : (switch-track.hovered ? #4a525e : #2a3038);
+                        border-width: switch-focus.has-focus ? Theme.focus-width : 1px;
+                        drop-shadow-blur: switch-track.lit ? (switch-track.hovered ? 12px : 8px) : 0px;
+                        drop-shadow-color: #3ccb7f55;
+                        animate background, border-color, drop-shadow-blur { duration: 220ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+                        Rectangle {
+                            x: 2px;
+                            y: 2px;
+                            width: parent.width - 4px;
+                            height: parent.height / 2 - 2px;
+                            border-radius: self.height / 2;
+                            background: #ffffff;
+                            opacity: switch-track.lit ? 0.14 : 0;
+                        }
+                        for dot[i] in 2: Rectangle {
+                            x: 9px + i * 10px;
+                            y: (parent.height - self.height) / 2;
+                            width: 3px;
+                            height: 3px;
+                            border-radius: 1.5px;
+                            background: root.shown-busy ? Theme.accent-blue : #ffffff;
+                            opacity: root.shown-on || root.shown-busy ? 0.85 - i * 0.35 : 0;
+                            animate opacity { duration: 220ms; easing: ease-out; }
+                        }
+                    }
+
+                    Rectangle {
+                        property <length> size: card-touch.pressed ? 27px : switch-track.hovered ? 31px : 30px;
+                        x: root.shown-on ? parent.width - self.width : 0px;
+                        y: (parent.height - self.height) / 2;
+                        width: self.size;
+                        height: self.size;
+                        border-radius: self.height / 2;
+                        background: switch-track.lit ? #2fbf73 : (switch-track.hovered ? #242931 : #1e2229);
+                        border-color: root.shown-busy ? #4c9dff80
+                            : switch-track.lit ? #ffffff4d
+                            : (switch-track.hovered ? #ffffff2e : #ffffff14);
+                        border-width: 1px;
+                        drop-shadow-blur: switch-track.lit ? 10px : 5px;
+                        drop-shadow-offset-y: 1px;
+                        drop-shadow-color: switch-track.lit ? #1e8f5380 : #00000080;
+                        animate x { duration: 260ms; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
+                        animate width, height { duration: 160ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+                        animate background, border-color { duration: 220ms; easing: ease-out; }
+                        Rectangle {
+                            x: 2px;
+                            y: 2px;
+                            width: parent.width - 4px;
+                            height: parent.height / 2 - 1px;
+                            border-radius: self.width / 2;
+                            background: switch-track.lit ? #ffffff2e : transparent;
+                        }
+                        Rectangle {
+                            x: -3px;
+                            y: -3px;
+                            width: parent.width + 6px;
+                            height: parent.height + 6px;
+                            border-radius: self.height / 2;
+                            border-width: 1px;
+                            border-color: root.shown-busy ? #4c9dff59 : #3ccb7f66;
+                            background: transparent;
+                            opacity: root.shown-on || root.shown-busy ? 1 : 0;
+                            animate opacity { duration: 220ms; easing: ease-out; }
+                        }
+                        Image {
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                            width: 14px;
+                            height: 14px;
+                            source: root.shown-busy ? @image-url("../assets/shield.svg")
+                                : root.shown-on ? @image-url("../assets/shield-check.svg")
+                                : @image-url("../assets/shield-off.svg");
+                            colorize: root.shown-busy ? Theme.accent-blue
+                                : root.shown-on ? #ffffff
+                                : (switch-track.hovered ? Theme.text-secondary : Theme.text-muted);
+                            image-fit: contain;
+                            accessible-role: none;
+                        }
+                    }
+                }
+
+                // Keyboard/a11y entry for the switch; the whole card is clickable.
+                switch-focus := FocusScope {
+                    x: switch-track.x;
+                    y: switch-track.y;
+                    width: switch-track.width;
+                    height: switch-track.height;
+                    enabled: root.connection-enabled;
+                    focus-on-click: false;
+                    focus-on-tab-navigation: true;
+                    accessible-role: switch;
+                    accessible-label: root.connection-label;
+                    accessible-checked: root.shown-on;
+                    accessible-enabled: self.enabled;
+                    accessible-action-default => { root.press-toggle(); }
+                    key-pressed(event) => {
+                        if (event.text == " " || event.text == "\n") {
+                            root.press-toggle();
+                            return accept;
+                        }
+                        return reject;
+                    }
+                }
+
+                card-touch := TouchArea {
+                    mouse-cursor: root.connection-enabled ? pointer : default;
+                    enabled: root.connection-enabled;
+                    clicked => { root.press-toggle(); }
+                }
+            }
+
+            // No subscription yet: one action instead of the module and routes.
+            if !root.has-profile: Rectangle {
+                x: 10px;
+                y: 56px;
+                width: parent.width - 20px;
+                height: 60px;
+                background: Theme.surface;
+                border-color: #ffffff0a;
+                border-width: 1px;
+                border-radius: 12px;
+                add-touch := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { root.add-subscription(); }
+                }
+                Rectangle {
+                    x: 12px;
+                    y: (parent.height - self.height) / 2;
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 10px;
+                    background: #4c9dff1f;
+                    Image {
+                        x: 10px;
+                        y: 10px;
+                        width: 16px;
+                        height: 16px;
+                        source: @image-url("../assets/tray-add.svg");
+                        colorize: Theme.accent-blue;
+                        image-fit: contain;
+                        accessible-role: none;
+                    }
+                }
+                VerticalLayout {
+                    x: 60px;
+                    width: parent.width - self.x - 12px;
+                    alignment: center;
+                    spacing: 2px;
+                    Text { text: @tr("Добавить подписку"); color: add-touch.has-hover ? Theme.accent-blue-hover : Theme.accent-blue; font-size: 13px; font-weight: Theme.weight-semibold; }
+                    Text { text: @tr("Откроется главное окно"); color: Theme.text-muted; font-size: 11.5px; }
+                }
+                FocusScope {
+                    focus-on-tab-navigation: true;
+                    accessible-role: button;
+                    accessible-label: @tr("Добавить подписку");
+                    accessible-action-default => { root.add-subscription(); }
+                    key-pressed(event) => {
+                        if (event.text == " " || event.text == "\n") {
+                            root.add-subscription();
+                            return accept;
+                        }
+                        return reject;
+                    }
+                }
+            }
+
+            // Route groups: a segmented track that scrolls sideways when the groups do not fit
+            // (wheel, edge chevrons; the shown group and keyboard focus are kept in view).
+            if root.has-profile && !root.dumb-mode && root.group-rows.length > 0: group-track := Rectangle {
+                property <length> viewport-width: self.width - 2px;
+                // Segments share the track equally while the widest one still fits whole in its
+                // share (`group-measure`); otherwise each takes its natural width and the strip scrolls.
+                property <bool> overflowing: group-measure.min-width * root.group-rows.length
+                    + 2px * (root.group-rows.length - 1) + 4px > self.viewport-width + 0.5px;
+                property <length> max-scroll: self.overflowing ? max(0px, group-row.min-width - self.viewport-width) : 0px;
+                in-out property <length> scroll-target: 0px;
+                property <length> scroll-x: max(0px, min(self.scroll-target, self.max-scroll));
+                property <string> revealed-group-id;
+                property <length> selected-tab-x;
+                property <length> selected-tab-width;
+                property <length> edge-room: 48px;
+                animate scroll-target { duration: root.reduced-motion ? 0ms : 180ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+                changed viewport-width => { self.reveal(self.selected-tab-x, self.selected-tab-width); }
+                function reveal-selected(tab-x: length, tab-width: length) {
+                    self.selected-tab-x = tab-x;
+                    self.selected-tab-width = tab-width;
+                    self.reveal(tab-x, tab-width);
+                }
+                function reveal(tab-x: length, tab-width: length) {
+                    if (!self.overflowing) {
+                        return;
+                    }
+                    if (tab-x - self.edge-room < self.scroll-x) {
+                        self.scroll-target = max(0px, tab-x - self.edge-room);
+                    } else if (tab-x + tab-width + self.edge-room > self.scroll-x + self.viewport-width) {
+                        self.scroll-target = min(self.max-scroll, tab-x + tab-width + self.edge-room - self.viewport-width);
+                    }
+                }
+                function page(direction: float) {
+                    self.scroll-target = max(0px, min(self.max-scroll, self.scroll-x + direction * self.viewport-width * 0.6));
+                }
+                x: 10px;
+                y: 134px;
+                width: parent.width - 20px;
+                height: 32px;
+                background: #0a0c0f;
+                border-color: Theme.line;
+                border-width: 1px;
+                border-radius: 9px;
+                clip: true;
+                // The widest segment's natural width (TraySegment's formula): only measured.
+                Rectangle {
+                    visible: false;
+                    width: 0px;
+                    height: 0px;
+                    group-measure := VerticalLayout {
+                        for group in root.group-rows: Rectangle {
+                            min-width: min(180px, measure-label.preferred-width + 20px + (group.icon-image.width > 0 || group.icon-loading ? 19px : 0px) + 2px);
+                            measure-label := Text {
+                                text: group.label;
+                                font-size: 12px;
+                                font-weight: Theme.weight-semibold;
+                            }
+                        }
+                    }
+                }
+                // Clipped inside the border: a scrolled segment must never paint over it.
+                Rectangle {
+                    x: 1px;
+                    y: 1px;
+                    width: parent.width - 2px;
+                    height: parent.height - 2px;
+                    border-radius: 8px;
+                    clip: true;
+                group-wheel := TouchArea {
+                    scroll-event(event) => {
+                        if (!group-track.overflowing) {
+                            return reject;
+                        }
+                        group-track.scroll-target = max(0px, min(group-track.max-scroll,
+                            group-track.scroll-x - (event.delta-x != 0 ? event.delta-x : event.delta-y)));
+                        return accept;
+                    }
+                    group-row := HorizontalLayout {
+                        x: -group-track.scroll-x;
+                        width: group-track.overflowing ? max(parent.width, self.min-width) : parent.width;
+                        height: parent.height;
+                        padding: 2px;
+                        spacing: 2px;
+                        for group in root.group-rows: TraySegment {
+                            label: group.label;
+                            icon-image: group.icon-image;
+                            icon-loading: group.icon-loading;
+                            reduced-motion: root.reduced-motion;
+                            selected: group.selected;
+                            natural-sizing: group-track.overflowing;
+                            enabled: group.enabled;
+                            activated => { root.toggle-group(group.id); }
+                            selected-shown => {
+                                if (group-track.revealed-group-id != group.id) {
+                                    group-track.revealed-group-id = group.id;
+                                    group-track.reveal-selected(self.x, self.width);
+                                }
+                            }
+                            selected-moved => { group-track.reveal-selected(self.x, self.width); }
+                            focus-shown => { group-track.reveal(self.x, self.width); }
+                        }
+                    }
+                }
+                }
+                if self.overflowing: Rectangle {
+                    x: 1px;
+                    y: 1px;
+                    width: 48px;
+                    height: parent.height - 2px;
+                    opacity: group-track.scroll-x > 0.5px ? 1 : 0;
+                    visible: self.opacity > 0;
+                    animate opacity { duration: root.reduced-motion ? 0ms : 140ms; easing: ease-out; }
+                    background: @linear-gradient(90deg, #0a0c0f 0%, #0a0c0f 50%, #0a0c0f00 100%);
+                    group-prev := TouchArea {
+                        width: 22px;
+                        height: parent.height;
+                        clicked => { group-track.page(-1); }
+                        Image {
+                            x: 6px;
+                            y: (parent.height - self.height) / 2;
+                            width: 10px;
+                            height: 10px;
+                            source: @image-url("../assets/chevron-left.svg");
+                            colorize: group-prev.has-hover ? Theme.text-primary : Theme.text-muted;
+                            image-fit: contain;
+                            accessible-role: none;
+                        }
+                    }
+                }
+                if self.overflowing: Rectangle {
+                    x: parent.width - self.width - 1px;
+                    y: 1px;
+                    width: 48px;
+                    height: parent.height - 2px;
+                    opacity: group-track.scroll-x < group-track.max-scroll - 0.5px ? 1 : 0;
+                    visible: self.opacity > 0;
+                    animate opacity { duration: root.reduced-motion ? 0ms : 140ms; easing: ease-out; }
+                    background: @linear-gradient(90deg, #0a0c0f00 0%, #0a0c0f 50%, #0a0c0f 100%);
+                    group-next := TouchArea {
+                        x: parent.width - self.width;
+                        width: 22px;
+                        height: parent.height;
+                        clicked => { group-track.page(1); }
+                        Image {
+                            x: 6px;
+                            y: (parent.height - self.height) / 2;
+                            width: 10px;
+                            height: 10px;
+                            source: @image-url("../assets/chevron-right.svg");
+                            colorize: group-next.has-hover ? Theme.text-primary : Theme.text-muted;
+                            image-fit: contain;
+                            accessible-role: none;
+                        }
+                    }
+                }
+            }
+
+            // The shown group's nodes in one inset grouped card; only the rows in view exist.
+            if root.has-profile: node-card := Rectangle {
+                x: 10px;
+                y: root.group-rows.length > 0 && !root.dumb-mode ? 176px : 134px;
+                width: parent.width - 20px;
+                height: Math.min(root.node-rows.length > 0 ? root.node-rows.length * 44px : 48px, parent.height - self.y - 54px);
+                background: Theme.surface;
+                border-color: #ffffff0a;
+                border-width: 1px;
+                border-radius: 12px;
+                clip: true;
+                if root.node-rows.length > 0: node-list := ListView {
+                    // The row keyboard focus is moving to (see `focus-row`).
+                    property <int> focus-index: -1;
+                    property <bool> focus-pending: false;
+                    // Scrolls row `index` into view, so that it exists, and has it take keyboard
+                    // focus. False past either end of the list.
+                    function focus-row(index: int) -> bool {
+                        if (index < 0 || index >= root.node-rows.length) {
+                            return false;
+                        }
+                        if (index * 44px < -self.viewport-y) {
+                            self.viewport-y = -index * 44px;
+                        } else if ((index + 1) * 44px > -self.viewport-y + self.visible-height) {
+                            self.viewport-y = -((index + 1) * 44px - self.visible-height);
+                        }
+                        self.focus-index = index;
+                        self.focus-pending = true;
+                        return true;
+                    }
+                    for node[index] in root.node-rows: TrayNodeRow {
+                        icon: node.icon;
+                        icon-image: node.icon-image;
+                        icon-loading: node.icon-loading;
+                        label: node.label;
+                        latency: node.detail;
+                        tone: node.tone;
+                        selected: node.selected;
+                        enabled: node.enabled;
+                        measuring: node.measuring;
+                        reduced-motion: root.reduced-motion;
+                        show-separator: index < root.node-rows.length - 1;
+                        focus-request: node-list.focus-pending && node-list.focus-index == index;
+                        focus-request-taken => { node-list.focus-pending = false; }
+                        step-focus(step) => { return node-list.focus-row(index + step); }
+                        activated => { root.select-node(node.group-id, node.id); }
+                        secondary-activated => { root.measure-node(node.group-id, node.id); }
+                    }
+                }
+                if root.node-rows.length == 0: Text {
+                    width: parent.width;
+                    height: 48px;
+                    text: @tr("Маршруты пока недоступны");
+                    color: Theme.text-muted;
+                    font-size: 12px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+
+            // Footer: two quiet actions split by a hairline.
+            tray-footer := Rectangle {
+                x: 0;
+                y: parent.height - 44px;
+                width: parent.width;
+                height: 44px;
+                Rectangle { x: 0; y: 0; width: parent.width; height: 1px; background: Theme.line; }
+                TrayTextAction {
+                    x: 6px;
+                    y: 4px;
+                    width: parent.width / 2 - 10px;
+                    label: @tr("Открыть");
+                    icon: @image-url("../assets/tray-open.svg");
+                    activated => { root.open-main(); }
+                }
+                Rectangle {
+                    x: (parent.width - 1px) / 2;
+                    y: 13px;
+                    width: 1px;
+                    height: 18px;
+                    background: Theme.line;
+                }
+                TrayTextAction {
+                    x: parent.width / 2 + 4px;
+                    y: 4px;
+                    width: parent.width / 2 - 10px;
+                    label: @tr("Выйти");
+                    icon: @image-url("../assets/tray-quit.svg");
+                    activated => { root.exit-app(); }
+                }
+            }
+
+            // Resize affordance: a thin accent line on the hovered (soft) or
+            // dragged (solid) edges, and a corner tab while the corner is dragged.
+            property <bool> v-lit: root.resize-active == "v" || root.resize-active == "c" || v-grip.has-hover || corner-grip.has-hover;
+            property <bool> h-lit: root.resize-active == "h" || root.resize-active == "c" || h-grip.has-hover || corner-grip.has-hover;
+            Rectangle {
+                x: 0;
+                y: root.grow-up ? 0 : parent.height - self.height;
+                width: parent.width;
+                height: 2px;
+                background: Theme.accent-blue;
+                opacity: root.resize-active != "" && parent.v-lit ? 1 : parent.v-lit ? 0.45 : 0;
+                animate opacity { duration: 120ms; easing: ease-out; }
+            }
+            Rectangle {
+                x: root.grow-left ? 0 : parent.width - self.width;
+                y: 0;
+                width: 2px;
+                height: parent.height;
+                background: Theme.accent-blue;
+                opacity: root.resize-active != "" && parent.h-lit ? 1 : parent.h-lit ? 0.45 : 0;
+                animate opacity { duration: 120ms; easing: ease-out; }
+            }
+            if root.resize-active == "c": Rectangle {
+                x: root.grow-left ? 0 : parent.width - self.width;
+                y: root.grow-up ? 0 : parent.height - self.height;
+                width: 12px;
+                height: 12px;
+                background: Theme.accent-blue;
+            }
+        }
+
+        // Grips above everything: top/bottom edge, side edge and their corner.
+        v-grip := TouchArea {
+            x: root.grow-left ? 12px : 0px;
+            y: root.grow-up ? 0px : parent.height - self.height;
+            width: parent.width - 12px;
+            height: 6px;
+            mouse-cursor: ns-resize;
+            pointer-event(event) => { root.grip-event("v", event); }
+            moved => { if (self.pressed) { root.resize-drag(0px, self.mouse-y - self.pressed-y); } }
+        }
+        h-grip := TouchArea {
+            x: root.grow-left ? 0px : parent.width - self.width;
+            y: root.grow-up ? 12px : 0px;
+            width: 6px;
+            height: parent.height - 12px;
+            mouse-cursor: ew-resize;
+            pointer-event(event) => { root.grip-event("h", event); }
+            moved => { if (self.pressed) { root.resize-drag(self.mouse-x - self.pressed-x, 0px); } }
+        }
+        corner-grip := TouchArea {
+            x: root.grow-left ? 0px : parent.width - self.width;
+            y: root.grow-up ? 0px : parent.height - self.height;
+            width: 12px;
+            height: 12px;
+            mouse-cursor: root.grow-up == root.grow-left ? nwse-resize : nesw-resize;
+            pointer-event(event) => { root.grip-event("c", event); }
+            moved => { if (self.pressed) { root.resize-drag(self.mouse-x - self.pressed-x, self.mouse-y - self.pressed-y); } }
+        }
+    }
+
+    function grip-event(handle: string, event: PointerEvent) {
+        if (event.button != PointerEventButton.left) {
+            return;
+        }
+        if (event.kind == PointerEventKind.down) {
+            root.resize-active = handle;
+            root.resize-start(handle);
+        } else if (event.kind == PointerEventKind.up && root.resize-active != "") {
+            root.resize-active = "";
+            root.resize-end();
+        }
+    }
+}

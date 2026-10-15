@@ -1,32 +1,40 @@
-# IDE
-.idea/
-.vscode/
-
-# OS
-.DS_Store
-Thumbs.db
+/target/
+/dist/
+/artifacts/
+/.worktrees/
+/fjord-old-visual/
+__pycache__/
 
 # Environment files
+/.env
+/.env.*
 .env
 .env.*
 !.env.example
 
-# Secrets
+# Secrets and certificates
 *.key
 *.pem
 *.p12
+*.pfx
+*.cer
 *.jks
 
-# Logs
+# Logs and local state
 *.log
+state.md
+session-log.md
 
-# Temporary files
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Temporary and build output
 tmp/
 temp/
-
-# Build artifacts
 build/
 dist/
 
-# Local AI tools (temporary)
-# .codex/
+.superdesign/
