@@ -11,13 +11,13 @@ Set-StrictMode -Version Latest
 
 # This smoke installs per user ("No service"). Over a service-mode install Setup must remove that
 # install first, which needs elevation, so it ends with exit code 7. A runner that also carries a
-# service-mode MULTICORE cannot run it; it needs a machine without one.
+# service-mode TerrieFlow cannot run it; it needs a machine without one.
 $serviceInstallKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{D95AB954-248C-44C9-9E3A-952398802A2D}_is1'
 if (Test-Path -LiteralPath $serviceInstallKey) {
     $installed = (Get-ItemProperty -LiteralPath $serviceInstallKey).DisplayName
     Write-Warning "SKIPPED: this machine has a service-mode install ($installed); the installed-update smoke needs a machine without one"
     if ($env:GITHUB_STEP_SUMMARY) {
-        "> [!WARNING]`n> Installed-update smoke skipped: the runner has a service-mode MULTICORE install ($installed)." |
+        "> [!WARNING]`n> Installed-update smoke skipped: the runner has a service-mode TerrieFlow install ($installed)." |
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
     }
     exit 0
@@ -222,8 +222,8 @@ $localAppDataSiblingCanary = Join-Path $testRoot 'local-app-data-sibling-canary.
 $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 $protocolKey = 'HKCU:\Software\Classes\multicore'
 . (Join-Path $PSScriptRoot 'installer-shortcut-state.ps1')
-$startMenuShortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'MULTICORE.lnk'
-$desktopShortcut = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'MULTICORE.lnk'
+$startMenuShortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'TerrieFlow.lnk'
+$desktopShortcut = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'TerrieFlow.lnk'
 $shortcutSnapshots = @(Save-InstallerShortcutState @($startMenuShortcut, $desktopShortcut))
 $ownedShortcutTargets = @(
     (Join-Path $installRoot 'current\MultiCore.exe'),

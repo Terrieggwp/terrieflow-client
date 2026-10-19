@@ -7,7 +7,7 @@
 //! that appends one report per crash:
 //!
 //! ```text
-//! === native crash 1791052770210 · MULTICORE 1.1.8 (windows, x86_64) ===
+//! === native crash 1791052770210 · TerrieFlow 1.1.8 (windows, x86_64) ===
 //! exception 0xc0000005 (access violation, writing 0x8)
 //! at multicore-desktop.exe+0x1a2b3c (0x7ff6...)
 //! thread 1234 (main)
@@ -164,7 +164,7 @@ fn redirect_missing_stderr(path: &Path) {
         .as_millis();
     let _ = writeln!(
         file,
-        "=== MULTICORE {} started {unix_ms} (pid {}) ===",
+        "=== TerrieFlow {} started {unix_ms} (pid {}) ===",
         env!("CARGO_PKG_VERSION"),
         std::process::id()
     );
@@ -272,7 +272,7 @@ unsafe fn format_report(
         .as_millis();
     let _ = writeln!(
         out,
-        "=== native crash {unix_ms} · MULTICORE {} ({}, {}) ===",
+        "=== native crash {unix_ms} · TerrieFlow {} ({}, {}) ===",
         env!("CARGO_PKG_VERSION"),
         std::env::consts::OS,
         std::env::consts::ARCH,

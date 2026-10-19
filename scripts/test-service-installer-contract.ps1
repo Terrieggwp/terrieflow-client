@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param()
 
 $ErrorActionPreference = 'Stop'
@@ -72,7 +72,7 @@ foreach ($token in @(
     'Result := (not Is64BitInstallMode) and IsWin64;',
     'if RegKeyExists(HKLM64, UninstallKey) then',
     '(Pos(''"platform": "windows-x64"'', Manifest) > 0)',
-    'уже установлен 64-битный MULTICORE',
+    'уже установлен 64-битный TerrieFlow',
     "FmtMessage(CustomMessage('X64InstallPresent'), [Native64BitSetupName])",
     # On Windows on ARM the 64-bit installer to recommend is the ARM64 one.
     'function Native64BitSetupName: String;',
@@ -86,7 +86,7 @@ foreach ($token in @(
     'function Arm64InstallPresent: Boolean;',
     "LoadStringFromFile(ExpandConstant('{commonpf64}\MultiCore\current\versions.json'), Manifest)",
     'function WarnX64SetupOnArm64: Boolean;',
-    'уже установлен MULTICORE для ARM64',
+    'уже установлен TerrieFlow для ARM64',
     "Result := CustomMessage('Arm64InstallPresent');",
     # x64 over an x86 install on 64-bit Windows: migrate it, keeping the user's data.
     'function X86ServiceUninstaller: String;',
@@ -101,7 +101,7 @@ foreach ($token in @(
     "while (X86PerUserCopyPresent or FileExists(PerUserInstallDir + '\unins000.exe')) and",
     "if WizardIsTaskSelected('autostart') or MoveAutostartFromServiceInstall then",
     "ShellExec('', ServiceUninstaller, '/SILENT /SUPPRESSMSGBOXES /NORESTART'",
-    'MULTICORE уже установлен со службой',
+    'TerrieFlow уже установлен со службой',
     "SuppressibleMsgBox(CustomMessage('ServiceInstallPresent'),",
     'Result := RemoveServiceInstall;',
     'MoveAutostartFromServiceInstall',
@@ -112,15 +112,15 @@ foreach ($token in @(
     '(FindRec.Attributes and ReparsePointAttribute) <> 0',
     # A failed registration is reported, not swallowed.
     'if Registered <> 0 then',
-    # The product name is MULTICORE wherever it is seen; the service NAME stays MultiCore.
-    '#define AppName "MULTICORE"',
-    '#define AppPublisher "MULTICORE"',
+    # The product name is TerrieFlow wherever it is seen; the service NAME stays MultiCore.
+    '#define AppName "TerrieFlow"',
+    '#define AppPublisher "TerrieFlow"',
     "ServiceName = 'MultiCore';",
-    "'create ' + ServiceName + ' binPath= ""\""' + ServiceBinaryPath + '\"" --service"" start= auto obj= LocalSystem DisplayName= ""MULTICORE Service""'",
+    "'create ' + ServiceName + ' binPath= ""\""' + ServiceBinaryPath + '\"" --service"" start= auto obj= LocalSystem DisplayName= ""TerrieFlow Service""'",
     # An upgraded service (registered by 1.1.1 as "MultiCore") gets the new display name too.
-    "'config ' + ServiceName + ' binPath= ""\""' + ServiceBinaryPath + '\"" --service"" start= auto obj= LocalSystem DisplayName= ""MULTICORE Service""'",
+    "'config ' + ServiceName + ' binPath= ""\""' + ServiceBinaryPath + '\"" --service"" start= auto obj= LocalSystem DisplayName= ""TerrieFlow Service""'",
     "'description ' + ServiceName + ' ""' + CustomMessage('ServiceDescription') + '""'",
-    'russian.ServiceDescription=MULTICORE: ядра Mihomo и Xray для мгновенного подключения',
+    'russian.ServiceDescription=TerrieFlow: ядра Mihomo и Xray для мгновенного подключения',
     # The language is the Windows UI language: Russian UI gets Russian, any other English (the
     # first [Languages] entry is the fallback), with no dialog and no memory of an earlier install.
     'ShowLanguageDialog=no',
@@ -133,7 +133,7 @@ foreach ($token in @(
     '[InstallDelete]',
     'Type: files; Name: "{autoprograms}\MultiCore.lnk"',
     'Type: files; Name: "{autodesktop}\MultiCore.lnk"; Tasks: desktopicon',
-    'Name: "{autodesktop}\MULTICORE"; Filename: "{app}\current\MultiCore.exe"'
+    'Name: "{autodesktop}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"'
 )) {
     Assert-Contains $token
 }

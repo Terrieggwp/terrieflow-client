@@ -75,6 +75,8 @@ fn every_executable_embeds_a_version_resource_with_a_task_manager_description() 
     ] {
         assert!(VERSION_INFO_SOURCE.contains(&format!("VALUE \"{field}\"")));
     }
+    assert!(VERSION_INFO_SOURCE.contains("VALUE \"CompanyName\", \"TerrieFlow\""));
+    assert!(VERSION_INFO_SOURCE.contains("VALUE \"ProductName\", \"TerrieFlow\""));
     for (script, description, file) in [
         (
             DESKTOP_BUILD_SCRIPT,
@@ -83,17 +85,17 @@ fn every_executable_embeds_a_version_resource_with_a_task_manager_description() 
         ),
         (
             DAEMON_BUILD_SCRIPT,
-            "\"MULTICORE — фоновый процесс\"",
+            "\"TerrieFlow — фоновый процесс\"",
             "multicore-daemon.exe",
         ),
         (
             CORE_HOST_BUILD_SCRIPT,
-            "\"MULTICORE — служба ядер\"",
+            "\"TerrieFlow — служба ядер\"",
             "multicore-core-host.exe",
         ),
         (
             UPDATER_BUILD_SCRIPT,
-            "\"MULTICORE — обновление\"",
+            "\"TerrieFlow — обновление\"",
             "multicore-apply.exe",
         ),
     ] {

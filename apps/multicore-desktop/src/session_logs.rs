@@ -362,7 +362,7 @@ pub(crate) fn session_entries(
     }
     rows.reverse();
     let mut index = format!(
-        "# MULTICORE core sessions · range: {} · generated_unix: {}\n\
+        "# TerrieFlow core sessions · range: {} · generated_unix: {}\n\
          folder\tconnect_unix\tdisconnect_unix\tend_reason\tmode\tservice\tengines\tprofile\tcore_lines\n",
         plan.range.key(),
         plan.now_ms / 1000

@@ -15,8 +15,8 @@ Protocols:
 ProductCode: '{D95AB954-248C-44C9-9E3A-952398802A2D}_is1'
 ReleaseDate: @RELEASE_DATE@
 AppsAndFeaturesEntries:
-- DisplayName: MULTICORE
-  Publisher: MULTICORE
+- DisplayName: TerrieFlow
+  Publisher: TerrieFlow
   ProductCode: '{D95AB954-248C-44C9-9E3A-952398802A2D}_is1'
 Installers:
 - Architecture: x64

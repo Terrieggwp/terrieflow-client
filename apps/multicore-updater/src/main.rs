@@ -356,7 +356,7 @@ fn relaunch_current_client(request: &ApplyRequest) -> io::Result<()> {
     if !executable.is_file() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
-            "current MultiCore executable is unavailable",
+            "current TerrieFlow executable is unavailable",
         ));
     }
     launch_client(request, &executable, &request.target).map(|_| ())
@@ -595,7 +595,7 @@ fn wait_for_process_exit(pid: u32, timeout_ms: u32) -> io::Result<()> {
 fn wait_for_process_exit(_pid: u32, _timeout_ms: u32) -> io::Result<()> {
     Err(io::Error::new(
         io::ErrorKind::Unsupported,
-        "MultiCore updates are supported only on Windows",
+        "TerrieFlow updates are supported only on Windows",
     ))
 }
 

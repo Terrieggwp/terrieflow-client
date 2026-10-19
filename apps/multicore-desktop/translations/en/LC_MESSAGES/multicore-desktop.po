@@ -1,4 +1,4 @@
-# English interface of MULTICORE.
+# English interface of TerrieFlow.
 #
 # The source language is Russian: every msgid is the exact Russian text of the app (Slint
 # `@tr("…")` and Rust `tr!("…")`), every msgstr its English text. Placeholders follow Slint:
@@ -64,8 +64,8 @@ msgstr "Dashboard unavailable."
 msgid "Данные сессии недоступны."
 msgstr "Session data unavailable."
 
-msgid "Служба MULTICORE недоступна."
-msgstr "MULTICORE service unavailable."
+msgid "Служба TerrieFlow недоступна."
+msgstr "TerrieFlow service unavailable."
 
 msgid "Устранение неполадок недоступно."
 msgstr "Troubleshooting is unavailable."
@@ -142,8 +142,8 @@ msgstr "The subscription server is temporarily down. Try again later."
 msgid "Сервер подписки ответил ошибкой."
 msgstr "Subscription server error."
 
-msgid "По ссылке пришла веб-страница или список ссылок, а не подписка MULTICORE. Скопируйте ссылку подписки для приложения у провайдера."
-msgstr "The link returned a web page or a list of links, not a MULTICORE subscription. Copy the app subscription link from your provider."
+msgid "По ссылке пришла веб-страница или список ссылок, а не подписка TerrieFlow. Скопируйте ссылку подписки для приложения у провайдера."
+msgstr "The link returned a web page or a list of links, not a TerrieFlow subscription. Copy the app subscription link from your provider."
 
 msgid "Провайдер прислал повреждённую или неподдерживаемую конфигурацию."
 msgstr "The provider sent a damaged or unsupported configuration."
@@ -163,8 +163,8 @@ msgstr "Connect to open the Mihomo dashboard."
 msgid "Панель Mihomo недоступна в этой сборке."
 msgstr "The dashboard isn't in this build."
 
-msgid "MULTICORE уже запущен у другого пользователя."
-msgstr "MULTICORE is already running for another user."
+msgid "TerrieFlow уже запущен у другого пользователя."
+msgstr "TerrieFlow is already running for another user."
 
 msgid "Подключение отменено: не выдано разрешение администратора."
 msgstr "Connection cancelled: administrator permission was not granted."
@@ -243,11 +243,11 @@ msgstr "Disconnecting failed."
 msgid "Ядра не удалось запустить заранее. Они запустятся при подключении."
 msgstr "The cores couldn't start in advance. They'll start when you connect."
 
-msgid "Служба MULTICORE потеряла ядра — подключение разорвано. Подключитесь снова."
-msgstr "The MULTICORE service lost its cores — disconnected. Connect again."
+msgid "Служба TerrieFlow потеряла ядра — подключение разорвано. Подключитесь снова."
+msgstr "The TerrieFlow service lost its cores — disconnected. Connect again."
 
-msgid "Служба MULTICORE потеряла ядра — переподключаемся…"
-msgstr "The MULTICORE service lost its cores — reconnecting…"
+msgid "Служба TerrieFlow потеряла ядра — переподключаемся…"
+msgstr "The TerrieFlow service lost its cores — reconnecting…"
 
 msgid "Подключение восстановлено автоматически."
 msgstr "Reconnected automatically."
@@ -255,8 +255,8 @@ msgstr "Reconnected automatically."
 msgid "Не удалось переподключиться автоматически — подключитесь снова."
 msgstr "Couldn't reconnect automatically — connect again."
 
-msgid "Служба MULTICORE недоступна — права администратора будут запрошены при подключении."
-msgstr "MULTICORE service unavailable — admin rights will be requested on connect."
+msgid "Служба TerrieFlow недоступна — права администратора будут запрошены при подключении."
+msgstr "TerrieFlow service unavailable — admin rights will be requested on connect."
 
 msgid "Подписка переключена."
 msgstr "Subscription switched."
@@ -282,8 +282,8 @@ msgstr "The connection service didn't respond. Try again."
 msgid "Не удалось запустить ядро. Подробности — в логе на странице «Состояние»."
 msgstr "Couldn't start a core. See the log on the Status page."
 
-msgid "Не удалось запустить ядро: файл не найден или заблокирован. Проверьте карантин антивируса и переустановите MULTICORE."
-msgstr "Couldn't start a core: the file is missing or blocked. Check your antivirus quarantine and reinstall MULTICORE."
+msgid "Не удалось запустить ядро: файл не найден или заблокирован. Проверьте карантин антивируса и переустановите TerrieFlow."
+msgstr "Couldn't start a core: the file is missing or blocked. Check your antivirus quarantine and reinstall TerrieFlow."
 
 msgid "Ядро завершилось сразу после запуска. Причина — в логе на странице «Состояние»."
 msgstr "A core exited right after starting. See the log on the Status page."
@@ -303,8 +303,8 @@ msgstr "Couldn't enable the system proxy. Try again."
 msgid "Не удалось запустить {0}. Подробности — в логе на странице «Состояние»."
 msgstr "Couldn't start {0}. See the log on the Status page."
 
-msgid "Не удалось запустить {0}: файл ядра не найден или заблокирован. Проверьте карантин антивируса и переустановите MULTICORE."
-msgstr "Couldn't start {0}: the core file is missing or blocked. Check antivirus quarantine and reinstall MULTICORE."
+msgid "Не удалось запустить {0}: файл ядра не найден или заблокирован. Проверьте карантин антивируса и переустановите TerrieFlow."
+msgstr "Couldn't start {0}: the core file is missing or blocked. Check antivirus quarantine and reinstall TerrieFlow."
 
 msgid "{0} завершился сразу после запуска. Причина — в логе на странице «Состояние»."
 msgstr "{0} exited right after starting. See the log on the Status page."
@@ -480,8 +480,8 @@ msgstr "S"
 msgid "ZIP-архив (*.zip)"
 msgstr "ZIP file (*.zip)"
 
-msgid "Сохранить лог MULTICORE"
-msgstr "Save MULTICORE log"
+msgid "Сохранить лог TerrieFlow"
+msgstr "Save TerrieFlow log"
 
 msgid "В релизе нет установщика со службой"
 msgstr "The release has no service installer"
@@ -498,8 +498,8 @@ msgstr "The installer failed the SHA-256 check"
 msgid "Служба устанавливается пакетом"
 msgstr "The package installs the service"
 
-msgid "Открыть MULTICORE"
-msgstr "Open MULTICORE"
+msgid "Открыть TerrieFlow"
+msgstr "Open TerrieFlow"
 
 msgid "Выйти"
 msgstr "Quit"
@@ -621,8 +621,8 @@ msgstr "App version built incorrectly"
 msgid "Не удалось создать защищённое соединение"
 msgstr "Couldn't create a secure connection"
 
-msgid "Релиз не соответствует контракту MULTICORE"
-msgstr "Release doesn't match the MULTICORE contract"
+msgid "Релиз не соответствует контракту TerrieFlow"
+msgstr "Release doesn't match the TerrieFlow contract"
 
 msgid "GitHub временно ограничил запросы. Повторите позже"
 msgstr "GitHub is rate-limiting requests. Try again later"
@@ -642,8 +642,8 @@ msgstr "Couldn't read GitHub's response"
 msgid "Загруженное обновление изменилось до установки — повторите загрузку"
 msgstr "The downloaded update changed before install — download it again"
 
-msgid "Обновите MULTICORE через менеджер пакетов"
-msgstr "Update MULTICORE via your package manager"
+msgid "Обновите TerrieFlow через менеджер пакетов"
+msgstr "Update TerrieFlow via your package manager"
 
 msgid "Некорректный путь AppImage"
 msgstr "Invalid AppImage path"
@@ -657,8 +657,8 @@ msgstr "The downloaded AppImage failed the SHA-256 check"
 msgid "Не удалось заменить файл AppImage"
 msgstr "Couldn't replace the AppImage file"
 
-msgid "Не удалось перезапустить MULTICORE"
-msgstr "Couldn't restart MULTICORE"
+msgid "Не удалось перезапустить TerrieFlow"
+msgstr "Couldn't restart TerrieFlow"
 
 msgid "Загруженный архив не прошёл SHA-256 проверку"
 msgstr "The downloaded archive failed the SHA-256 check"
@@ -666,11 +666,11 @@ msgstr "The downloaded archive failed the SHA-256 check"
 msgid "Не удалось зафиксировать загруженный архив"
 msgstr "Couldn't finalize the downloaded archive"
 
-msgid "Не удалось определить путь MULTICORE"
-msgstr "Couldn't find the MULTICORE path"
+msgid "Не удалось определить путь TerrieFlow"
+msgstr "Couldn't find the TerrieFlow path"
 
-msgid "Некорректный путь MULTICORE"
-msgstr "Invalid MULTICORE path"
+msgid "Некорректный путь TerrieFlow"
+msgstr "Invalid TerrieFlow path"
 
 msgid "В установке нет программы обновления (runtime/multicore-updater.exe)"
 msgstr "The install has no updater (runtime/multicore-updater.exe)"
@@ -708,17 +708,17 @@ msgstr "Couldn't write the update"
 msgid "Обновление больше заявленного размера"
 msgstr "The update is larger than stated"
 
-msgid "Каталог данных MULTICORE недоступен"
-msgstr "MULTICORE data folder unavailable"
+msgid "Каталог данных TerrieFlow недоступен"
+msgstr "TerrieFlow data folder unavailable"
 
 msgid "Обнаружен {0}"
 msgstr "{0} detected"
 
-msgid "{0} часто блокирует VPN. Если подключение не работает — выключите его или добавьте MULTICORE в исключения."
-msgstr "{0} often blocks VPNs. If the connection fails, turn it off or add MULTICORE to its exclusions."
+msgid "{0} часто блокирует VPN. Если подключение не работает — выключите его или добавьте TerrieFlow в исключения."
+msgstr "{0} often blocks VPNs. If the connection fails, turn it off or add TerrieFlow to its exclusions."
 
-msgid "Антивирус может мешать VPN. Если подключение не работает — добавьте MULTICORE в исключения или временно отключите защиту."
-msgstr "Antivirus software may interfere with VPNs. If the connection fails, add MULTICORE to exclusions or pause protection."
+msgid "Антивирус может мешать VPN. Если подключение не работает — добавьте TerrieFlow в исключения или временно отключите защиту."
+msgstr "Antivirus software may interfere with VPNs. If the connection fails, add TerrieFlow to exclusions or pause protection."
 
 msgid "Работает {0}"
 msgstr "{0} running"
@@ -747,8 +747,8 @@ msgstr "The service will be stopped and removed from Windows. Its files stay, so
 msgid "Найдены программы обхода блокировок"
 msgstr "DPI bypass tools found"
 
-msgid "{0}. Если они запущены — закройте их. MULTICORE эти папки не трогает."
-msgstr "{0}. If they're running, close them. MULTICORE leaves these folders alone."
+msgid "{0}. Если они запущены — закройте их. TerrieFlow эти папки не трогает."
+msgstr "{0}. If they're running, close them. TerrieFlow leaves these folders alone."
 
 msgid "Порт {0} занят"
 msgstr "Port {0} busy"
@@ -765,8 +765,8 @@ msgstr "Another program holds it, but the subscription needs it. Close it and co
 msgid "Убран прокси от прошлого подключения"
 msgstr "Leftover proxy removed"
 
-msgid "MULTICORE не успел выключить системный прокси. Прежние настройки восстановлены."
-msgstr "MULTICORE didn't turn off the system proxy. Previous settings restored."
+msgid "TerrieFlow не успел выключить системный прокси. Прежние настройки восстановлены."
+msgstr "TerrieFlow didn't turn off the system proxy. Previous settings restored."
 
 msgid "Системный прокси отключён"
 msgstr "System proxy turned off"
@@ -843,8 +843,8 @@ msgstr "Close Discord and retry."
 msgid "В файле hosts есть записи: {0}"
 msgstr "Entries in the hosts file: {0}"
 
-msgid "{0}: {1}. Они могут перенаправлять сайты. MULTICORE этот файл не меняет — проверьте его вручную."
-msgstr "{0}: {1}. They may redirect websites. MULTICORE doesn't change this file — check it manually."
+msgid "{0}: {1}. Они могут перенаправлять сайты. TerrieFlow этот файл не меняет — проверьте его вручную."
+msgstr "{0}: {1}. They may redirect websites. TerrieFlow doesn't change this file — check it manually."
 
 msgid "Ограничения сети"
 msgstr "Network locked"
@@ -915,14 +915,14 @@ msgstr "Fixes cancelled"
 msgid "Без разрешения администратора их не выполнить."
 msgstr "They can't run without administrator permission."
 
-msgid "Служба MULTICORE устарела"
+msgid "Служба TerrieFlow устарела"
 msgstr "Service is outdated"
 
-msgid "Обновите MULTICORE — тогда служба сможет выполнять эти исправления."
-msgstr "Update MULTICORE so the service can run these fixes."
+msgid "Обновите TerrieFlow — тогда служба сможет выполнять эти исправления."
+msgstr "Update TerrieFlow so the service can run these fixes."
 
-msgid "MULTICORE запущен у другого пользователя"
-msgstr "MULTICORE is running for another user"
+msgid "TerrieFlow запущен у другого пользователя"
+msgstr "TerrieFlow is running for another user"
 
 msgid "Исправления можно выполнить, когда он отключится."
 msgstr "Fixes can run once they disconnect."
@@ -993,8 +993,8 @@ msgstr "Run “netsh winsock reset” as administrator."
 msgid "Адаптер Wintun удалён"
 msgstr "Wintun adapter removed"
 
-msgid "MULTICORE создаст его заново при следующем подключении."
-msgstr "MULTICORE recreates it on the next connection."
+msgid "TerrieFlow создаст его заново при следующем подключении."
+msgstr "TerrieFlow recreates it on the next connection."
 
 msgid "Адаптера Wintun нет"
 msgstr "No Wintun adapter"
@@ -1008,8 +1008,8 @@ msgstr "Couldn't remove the Wintun adapter"
 msgid "Перезагрузите ПК и повторите."
 msgstr "Restart the PC and try again."
 
-msgid "Служба MULTICORE переустановлена"
-msgstr "MULTICORE service reinstalled"
+msgid "Служба TerrieFlow переустановлена"
+msgstr "TerrieFlow service reinstalled"
 
 msgid "Служба зарегистрирована заново и запущена."
 msgstr "The service is registered again and running."
@@ -1017,8 +1017,8 @@ msgstr "The service is registered again and running."
 msgid "Не удалось переустановить службу"
 msgstr "Couldn't reinstall the service"
 
-msgid "Перезагрузите ПК и повторите или переустановите MULTICORE установщиком."
-msgstr "Restart the PC and retry, or reinstall MULTICORE with the installer."
+msgid "Перезагрузите ПК и повторите или переустановите TerrieFlow установщиком."
+msgstr "Restart the PC and retry, or reinstall TerrieFlow with the installer."
 
 msgid "Доступно только в Windows"
 msgstr "Windows only"
@@ -1176,11 +1176,11 @@ msgstr "Limited mode"
 msgid "Остановить туннель"
 msgstr "Stop tunnel"
 
-msgid "Обнаружены другие VPN-приложения ({}): они могут конфликтовать с MULTICORE. Закройте их перед подключением."
-msgstr "Other VPN apps found ({}): they may conflict with MULTICORE. Close them before connecting."
+msgid "Обнаружены другие VPN-приложения ({}): они могут конфликтовать с TerrieFlow. Закройте их перед подключением."
+msgstr "Other VPN apps found ({}): they may conflict with TerrieFlow. Close them before connecting."
 
-msgid "Обнаружено другое VPN-приложение ({}): оно может конфликтовать с MULTICORE. Закройте его перед подключением."
-msgstr "Another VPN app found ({}): it may conflict with MULTICORE. Close it before connecting."
+msgid "Обнаружено другое VPN-приложение ({}): оно может конфликтовать с TerrieFlow. Закройте его перед подключением."
+msgstr "Another VPN app found ({}): it may conflict with TerrieFlow. Close it before connecting."
 
 msgid "Закрыть удалось не всё: {} запускает свой движок как службу Windows, которую наша кнопка не трогает без повышения прав. Отключитесь в самом приложении перед закрытием или остановите его службу в «Службах Windows»."
 msgstr "Not everything closed: {} runs its engine as a Windows service, which this button can't stop without admin rights. Disconnect in that app before closing it, or stop its service in Windows Services."

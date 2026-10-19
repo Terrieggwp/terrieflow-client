@@ -51,13 +51,13 @@ BEGIN
   BEGIN
     BLOCK "040904B0"
     BEGIN
-      VALUE "CompanyName", "MULTICORE"
+      VALUE "CompanyName", "TerrieFlow"
       VALUE "FileDescription", "{description}"
       VALUE "FileVersion", "{version}"
       VALUE "InternalName", "{internal_name}"
-      VALUE "LegalCopyright", "© 2026 MULTICORE contributors"
+      VALUE "LegalCopyright", "© 2026 TerrieFlow contributors"
       VALUE "OriginalFilename", "{original_filename}"
-      VALUE "ProductName", "MULTICORE"
+      VALUE "ProductName", "TerrieFlow"
       VALUE "ProductVersion", "{version}"
     END
   END

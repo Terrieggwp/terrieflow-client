@@ -163,7 +163,7 @@ pub enum ServiceError {
 
 impl fmt::Display for ServiceError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "MultiCore service: {self:?}")
+        write!(formatter, "TerrieFlow service: {self:?}")
     }
 }
 

@@ -430,7 +430,7 @@ fn an_old_or_busy_service_and_a_dismissed_prompt_are_explained_not_retried() {
     );
     assert_eq!(
         batch_error_finding(BatchError::ServiceTooOld).title,
-        "Служба MULTICORE устарела"
+        "Служба TerrieFlow устарела"
     );
 }
 

@@ -622,11 +622,11 @@ fn native_label(icon: &str, label: &str, detail: &str) -> String {
 #[cfg(not(windows))]
 pub(crate) fn native_menu_plan(model: &TrayMenuModel) -> Vec<NativeMenuItem> {
     let mut items = vec![
-        NativeMenuItem::Label(native_label("", "MULTICORE", &model.status)),
+        NativeMenuItem::Label(native_label("", "TerrieFlow", &model.status)),
         NativeMenuItem::Separator,
         NativeMenuItem::Action {
             id: "show".into(),
-            label: multicore_i18n::tr!("Открыть MULTICORE").into(),
+            label: multicore_i18n::tr!("Открыть TerrieFlow").into(),
             enabled: true,
             command: TrayCommand::ShowWindow,
         },
@@ -804,7 +804,7 @@ mod native_menu_tests {
     #[test]
     fn plan_orders_status_actions_routes_and_exit() {
         let plan = native_menu_plan(&build_menu_model(input(true, true)));
-        assert_eq!(plan[0], NativeMenuItem::Label("MULTICORE · В сети".into()));
+        assert_eq!(plan[0], NativeMenuItem::Label("TerrieFlow · В сети".into()));
         assert_eq!(plan[1], NativeMenuItem::Separator);
         assert!(matches!(
             &plan[2],
@@ -1186,7 +1186,7 @@ mod linux {
 
     fn create_status_icon(model: &TrayMenuModel, shared: &Arc<Shared>) -> StatusIcon {
         let icon = StatusIcon::new(&status_pixbuf(model.icon_state));
-        icon.set_title("MULTICORE");
+        icon.set_title("TerrieFlow");
         icon.set_tooltip(&tooltip(model));
         icon.set_visible(true);
         icon.connect_click("activate", shared.clone());
@@ -1223,7 +1223,7 @@ mod linux {
         let icon = indicator_icon(model.icon_state)?;
         TrayIconBuilder::new()
             .with_id("multicore-main")
-            .with_title("MULTICORE")
+            .with_title("TerrieFlow")
             .with_tooltip(tooltip(model))
             .with_icon(icon)
             .with_menu(Box::new(build_menu(model, shared)?))

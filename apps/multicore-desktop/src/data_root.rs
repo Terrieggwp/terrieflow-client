@@ -1,4 +1,4 @@
-//! The user's MULTICORE data directory (`%LOCALAPPDATA%\MultiCore`, `~/.local/share/multicore`)
+//! The user's TerrieFlow data directory (`%LOCALAPPDATA%\MultiCore`, `~/.local/share/multicore`)
 //! for every path of the desktop app: logs, preferences, updates, markers, the data reset.
 //!
 //! Unit tests replay failing daemon exchanges, panics and crashes through the very code that

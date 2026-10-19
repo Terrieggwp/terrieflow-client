@@ -100,13 +100,13 @@ pub(crate) fn hand_off_to_installed_package() {
         command.env_remove(name);
     }
     eprintln!(
-        "MultiCore is installed as a system package: starting {} instead of this AppImage \
+        "TerrieFlow is installed as a system package: starting {} instead of this AppImage \
          (set {STANDALONE_ENV}=1 to keep the AppImage)",
         app.display()
     );
     // Only returns on failure.
     let error = command.exec();
-    eprintln!("hand-off to the installed MultiCore failed: {error}");
+    eprintln!("hand-off to the installed TerrieFlow failed: {error}");
 }
 
 #[cfg(target_os = "linux")]

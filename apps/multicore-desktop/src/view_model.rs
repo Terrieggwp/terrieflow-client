@@ -700,12 +700,12 @@ fn conflicting_apps_message(apps: &[&'static str], close_note: &[&'static str]) 
     let names = apps.join(", ");
     let mut message = if apps.len() > 1 {
         tr!(
-            "Обнаружены другие VPN-приложения ({}): они могут конфликтовать с MULTICORE. Закройте их перед подключением.",
+            "Обнаружены другие VPN-приложения ({}): они могут конфликтовать с TerrieFlow. Закройте их перед подключением.",
             names
         )
     } else {
         tr!(
-            "Обнаружено другое VPN-приложение ({}): оно может конфликтовать с MULTICORE. Закройте его перед подключением.",
+            "Обнаружено другое VPN-приложение ({}): оно может конфликтовать с TerrieFlow. Закройте его перед подключением.",
             names
         )
     };
@@ -10340,7 +10340,7 @@ mod tests {
             "title: \"Quiet Signal\";",
             "text: \"Quiet Signal\";",
             "BrandMark",
-            "text: \"MULTICORE\";",
+            "text: \"TerrieFlow\";",
             "text: \"Локально\";",
             "text: \"Подписка\";",
             "label: \"Заменить\";",
@@ -10422,7 +10422,7 @@ mod tests {
         assert!(!presentation.is_connected);
         assert_eq!(
             presentation.supporting,
-            "Служба MULTICORE потеряла ядра — переподключаемся…"
+            "Служба TerrieFlow потеряла ядра — переподключаемся…"
         );
         assert_eq!(view_model.catalog_revision, None, "the catalog is reloaded");
         // The daemon reconnects by itself: the watch keeps following it meanwhile.
@@ -11842,7 +11842,7 @@ mod tests {
             "event.component",
             "Диагностика Xray",
             "Диагностика Mihomo",
-            "Диагностика TUN MULTICORE",
+            "Диагностика TUN TerrieFlow",
         ] {
             assert!(source.contains(required), "missing {required}");
         }
@@ -12203,7 +12203,7 @@ mod tests {
         model.set_conflicting_apps(vec!["FlClash"]);
         assert_eq!(
             model.conflicting_apps_presentation().message,
-            "Another VPN app found (FlClash): it may conflict with MULTICORE. Close it before connecting."
+            "Another VPN app found (FlClash): it may conflict with TerrieFlow. Close it before connecting."
         );
         model.set_conflicting_apps(vec!["Incy", "FlClash"]);
         let message = model.conflicting_apps_presentation().message;

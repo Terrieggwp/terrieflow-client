@@ -410,10 +410,10 @@ const FIXTURE_ENGLISH: &[(&str, &str)] = &[
     ("Активен", "Ready"),
     ("Обновить", "Update"),
     ("Не удалось обновить подписку", "Update failed"),
-    ("MULTICORE 0.4.0 доступна", "MULTICORE 0.4.0 available"),
+    ("TerrieFlow 0.4.0 доступна", "TerrieFlow 0.4.0 available"),
     (
-        "MULTICORE 0.3.4 · установится после отключения",
-        "MULTICORE 0.3.4 · installs after you disconnect",
+        "TerrieFlow 0.3.4 · установится после отключения",
+        "TerrieFlow 0.3.4 · installs after you disconnect",
     ),
     (
         "Загрузим подписанный пакет и перезапустим клиент. Активный туннель будет корректно остановлен.",
@@ -436,8 +436,8 @@ const FIXTURE_ENGLISH: &[(&str, &str)] = &[
         "Background service timed out",
     ),
     (
-        "Служба MULTICORE не отвечает — перезапускаем…",
-        "MULTICORE service not responding — restarting…",
+        "Служба TerrieFlow не отвечает — перезапускаем…",
+        "TerrieFlow service not responding — restarting…",
     ),
     ("Сервер не ответил за 15 с", "Server didn't answer in 15 s"),
     (
@@ -457,16 +457,16 @@ const FIXTURE_ENGLISH: &[(&str, &str)] = &[
         "Couldn't load routes. The list is outdated — refresh the subscription to get current servers.",
     ),
     (
-        "Запущен Happ — он перехватывает туннель. Закройте его, чтобы MULTICORE мог подключиться.",
-        "Happ is running and takes over the tunnel. Close it so MULTICORE can connect.",
+        "Запущен Happ — он перехватывает туннель. Закройте его, чтобы TerrieFlow мог подключиться.",
+        "Happ is running and takes over the tunnel. Close it so TerrieFlow can connect.",
     ),
     (
-        "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с MULTICORE. Закройте его перед подключением.",
-        "Another VPN app found (FlClash): it may conflict with MULTICORE. Close it before connecting.",
+        "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с TerrieFlow. Закройте его перед подключением.",
+        "Another VPN app found (FlClash): it may conflict with TerrieFlow. Close it before connecting.",
     ),
     (
-        "Обнаружены другие VPN-приложения (FlClash, Happ): они могут конфликтовать с MULTICORE. Закройте их перед подключением. Закрыть удалось не всё: FlClash запускает свой движок как службу Windows, которую наша кнопка не трогает без повышения прав. Отключитесь в самом приложении перед закрытием или остановите его службу в «Службах Windows».",
-        "Other VPN apps found (FlClash, Happ): they may conflict with MULTICORE. Close them before connecting. Not everything closed: FlClash runs its engine as a Windows service, which this button can't stop without admin rights. Disconnect in that app before closing it, or stop its service in Windows Services.",
+        "Обнаружены другие VPN-приложения (FlClash, Happ): они могут конфликтовать с TerrieFlow. Закройте их перед подключением. Закрыть удалось не всё: FlClash запускает свой движок как службу Windows, которую наша кнопка не трогает без повышения прав. Отключитесь в самом приложении перед закрытием или остановите его службу в «Службах Windows».",
+        "Other VPN apps found (FlClash, Happ): they may conflict with TerrieFlow. Close them before connecting. Not everything closed: FlClash runs its engine as a Windows service, which this button can't stop without admin rights. Disconnect in that app before closing it, or stop its service in Windows Services.",
     ),
     // Log lines (the daemon's own lines arrive with codes; these stand for core output).
     (
@@ -474,8 +474,8 @@ const FIXTURE_ENGLISH: &[(&str, &str)] = &[
         "Local SOCKS bridges ready.",
     ),
     (
-        "Контроллер и TUN MULTICORE готовы.",
-        "MULTICORE controller and TUN ready.",
+        "Контроллер и TUN TerrieFlow готовы.",
+        "TerrieFlow controller and TUN ready.",
     ),
     (
         "Не удалось применить локальную настройку маршрута для группы «Игры». Сервис вернул ошибку проверки конфигурации, повторите попытку позже или обновите подписку.",
@@ -785,7 +785,7 @@ fn chip_normal(ui: &AppWindow) {
 fn events() -> ModelRc<UiEvent> {
     let rows = [
         ("21:04:11", "info", "Локальные SOCKS-мосты готовы."),
-        ("21:04:12", "info", "Контроллер и TUN MULTICORE готовы."),
+        ("21:04:12", "info", "Контроллер и TUN TerrieFlow готовы."),
         (
             "21:05:40",
             "error",
@@ -1289,12 +1289,12 @@ fn scenarios() -> Vec<Scenario> {
             ui.set_subscription_expiry(s("Бессрочно"));
             ui.set_status_tone(s("warning"));
             ui.set_toggle_title(s("Нет связи с сервисом"));
-            ui.set_supporting(s("Служба MULTICORE не отвечает — перезапускаем…"));
+            ui.set_supporting(s("Служба TerrieFlow не отвечает — перезапускаем…"));
             ui.set_toggle_detail_is_exit(false);
             ui.set_primary_enabled(false);
             ui.set_conflicting_apps_banner_visible(true);
             ui.set_conflicting_apps_message(s(
-                "Запущен Happ — он перехватывает туннель. Закройте его, чтобы MULTICORE мог подключиться.",
+                "Запущен Happ — он перехватывает туннель. Закройте его, чтобы TerrieFlow мог подключиться.",
             ));
         }),
         ("home-state-connecting", 840, 720, |ui| {
@@ -1343,14 +1343,14 @@ fn scenarios() -> Vec<Scenario> {
             ready(ui);
             ui.set_conflicting_apps_banner_visible(true);
             ui.set_conflicting_apps_message(s(
-                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с MULTICORE. Закройте его перед подключением.",
+                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с TerrieFlow. Закройте его перед подключением.",
             ));
         }),
         ("home-conflicting-banner", 840, 720, |ui| {
             ready(ui);
             ui.set_conflicting_apps_banner_visible(true);
             ui.set_conflicting_apps_message(s(
-                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с MULTICORE. Закройте его перед подключением.",
+                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с TerrieFlow. Закройте его перед подключением.",
             ));
         }),
         // Realistic worst case: two conflicting apps plus the appended
@@ -1359,14 +1359,14 @@ fn scenarios() -> Vec<Scenario> {
             ready(ui);
             ui.set_conflicting_apps_banner_visible(true);
             ui.set_conflicting_apps_message(s(
-                "Обнаружены другие VPN-приложения (FlClash, Happ): они могут конфликтовать с MULTICORE. Закройте их перед подключением. Закрыть удалось не всё: FlClash запускает свой движок как службу Windows, которую наша кнопка не трогает без повышения прав. Отключитесь в самом приложении перед закрытием или остановите его службу в «Службах Windows».",
+                "Обнаружены другие VPN-приложения (FlClash, Happ): они могут конфликтовать с TerrieFlow. Закройте их перед подключением. Закрыть удалось не всё: FlClash запускает свой движок как службу Windows, которую наша кнопка не трогает без повышения прав. Отключитесь в самом приложении перед закрытием или остановите его службу в «Службах Windows».",
             ));
         }),
         ("home-conflicting-banner-menu-min", 700, 620, |ui| {
             ready(ui);
             ui.set_conflicting_apps_banner_visible(true);
             ui.set_conflicting_apps_message(s(
-                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с MULTICORE. Закройте его перед подключением.",
+                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с TerrieFlow. Закройте его перед подключением.",
             ));
             ui.set_active_panel(s("subscription"));
         }),
@@ -1375,7 +1375,7 @@ fn scenarios() -> Vec<Scenario> {
             offer_update(ui, "0.4.0");
             ui.set_conflicting_apps_banner_visible(true);
             ui.set_conflicting_apps_message(s(
-                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с MULTICORE. Закройте его перед подключением.",
+                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с TerrieFlow. Закройте его перед подключением.",
             ));
         }),
         ("home-handoff-toast", 840, 720, |ui| {
@@ -1650,7 +1650,7 @@ fn scenarios() -> Vec<Scenario> {
             ready(ui);
             ui.set_local_page(s("settings"));
             ui.set_settings_section(s("updates"));
-            ui.set_update_status(s("MULTICORE 0.4.0 доступна"));
+            ui.set_update_status(s("TerrieFlow 0.4.0 доступна"));
             ui.set_update_detail(s("Загрузим подписанный пакет и перезапустим клиент. Активный туннель будет корректно остановлен."));
             ui.set_update_action_label(s("Обновить"));
             ui.set_update_action_enabled(true);
@@ -2122,7 +2122,7 @@ fn tall_settings(ui: &AppWindow) {
     ui.set_preference_error(s(
         "Не удалось сохранить настройки. Изменения применятся только до перезапуска.",
     ));
-    ui.set_update_status(s("MULTICORE 0.4.0 доступна"));
+    ui.set_update_status(s("TerrieFlow 0.4.0 доступна"));
     ui.set_update_detail(s(
         "Загрузим подписанный пакет и перезапустим клиент. Активный туннель будет корректно остановлен.",
     ));

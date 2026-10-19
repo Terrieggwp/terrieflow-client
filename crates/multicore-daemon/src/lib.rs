@@ -1882,7 +1882,7 @@ fn subscription_fetch_api_error(error: FetchError) -> ApiError {
         FetchError::NotSubscription => (
             StatusCode::UNPROCESSABLE_ENTITY,
             "subscription_not_multicore",
-            "По ссылке пришла веб-страница или список ссылок, а не подписка MULTICORE. Скопируйте ссылку подписки для приложения у провайдера."
+            "По ссылке пришла веб-страница или список ссылок, а не подписка TerrieFlow. Скопируйте ссылку подписки для приложения у провайдера."
                 .to_owned(),
         ),
         FetchError::InvalidBundle | FetchError::InvalidConfig => (
@@ -2206,7 +2206,7 @@ async fn run_service_update(
         Err(service_client::ServiceError::Busy) => Err(ApiError::new(
             StatusCode::CONFLICT,
             "service_busy",
-            "MULTICORE уже запущен у другого пользователя.",
+            "TerrieFlow уже запущен у другого пользователя.",
         )),
         // No service to talk to (removed, or not running right now): nothing was attempted.
         Err(
@@ -2352,7 +2352,7 @@ fn service_unavailable() -> ApiError {
     ApiError::new(
         StatusCode::NOT_FOUND,
         "service_unavailable",
-        "Служба MULTICORE недоступна.",
+        "Служба TerrieFlow недоступна.",
     )
 }
 

@@ -58,7 +58,7 @@ pub(crate) fn event_loop_exit_report(detail: &str, action: &str, version: &str) 
         .unwrap_or_default()
         .as_millis();
     format!(
-        "=== event loop stopped {unix_ms} · MULTICORE {version} ({}, {}) ===
+        "=== event loop stopped {unix_ms} · TerrieFlow {version} ({}, {}) ===
 {detail}
 {action}
 
@@ -99,7 +99,7 @@ pub(crate) fn panic_report(info: &std::panic::PanicHookInfo<'_>, version: &str) 
         .unwrap_or_default()
         .as_millis();
     let mut report = format!(
-        "=== panic {unix_ms} · MULTICORE {version} ({}, {}) ===\nthread '{thread}' panicked at {location}:\n{message}\n\nbacktrace:\n{}\n",
+        "=== panic {unix_ms} · TerrieFlow {version} ({}, {}) ===\nthread '{thread}' panicked at {location}:\n{message}\n\nbacktrace:\n{}\n",
         std::env::consts::OS,
         std::env::consts::ARCH,
         std::backtrace::Backtrace::force_capture(),
@@ -251,7 +251,7 @@ mod tests {
             .expect("spawn")
             .join()
             .expect("join");
-        assert!(report.contains("MULTICORE 9.9.9"), "{report}");
+        assert!(report.contains("TerrieFlow 9.9.9"), "{report}");
         assert!(
             report.contains("thread 'multicore-crash-test' panicked at"),
             "{report}"
@@ -294,7 +294,7 @@ mod tests {
             "9.9.9",
         );
         assert!(report.starts_with("=== event loop stopped "), "{report}");
-        assert!(report.contains("MULTICORE 9.9.9"), "{report}");
+        assert!(report.contains("TerrieFlow 9.9.9"), "{report}");
         assert!(
             report.contains(
                 "887a0005

@@ -91,7 +91,7 @@ pub(crate) fn is_reset_request(arguments: &[OsString]) -> bool {
 /// data was reset, i.e. whether a clean app should be started.
 fn reset_while_holding<G>(guard: Option<G>, remove: impl FnOnce()) -> bool {
     let Some(guard) = guard else {
-        eprintln!("MultiCore is still running; data was not removed");
+        eprintln!("TerrieFlow is still running; data was not removed");
         return false;
     };
     remove();
@@ -105,11 +105,11 @@ fn remove_data_directory() {
             if let Err(error) = remove_with_retry(&root, RESET_ATTEMPTS, RESET_DELAY, |path| {
                 std::fs::remove_dir_all(path)
             }) {
-                eprintln!("MultiCore data was not fully removed: {error}");
+                eprintln!("TerrieFlow data was not fully removed: {error}");
             }
         }
-        Ok(_) => eprintln!("MultiCore data directory has an unexpected name; nothing removed"),
-        Err(error) => eprintln!("MultiCore data directory unavailable: {error}"),
+        Ok(_) => eprintln!("TerrieFlow data directory has an unexpected name; nothing removed"),
+        Err(error) => eprintln!("TerrieFlow data directory unavailable: {error}"),
     }
 }
 
@@ -122,7 +122,7 @@ pub(crate) fn run_pending_reset(arguments: &[OsString]) -> bool {
     if reset_while_holding(wait_for_the_old_instance(), remove_data_directory) {
         // Start the real app without the flag, so launch-argument parsing never sees it.
         if let Err(error) = launcher().and_then(|program| Command::new(program).spawn()) {
-            eprintln!("MultiCore could not be started again: {error}");
+            eprintln!("TerrieFlow could not be started again: {error}");
         }
     }
     true
