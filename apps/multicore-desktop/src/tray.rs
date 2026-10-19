@@ -297,7 +297,7 @@ mod native {
     }
 
     fn tooltip(model: &TrayMenuModel) -> String {
-        let value = format!("MULTICORE — {}", model.status);
+        let value = format!("TerrieFlow — {}", model.status);
         value.chars().take(120).collect()
     }
 }
@@ -1323,7 +1323,7 @@ mod linux {
     }
 
     fn tooltip(model: &TrayMenuModel) -> String {
-        let value = format!("MULTICORE — {}", model.status);
+        let value = format!("TerrieFlow — {}", model.status);
         value.chars().take(120).collect()
     }
 

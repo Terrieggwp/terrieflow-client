@@ -1305,8 +1305,8 @@ msgstr "Minimize"
 msgid "Развернуть или восстановить окно"
 msgstr "Maximize or restore window"
 
-msgid "Закрыть MULTICORE"
-msgstr "Close MULTICORE"
+msgid "Закрыть TerrieFlow"
+msgstr "Close TerrieFlow"
 
 msgid "Главная"
 msgstr "Home"
@@ -1671,8 +1671,8 @@ msgstr "Not now"
 msgid "Открыта установленная версия"
 msgstr "Opened the installed version"
 
-msgid "AppImage можно удалить — используется MULTICORE из системы"
-msgstr "You can delete the AppImage — the installed MULTICORE is used"
+msgid "AppImage можно удалить — используется TerrieFlow из системы"
+msgstr "You can delete the AppImage — the installed TerrieFlow is used"
 
 msgid "Повторить загрузку профилей"
 msgstr "Retry loading profiles"
@@ -1713,8 +1713,8 @@ msgstr "FROM YOUR PROVIDER"
 msgid "Закрыть сообщение провайдера"
 msgstr "Close provider message"
 
-msgid "Обновить MULTICORE?"
-msgstr "Update MULTICORE?"
+msgid "Обновить TerrieFlow?"
+msgstr "Update TerrieFlow?"
 
 msgid "Скачаем обновление, не отключая VPN.\nТуннель остановится только после загрузки."
 msgstr "The update downloads with the VPN on.\nThe tunnel stops only after the download."
@@ -1821,11 +1821,11 @@ msgstr "Reinstall Wintun"
 msgid "Переустановить службу"
 msgstr "Reinstall service"
 
-msgid "Удалим сетевой адаптер MULTICORE — при следующем подключении он создастся заново. Понадобятся права администратора; другие VPN и драйвер Wintun не затронутся."
-msgstr "We'll remove the MULTICORE network adapter — it's recreated on the next connect. Needs admin rights; other VPNs and the Wintun driver stay untouched."
+msgid "Удалим сетевой адаптер TerrieFlow — при следующем подключении он создастся заново. Понадобятся права администратора; другие VPN и драйвер Wintun не затронутся."
+msgstr "We'll remove the TerrieFlow network adapter — it's recreated on the next connect. Needs admin rights; other VPNs and the Wintun driver stay untouched."
 
-msgid "Заново зарегистрируем и запустим службу MULTICORE из установленных файлов. Служба перезапустится; понадобятся права администратора."
-msgstr "We'll re-register and start the MULTICORE service from the installed files. The service restarts; admin rights are needed."
+msgid "Заново зарегистрируем и запустим службу TerrieFlow из установленных файлов. Служба перезапустится; понадобятся права администратора."
+msgstr "We'll re-register and start the TerrieFlow service from the installed files. The service restarts; admin rights are needed."
 
 msgid "Да, переустановить"
 msgstr "Yes, reinstall"

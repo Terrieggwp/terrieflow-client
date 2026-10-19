@@ -76,7 +76,11 @@ fn every_executable_embeds_a_version_resource_with_a_task_manager_description() 
         assert!(VERSION_INFO_SOURCE.contains(&format!("VALUE \"{field}\"")));
     }
     for (script, description, file) in [
-        (DESKTOP_BUILD_SCRIPT, "\"MULTICORE\"", "MultiCore.exe"),
+        (
+            DESKTOP_BUILD_SCRIPT,
+            "\"TerrieFlow Client\"",
+            "MultiCore.exe",
+        ),
         (
             DAEMON_BUILD_SCRIPT,
             "\"MULTICORE — фоновый процесс\"",

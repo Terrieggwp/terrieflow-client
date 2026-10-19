@@ -10315,7 +10315,7 @@ mod tests {
         let main = include_str!("main.rs");
 
         for required in [
-            "title: \"MULTICORE\";",
+            "title: \"TerrieFlow\";",
             "in-out property <string> subscription-draft;",
             "in-out property <bool> replace-editor-open: false;",
             "in-out property <int> import-success-serial: 0;",
