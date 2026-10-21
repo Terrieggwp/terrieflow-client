@@ -172,7 +172,7 @@ foreach ($token in @(
     'GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}',
     '-UpdateRepository fatyzzz/multicore `',
     'multicore-windows-x64.zip',
-    'MultiCore-Setup-x64.exe',
+    'TerrieFlow-Setup-x64.exe',
     # 32-bit Windows flavour.
     'rustup target add i686-pc-windows-msvc --toolchain 1.98.1-x86_64-pc-windows-msvc',
     'cargo test --workspace --locked --target i686-pc-windows-msvc',
@@ -308,11 +308,11 @@ Assert-True ($linuxWorkflow.Contains('./scripts/test-linux-package-contract.sh -
 Assert-True ($linuxWorkflow.Contains('./scripts/test-linux-package-contract.sh --stage target/linux-stage-ubuntu --packages dist/linux --formats arch')) `
     'Arch artifacts must be inspected before upload'
 
-foreach ($x86Asset in @("'dist/release/multicore-windows-x86.zip',", "'dist/release/MultiCore-Setup-x86.exe',")) {
+foreach ($x86Asset in @("'dist/release/multicore-windows-x86.zip',", "'dist/release/TerrieFlow-Setup-x86.exe',")) {
     Assert-True ([regex]::Matches($workflow, [regex]::Escape($x86Asset)).Count -eq 2) `
         "x86 asset must appear in the release checksums and the publication stage: $x86Asset"
 }
-foreach ($arm64Asset in @("'dist/release/multicore-windows-arm64.zip',", "'dist/release/MultiCore-Setup-arm64.exe',")) {
+foreach ($arm64Asset in @("'dist/release/multicore-windows-arm64.zip',", "'dist/release/TerrieFlow-Setup-arm64.exe',")) {
     Assert-True ([regex]::Matches($workflow, [regex]::Escape($arm64Asset)).Count -eq 2) `
         "arm64 asset must appear in the release checksums and the publication stage: $arm64Asset"
 }

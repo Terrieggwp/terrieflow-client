@@ -49,17 +49,17 @@
   </tr>
   <tr>
     <td><b>Windows 10/11 · x64</b><br><sub>almost every PC and laptop</sub></td>
-    <td align="center"><a href="https://github.com/fatyzzz/multicore/releases/latest/download/MultiCore-Setup-x64.exe"><img src="https://img.shields.io/badge/Setup-x64-2F81F7?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0zIDUuMSAxMC40IDR2Ny4xSDN6bTAgMTMuOCA3LjQgMS4xdi03LjFIM3ptOC4zIDEuMkwyMSAyMS41di04LjZoLTkuN3ptMC0xNi4ydjcuM0gyMVYyLjV6Ii8+PC9zdmc+" alt="MultiCore-Setup-x64.exe"></a></td>
+    <td align="center"><a href="https://github.com/fatyzzz/multicore/releases/latest/download/TerrieFlow-Setup-x64.exe"><img src="https://img.shields.io/badge/Setup-x64-2F81F7?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0zIDUuMSAxMC40IDR2Ny4xSDN6bTAgMTMuOCA3LjQgMS4xdi03LjFIM3ptOC4zIDEuMkwyMSAyMS41di04LjZoLTkuN3ptMC0xNi4ydjcuM0gyMVYyLjV6Ii8+PC9zdmc+" alt="TerrieFlow-Setup-x64.exe"></a></td>
     <td align="center"><a href="https://github.com/fatyzzz/multicore/releases/latest/download/multicore-windows-x64.zip"><img src="https://img.shields.io/badge/Portable-ZIP%20x64-57606A?style=for-the-badge" alt="multicore-windows-x64.zip"></a></td>
   </tr>
   <tr>
     <td><b>Windows · x86</b><br><sub>32-bit Windows</sub></td>
-    <td align="center"><a href="https://github.com/fatyzzz/multicore/releases/latest/download/MultiCore-Setup-x86.exe"><img src="https://img.shields.io/badge/Setup-x86-2F81F7?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0zIDUuMSAxMC40IDR2Ny4xSDN6bTAgMTMuOCA3LjQgMS4xdi03LjFIM3ptOC4zIDEuMkwyMSAyMS41di04LjZoLTkuN3ptMC0xNi4ydjcuM0gyMVYyLjV6Ii8+PC9zdmc+" alt="MultiCore-Setup-x86.exe"></a></td>
+    <td align="center"><a href="https://github.com/fatyzzz/multicore/releases/latest/download/TerrieFlow-Setup-x86.exe"><img src="https://img.shields.io/badge/Setup-x86-2F81F7?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0zIDUuMSAxMC40IDR2Ny4xSDN6bTAgMTMuOCA3LjQgMS4xdi03LjFIM3ptOC4zIDEuMkwyMSAyMS41di04LjZoLTkuN3ptMC0xNi4ydjcuM0gyMVYyLjV6Ii8+PC9zdmc+" alt="TerrieFlow-Setup-x86.exe"></a></td>
     <td align="center"><a href="https://github.com/fatyzzz/multicore/releases/latest/download/multicore-windows-x86.zip"><img src="https://img.shields.io/badge/Portable-ZIP%20x86-57606A?style=for-the-badge" alt="multicore-windows-x86.zip"></a></td>
   </tr>
   <tr>
     <td><b>Windows · ARM64</b>&nbsp;<sup>beta</sup><br><sub>Snapdragon and other ARM laptops</sub></td>
-    <td align="center"><a href="https://github.com/fatyzzz/multicore/releases/latest/download/MultiCore-Setup-arm64.exe"><img src="https://img.shields.io/badge/Setup-ARM64-2F81F7?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0zIDUuMSAxMC40IDR2Ny4xSDN6bTAgMTMuOCA3LjQgMS4xdi03LjFIM3ptOC4zIDEuMkwyMSAyMS41di04LjZoLTkuN3ptMC0xNi4ydjcuM0gyMVYyLjV6Ii8+PC9zdmc+" alt="MultiCore-Setup-arm64.exe"></a></td>
+    <td align="center"><a href="https://github.com/fatyzzz/multicore/releases/latest/download/TerrieFlow-Setup-arm64.exe"><img src="https://img.shields.io/badge/Setup-ARM64-2F81F7?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0zIDUuMSAxMC40IDR2Ny4xSDN6bTAgMTMuOCA3LjQgMS4xdi03LjFIM3ptOC4zIDEuMkwyMSAyMS41di04LjZoLTkuN3ptMC0xNi4ydjcuM0gyMVYyLjV6Ii8+PC9zdmc+" alt="TerrieFlow-Setup-arm64.exe"></a></td>
     <td align="center"><a href="https://github.com/fatyzzz/multicore/releases/latest/download/multicore-windows-arm64.zip"><img src="https://img.shields.io/badge/Portable-ZIP%20ARM64-57606A?style=for-the-badge" alt="multicore-windows-arm64.zip"></a></td>
   </tr>
   <tr>
@@ -167,7 +167,7 @@ MULTICORE requests the subscription with three User-Agents: `multicore-json-mass
 Every release ships `RELEASE-SHA256SUMS.txt`:
 
 ```powershell
-Get-FileHash .\MultiCore-Setup-x64.exe -Algorithm SHA256   # Windows
+Get-FileHash .\TerrieFlow-Setup-x64.exe -Algorithm SHA256   # Windows
 ```
 
 ```sh

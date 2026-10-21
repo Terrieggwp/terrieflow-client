@@ -23,7 +23,7 @@ elevation.
 ## Install or run
 
 - Portable: keep the generated directory intact and run `MultiCore.exe`.
-- Installer: run `MultiCore-Setup-x64.exe`. It installs to
+- Installer: run `TerrieFlow-Setup-x64.exe`. It installs to
   `%LOCALAPPDATA%\Programs\MultiCore\current` and can add an HKCU autostart entry.
   Setup speaks Russian on a Russian Windows UI and English on any other.
 - Source checkout: build with the commands below, then use the packaging script;

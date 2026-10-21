@@ -42,6 +42,8 @@ mod troubleshoot;
 mod updater;
 mod view_model;
 mod windows_settings;
+#[cfg(windows)]
+mod windows_identity;
 mod windows_shell;
 
 use multicore_i18n::tr;
@@ -819,6 +821,8 @@ fn main() -> Result<(), slint::PlatformError> {
     // First of all: a panic anywhere below is written to logs/crash.log instead of only
     // closing the app.
     crash_log::install();
+    #[cfg(windows)]
+    windows_identity::set_process_app_id();
     // Before the single-instance guard: the resetting process waits for the old instance to
     // exit, deletes the data directory and starts a clean app itself.
     if data_reset::run_pending_reset(&std::env::args_os().skip(1).collect::<Vec<_>>()) {

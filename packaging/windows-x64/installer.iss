@@ -7,6 +7,9 @@
 #ifndef AppVersion
   #error AppVersion must be provided by build-windows-installer.ps1
 #endif
+#ifndef SetupIconPath
+  #error SetupIconPath must point at the TerrieFlow setup icon
+#endif
 ; x64 (default), x86 (the 32-bit flavour for 32-bit Windows, installed in 32-bit mode) or arm64
 ; (Windows on ARM, installed in 64-bit mode like x64).
 #ifndef Arch
@@ -43,18 +46,18 @@ UsePreviousLanguage=no
 #if Arch == "x64"
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-OutputBaseFilename=MultiCore-Setup-x64
+OutputBaseFilename=TerrieFlow-Setup-x64
 #elif Arch == "arm64"
 ; Same AppId, folders and 64-bit uninstall entry as x64, so on Windows on ARM it replaces an
 ; (emulated) x64 install in place. ARM64 Windows only: an x64 or x86 PC refuses this installer.
 ArchitecturesAllowed=arm64
 ArchitecturesInstallIn64BitMode=arm64
-OutputBaseFilename=MultiCore-Setup-arm64
+OutputBaseFilename=TerrieFlow-Setup-arm64
 #else
 ; Same AppId as x64. Always 32-bit install mode: {commonpf} is Program Files (x86) on 64-bit
 ; Windows, Program Files on 32-bit Windows; the uninstall entry lives in the 32-bit view.
 ArchitecturesAllowed=x86compatible
-OutputBaseFilename=MultiCore-Setup-x86
+OutputBaseFilename=TerrieFlow-Setup-x86
 #endif
 OutputDir={#OutputDir}
 Compression=lzma2/ultra64
@@ -63,7 +66,8 @@ WizardStyle=modern
 CloseApplications=yes
 CloseApplicationsFilter=MultiCore.exe,multicore-daemon.exe,multicore-updater.exe,multicore-core-host.exe,mihomo.exe,xray.exe
 RestartApplications=no
-UninstallDisplayIcon={app}\current\MultiCore.exe
+UninstallDisplayIcon={app}\TerrieFlow.ico
+SetupIconFile={#SetupIconPath}
 VersionInfoVersion={#AppVersion}
 VersionInfoProductName={#AppName}
 VersionInfoProductVersion={#AppVersion}
@@ -124,12 +128,12 @@ russian.X86RemoveFailed=Не удалось удалить 32-битный Terri
 english.X86RemoveFailed=Could not remove the 32-bit TerrieFlow. Remove it in Settings → Apps and run Setup again.
 russian.X86SetupOn64BitWindows=Это 32-битная версия TerrieFlow. На 64-битной Windows лучше установить %1: 32-битная версия работает, но медленнее и может дольше поднимать TUN.%n%nВсё равно установить 32-битную версию?
 english.X86SetupOn64BitWindows=This is the 32-bit TerrieFlow. On 64-bit Windows, %1 fits better: the 32-bit version works, but slower, and TUN may take longer to start.%n%nInstall the 32-bit version anyway?
-russian.X64SetupOnArm64=Это версия TerrieFlow для x64. На Windows для ARM лучше установить MultiCore-Setup-arm64.exe: версия x64 работает здесь только через эмуляцию, медленнее и расходует больше заряда.%n%nВсё равно установить версию x64?
-english.X64SetupOnArm64=This is TerrieFlow for x64. On Windows on ARM, MultiCore-Setup-arm64.exe fits better: x64 runs here only emulated, slower and with more battery drain.%n%nInstall the x64 version anyway?
+russian.X64SetupOnArm64=Это версия TerrieFlow для x64. На Windows для ARM лучше установить TerrieFlow-Setup-arm64.exe: версия x64 работает здесь только через эмуляцию, медленнее и расходует больше заряда.%n%nВсё равно установить версию x64?
+english.X64SetupOnArm64=This is TerrieFlow for x64. On Windows on ARM, TerrieFlow-Setup-arm64.exe fits better: x64 runs here only emulated, slower and with more battery drain.%n%nInstall the x64 version anyway?
 russian.X64InstallPresent=На этом компьютере уже установлен 64-битный TerrieFlow. Установите %1 или сначала удалите TerrieFlow в «Параметры → Приложения».
 english.X64InstallPresent=The 64-bit TerrieFlow is already installed on this PC. Install %1, or first remove TerrieFlow in Settings → Apps.
-russian.Arm64InstallPresent=На этом компьютере уже установлен TerrieFlow для ARM64. Установите MultiCore-Setup-arm64.exe или сначала удалите TerrieFlow в «Параметры → Приложения».
-english.Arm64InstallPresent=TerrieFlow for ARM64 is already installed on this PC. Install MultiCore-Setup-arm64.exe, or first remove TerrieFlow in Settings → Apps.
+russian.Arm64InstallPresent=На этом компьютере уже установлен TerrieFlow для ARM64. Установите TerrieFlow-Setup-arm64.exe или сначала удалите TerrieFlow в «Параметры → Приложения».
+english.Arm64InstallPresent=TerrieFlow for ARM64 is already installed on this PC. Install TerrieFlow-Setup-arm64.exe, or first remove TerrieFlow in Settings → Apps.
 russian.ServiceDirOnly=Со службой TerrieFlow устанавливается только в %1.
 english.ServiceDirOnly=With the service, TerrieFlow installs only to %1.
 russian.DeleteDataPrompt=Удалить подписки и настройки?
@@ -142,6 +146,7 @@ Name: "cleandata"; Description: "{cm:CleanDataTask}"; GroupDescription: "{cm:Dat
 
 [Files]
 Source: "{#PayloadDir}\*"; DestDir: "{app}\current"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SetupIconPath}"; DestDir: "{app}"; DestName: "TerrieFlow.ico"; Flags: ignoreversion
 
 [InstallDelete]
 ; Up to 1.1.1 the shortcuts were "MultiCore.lnk". NTFS is case-insensitive, so writing
@@ -150,8 +155,8 @@ Type: files; Name: "{autoprograms}\MultiCore.lnk"
 Type: files; Name: "{autodesktop}\MultiCore.lnk"; Tasks: desktopicon
 
 [Icons]
-Name: "{autoprograms}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"
-Name: "{autodesktop}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"; Tasks: desktopicon
+Name: "{autoprograms}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"; IconFilename: "{app}\TerrieFlow.ico"
+Name: "{autodesktop}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"; IconFilename: "{app}\TerrieFlow.ico"; Tasks: desktopicon
 
 [Registry]
 ; Service mode: an elevated Setup may run as another account (a standard user typing an
@@ -711,9 +716,9 @@ end;
 function Native64BitSetupName: String;
 begin
   if IsArm64 then
-    Result := 'MultiCore-Setup-arm64.exe'
+    Result := 'TerrieFlow-Setup-arm64.exe'
   else
-    Result := 'MultiCore-Setup-x64.exe';
+    Result := 'TerrieFlow-Setup-x64.exe';
 end;
 
 { The 32-bit installer (32-bit install mode) on 64-bit Windows: a 64-bit installer fits better. }

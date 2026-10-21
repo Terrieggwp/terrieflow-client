@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PackagePath,
     [string]$OutputDirectory = 'dist\release',
-    [string]$AppVersion = '1.1.15',
+    [string]$AppVersion = '1.1.16',
     [string]$CompilerPath,
     # x64 (default), x86 or arm64; the payload must be the package built for the same flavour.
     [ValidateSet('x64', 'x86', 'arm64')]
@@ -147,10 +147,14 @@ if ([string]$payloadManifest.platform -cne "windows-$Architecture") {
 }
 
 $compiler = Resolve-Compiler $CompilerPath
+$setupIconPath = Get-FullPath (Join-Path $RepositoryRoot 'brand\TerrieFlow_Logo_Kit\05_favicon\favicon.ico')
+if (-not (Test-Path -LiteralPath $setupIconPath -PathType Leaf)) {
+    throw "TerrieFlow setup icon is missing: $setupIconPath"
+}
 $output = Get-FullPath $OutputDirectory
 Assert-NoReparseAncestor $output
 if (-not (Test-Path -LiteralPath $output)) { New-Item -ItemType Directory -Path $output | Out-Null }
-$installerName = "MultiCore-Setup-$Architecture.exe"
+$installerName = "TerrieFlow-Setup-$Architecture.exe"
 $finalPath = Join-Path $output $installerName
 if (Test-Path -LiteralPath $finalPath) { throw "Refusing to overwrite existing installer: $finalPath" }
 
@@ -161,6 +165,7 @@ try {
         "/DPayloadDir=$payload",
         "/DOutputDir=$temporaryOutput",
         "/DAppVersion=$AppVersion",
+        "/DSetupIconPath=$setupIconPath",
         "/DArch=$Architecture",
         '/Qp',
         $DefinitionPath

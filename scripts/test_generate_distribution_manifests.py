@@ -11,9 +11,9 @@ import generate_distribution_manifests as manifests  # noqa: E402
 
 VERSION = "9.8.7"
 DIGESTS = {
-    "MultiCore-Setup-x64.exe": "a" * 64,
-    "MultiCore-Setup-x86.exe": "b" * 64,
-    "MultiCore-Setup-arm64.exe": "c" * 64,
+    "TerrieFlow-Setup-x64.exe": "a" * 64,
+    "TerrieFlow-Setup-x86.exe": "b" * 64,
+    "TerrieFlow-Setup-arm64.exe": "c" * 64,
     f"multicore-{VERSION}-1-x86_64.pkg.tar.zst": "d" * 64,
     "multicore-x86_64.pkg.tar.zst": "d" * 64,
     "multicore-windows-x64.zip": "e" * 64,
@@ -46,7 +46,7 @@ class GenerateTest(unittest.TestCase):
         base = f"https://github.com/fatyzzz/multicore/releases/download/v{VERSION}"
         for arch, digest in [("x64", "A"), ("x86", "B"), ("arm64", "C")]:
             self.assertIn(
-                f"- Architecture: {arch}\n  InstallerUrl: {base}/MultiCore-Setup-{arch}.exe\n"
+                f"- Architecture: {arch}\n  InstallerUrl: {base}/TerrieFlow-Setup-{arch}.exe\n"
                 f"  InstallerSha256: {digest * 64}\n",
                 installer,
             )
@@ -105,11 +105,11 @@ class GenerateTest(unittest.TestCase):
             "".join(
                 f"{digest}  {name}\n"
                 for name, digest in DIGESTS.items()
-                if name != "MultiCore-Setup-arm64.exe"
+                if name != "TerrieFlow-Setup-arm64.exe"
             ),
             encoding="utf-8",
         )
-        with self.assertRaisesRegex(manifests.ManifestError, "MultiCore-Setup-arm64.exe"):
+        with self.assertRaisesRegex(manifests.ManifestError, "TerrieFlow-Setup-arm64.exe"):
             self.generate()
         self.assertFalse(self.output.exists())
         with self.assertRaisesRegex(manifests.ManifestError, "release version"):

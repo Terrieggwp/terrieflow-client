@@ -144,9 +144,9 @@ def generate(version, checksums, output, repository=DEFAULT_REPOSITORY, release_
         "DOWNLOAD_BASE_PKGVER": f"https://github.com/{repository}/releases/download/v${{pkgver}}",
         "RELEASE_PAGE": f"https://github.com/{repository}/releases/tag/v{version}",
         # winget expects upper-case digests, makepkg lower-case ones.
-        "SHA256_SETUP_X64": required(digests, "MultiCore-Setup-x64.exe").upper(),
-        "SHA256_SETUP_X86": required(digests, "MultiCore-Setup-x86.exe").upper(),
-        "SHA256_SETUP_ARM64": required(digests, "MultiCore-Setup-arm64.exe").upper(),
+        "SHA256_SETUP_X64": required(digests, "TerrieFlow-Setup-x64.exe").upper(),
+        "SHA256_SETUP_X86": required(digests, "TerrieFlow-Setup-x86.exe").upper(),
+        "SHA256_SETUP_ARM64": required(digests, "TerrieFlow-Setup-arm64.exe").upper(),
         "SHA256_ARCH": required(digests, f"multicore-{version}-1-x86_64.pkg.tar.zst"),
     }
 

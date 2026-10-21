@@ -43,21 +43,24 @@ foreach ($token in @(
     'PrivilegesRequired=admin',
     'ArchitecturesAllowed=x64compatible',
     'ArchitecturesInstallIn64BitMode=x64compatible',
-    'OutputBaseFilename=MultiCore-Setup-x64',
+    'OutputBaseFilename=TerrieFlow-Setup-x64',
     # The 32-bit flavour: same definition, 32-bit install mode on any x86-compatible Windows.
     '#define Arch "x64"',
     '#if Arch == "x64"',
     'ArchitecturesAllowed=x86compatible',
-    'OutputBaseFilename=MultiCore-Setup-x86',
+    'OutputBaseFilename=TerrieFlow-Setup-x86',
     # The ARM64 flavour: ARM64 Windows only (an x64 or x86 PC refuses it), 64-bit install mode,
     # so it shares Program Files and the 64-bit uninstall entry with x64.
     '#elif Arch == "arm64"',
     'ArchitecturesAllowed=arm64',
     'ArchitecturesInstallIn64BitMode=arm64',
-    'OutputBaseFilename=MultiCore-Setup-arm64',
+    'OutputBaseFilename=TerrieFlow-Setup-arm64',
     '#error Arch must be x64, x86 or arm64',
     'CloseApplications=yes',
-    'UninstallDisplayIcon={app}\current\MultiCore.exe',
+    'UninstallDisplayIcon={app}\TerrieFlow.ico',
+    'SetupIconFile={#SetupIconPath}',
+    'DestName: "TerrieFlow.ico"',
+    'IconFilename: "{app}\TerrieFlow.ico"',
     'DestDir: "{app}\current"',
     'Name: "desktopicon"',
     'Name: "autostart"',
@@ -82,7 +85,7 @@ foreach ($token in @(
 }
 
 foreach ($forbiddenToken in @(
-    'DestDir: "{app}"',
+    'Source: "{#PayloadDir}\*"; DestDir: "{app}"',
     'UninstallDisplayIcon={app}\MultiCore.exe',
     'Filename: "{app}\MultiCore.exe"',
     'ValueData: "{app}\MultiCore.exe,0"',
@@ -98,13 +101,14 @@ foreach ($token in @(
     '[switch]$ValidateOnly',
     'SHA256SUMS.txt',
     "[ValidateSet('x64', 'x86', 'arm64')]",
-    '"MultiCore-Setup-$Architecture.exe"',
+    '"TerrieFlow-Setup-$Architecture.exe"',
     '"/DArch=$Architecture"',
     '[string]$payloadManifest.platform -cne "windows-$Architecture"',
     'ISCC.exe',
     '/DPayloadDir=',
     '/DOutputDir=',
-    '/DAppVersion='
+    '/DAppVersion=',
+    '/DSetupIconPath='
 )) {
     Assert-True ($builder.Contains($token)) "installer builder is missing: $token"
 }
@@ -200,7 +204,7 @@ try {
             [IO.File]::WriteAllLines((Join-Path $flavourPayload 'SHA256SUMS.txt'), $flavourLines, [Text.UTF8Encoding]::new($false))
             $flavourOutput = Join-Path $testRoot "installer-$arch"
             & $BuilderPath -Architecture $arch -PackagePath $flavourPayload -OutputDirectory $flavourOutput -AppVersion '0.1.0' -CompilerPath $compiler | Out-Null
-            Assert-True (Test-Path -LiteralPath (Join-Path $flavourOutput "MultiCore-Setup-$arch.exe") -PathType Leaf) "the $arch installer must compile as MultiCore-Setup-$arch.exe"
+            Assert-True (Test-Path -LiteralPath (Join-Path $flavourOutput "TerrieFlow-Setup-$arch.exe") -PathType Leaf) "the $arch installer must compile as TerrieFlow-Setup-$arch.exe"
             $other = if ($arch -ceq 'x64') { 'arm64' } else { 'x64' }
             $failed = $false
             try { & $BuilderPath -Architecture $other -PackagePath $flavourPayload -OutputDirectory $flavourOutput -AppVersion '0.1.0' -CompilerPath $compiler | Out-Null } catch { $failed = $true }

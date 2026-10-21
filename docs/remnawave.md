@@ -98,7 +98,7 @@ MultiCore всегда отправляет `x-hwid`, `x-device-os`, `x-ver-os` 
 ```
 
 - **Иконки и цвета.** `svgIconKey` и `svgIconColor` замените на ключи и цвета, которые есть в `svgLibrary` вашего конфига.
-- **Ссылка на установщик.** `…/releases/latest/download/MultiCore-Setup-x64.exe` всегда указывает на свежую версию.
+- **Ссылка на установщик.** `…/releases/latest/download/TerrieFlow-Setup-x64.exe` всегда указывает на свежую версию.
 - **Linux.** Лучше ссылайтесь на [страницу релизов](https://github.com/fatyzzz/multicore/releases/latest): в именах пакетов есть номер версии.
 
 ## Проверка

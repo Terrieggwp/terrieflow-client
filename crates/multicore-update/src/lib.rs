@@ -55,9 +55,9 @@ impl WindowsArch {
     /// Inno Setup installer asset.
     pub const fn installer_asset_name(self) -> &'static str {
         match self {
-            Self::X64 => "MultiCore-Setup-x64.exe",
-            Self::X86 => "MultiCore-Setup-x86.exe",
-            Self::Arm64 => "MultiCore-Setup-arm64.exe",
+            Self::X64 => "TerrieFlow-Setup-x64.exe",
+            Self::X86 => "TerrieFlow-Setup-x86.exe",
+            Self::Arm64 => "TerrieFlow-Setup-arm64.exe",
         }
     }
 

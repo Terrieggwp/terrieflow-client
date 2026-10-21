@@ -278,15 +278,15 @@ fn appimage_release_rejects_missing_or_foreign_assets() {
 fn the_installer_asset_is_parsed_from_the_pinned_repository() {
     assert_eq!(
         WindowsArch::X64.installer_asset_name(),
-        "MultiCore-Setup-x64.exe"
+        "TerrieFlow-Setup-x64.exe"
     );
     assert_eq!(
         WindowsArch::X86.installer_asset_name(),
-        "MultiCore-Setup-x86.exe"
+        "TerrieFlow-Setup-x86.exe"
     );
     assert_eq!(
         WindowsArch::Arm64.installer_asset_name(),
-        "MultiCore-Setup-arm64.exe"
+        "TerrieFlow-Setup-arm64.exe"
     );
     let repository = Repository::parse("fatyzzz/multicore-releases").unwrap();
     let digest = "a".repeat(64);
@@ -294,28 +294,28 @@ fn the_installer_asset_is_parsed_from_the_pinned_repository() {
     let arm64_digest = "f".repeat(64);
     let body = format!(
         r#"{{"tag_name":"v1.1.0","html_url":"https://github.com/fatyzzz/multicore-releases/releases/tag/v1.1.0",
-            "assets":[{{"name":"MultiCore-Setup-x64.exe","size":1000,
-            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v1.1.0/MultiCore-Setup-x64.exe",
+            "assets":[{{"name":"TerrieFlow-Setup-x64.exe","size":1000,
+            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v1.1.0/TerrieFlow-Setup-x64.exe",
             "digest":"sha256:{digest}"}},
-            {{"name":"MultiCore-Setup-x86.exe","size":900,
-            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v1.1.0/MultiCore-Setup-x86.exe",
+            {{"name":"TerrieFlow-Setup-x86.exe","size":900,
+            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v1.1.0/TerrieFlow-Setup-x86.exe",
             "digest":"sha256:{x86_digest}"}},
-            {{"name":"MultiCore-Setup-arm64.exe","size":950,
-            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v1.1.0/MultiCore-Setup-arm64.exe",
+            {{"name":"TerrieFlow-Setup-arm64.exe","size":950,
+            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v1.1.0/TerrieFlow-Setup-arm64.exe",
             "digest":"sha256:{arm64_digest}"}}]}}"#
     );
     let x64 = GitHubRelease::parse_installer_for_arch(body.as_bytes(), WindowsArch::X64).unwrap();
     assert!(
         x64.asset()
             .download_url()
-            .ends_with("/MultiCore-Setup-x64.exe")
+            .ends_with("/TerrieFlow-Setup-x64.exe")
     );
     assert_eq!(x64.asset().sha256_hex(), digest);
     let x86 = GitHubRelease::parse_installer_for_arch(body.as_bytes(), WindowsArch::X86).unwrap();
     assert!(
         x86.asset()
             .download_url()
-            .ends_with("/MultiCore-Setup-x86.exe")
+            .ends_with("/TerrieFlow-Setup-x86.exe")
     );
     assert_eq!(x86.asset().sha256_hex(), x86_digest);
     let arm64 =
@@ -324,11 +324,11 @@ fn the_installer_asset_is_parsed_from_the_pinned_repository() {
         arm64
             .asset()
             .download_url()
-            .ends_with("/MultiCore-Setup-arm64.exe")
+            .ends_with("/TerrieFlow-Setup-arm64.exe")
     );
     assert_eq!(arm64.asset().sha256_hex(), arm64_digest);
     // Each flavour's installer only: without the ARM64 installer an ARM64 client gets none.
-    let without_arm64 = body.replace("MultiCore-Setup-arm64.exe", "MultiCore-Setup-other.exe");
+    let without_arm64 = body.replace("TerrieFlow-Setup-arm64.exe", "TerrieFlow-Setup-other.exe");
     assert!(
         GitHubRelease::parse_installer_for_arch(without_arm64.as_bytes(), WindowsArch::Arm64)
             .is_err()

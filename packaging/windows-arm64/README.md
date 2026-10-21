@@ -25,7 +25,7 @@ diagnostics are bounded, redacted, and currently retained in memory rather than
 written to a promised persistent log.
 
 Runtime data lives under `%LOCALAPPDATA%\MultiCore`; update downloads are under
-`%LOCALAPPDATA%\MultiCore\updates`. `MultiCore-Setup-arm64.exe` runs only on ARM64
+`%LOCALAPPDATA%\MultiCore\updates`. `TerrieFlow-Setup-arm64.exe` runs only on ARM64
 Windows (an x64 or x86 PC refuses it) and installs this bundle beneath
 `%LOCALAPPDATA%\Programs\MultiCore\current` (without the service) or, with the
 service, beneath `Program Files\MultiCore`: the same folders and uninstall entry as
