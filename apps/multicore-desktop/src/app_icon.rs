@@ -82,22 +82,34 @@ mod tests {
     }
 
     #[test]
-    fn app_icon_is_rgba_with_the_terrieflow_colours() {
+    fn app_icon_is_transparent_rgba_with_the_terrieflow_colours() {
         let pixels = rgba(TRAY_ICON_SIZE);
         assert_eq!(pixels.len(), (TRAY_ICON_SIZE * TRAY_ICON_SIZE * 4) as usize);
 
         let mut has_blue = false;
         let mut has_neutral = false;
-        let mut has_midnight = false;
+        let mut has_transparency = false;
         for pixel in pixels.as_chunks::<4>().0 {
             has_blue |= pixel[2] > 180 && pixel[0] < 120 && pixel[3] > 200;
             has_neutral |= pixel[0] > 190 && pixel[1] > 190 && pixel[2] > 190 && pixel[3] > 200;
-            has_midnight |= pixel[0] < 30 && pixel[1] < 35 && pixel[2] < 60 && pixel[3] > 200;
+            has_transparency |= pixel[3] == 0;
         }
 
         assert!(has_blue);
         assert!(has_neutral);
-        assert!(has_midnight);
+        assert!(has_transparency);
+        for (x, y) in [
+            (0, 0),
+            (TRAY_ICON_SIZE - 1, 0),
+            (0, TRAY_ICON_SIZE - 1),
+            (TRAY_ICON_SIZE - 1, TRAY_ICON_SIZE - 1),
+        ] {
+            let alpha = pixels[((y * TRAY_ICON_SIZE + x) * 4 + 3) as usize];
+            assert_eq!(
+                alpha, 0,
+                "app icon corner ({x}, {y}) must stay transparent"
+            );
+        }
     }
 
     #[test]

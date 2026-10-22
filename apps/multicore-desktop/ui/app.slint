@@ -3363,24 +3363,12 @@ export component AppWindow inherits Window {
 
                                 HorizontalLayout {
                                     alignment: center;
-                                    Rectangle {
-                                        width: 64px;
+                                    Image {
+                                        width: 82px;
                                         height: 64px;
-                                        border-radius: 18px;
-                                        background: @radial-gradient(circle 54px at 32px 29px, #159fff38 0%, Theme.elevated 72%);
-                                        border-color: Theme.line-accent;
-                                        border-width: 1px;
-                                        drop-shadow-blur: 22px;
-                                        drop-shadow-color: #159fff4d;
-                                        Image {
-                                            x: 10px;
-                                            y: 10px;
-                                            width: 44px;
-                                            height: 44px;
-                                            source: @image-url("../assets/app-icon.svg");
-                                            image-fit: contain;
-                                            accessible-role: none;
-                                        }
+                                        source: @image-url("../assets/app-icon.svg");
+                                        image-fit: contain;
+                                        accessible-role: none;
                                     }
                                 }
                                 Rectangle { height: 22px; background: transparent; }

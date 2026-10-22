@@ -147,7 +147,7 @@ if ([string]$payloadManifest.platform -cne "windows-$Architecture") {
 }
 
 $compiler = Resolve-Compiler $CompilerPath
-$setupIconPath = Get-FullPath (Join-Path $RepositoryRoot 'brand\TerrieFlow_Logo_Kit\05_favicon\favicon.ico')
+$setupIconPath = Get-FullPath (Join-Path $RepositoryRoot 'brand\TerrieFlow_Logo_Kit\02_compact_symbol\terrieflow-symbol.ico')
 if (-not (Test-Path -LiteralPath $setupIconPath -PathType Leaf)) {
     throw "TerrieFlow setup icon is missing: $setupIconPath"
 }
