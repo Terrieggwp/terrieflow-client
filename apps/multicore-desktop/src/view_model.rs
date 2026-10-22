@@ -9258,10 +9258,10 @@ mod tests {
     }
 
     #[test]
-    fn home_background_is_bounded_pausable_and_non_interactive() {
+    fn ambient_background_is_smooth_bounded_pausable_and_non_interactive() {
         let source = &include_str!("../ui/app.slint").replace("\r\n", "\n");
         let components = include_str!("../ui/components.slint");
-        // No per-frame property animation drives the waves (that redrew at 60 fps).
+        // One gated 60 fps clock drives every ambient wave; hidden windows do no work.
         assert!(!source.contains("ambient-wave-phase"));
 
         for required in [
@@ -9269,10 +9269,10 @@ mod tests {
             "in-out property <bool> shell-active",
             "in property <bool> reduced-motion",
             "wave-step-timer := Timer",
-            "interval: 250ms;\n        running: root.ambient-motion-active;",
-            "root.ambient-wave-step = Math.mod(root.ambient-wave-step + 1, 96);",
-            "private property <float> ambient-wave-t: (1 - Math.cos(root.ambient-wave-step / 96 * 360deg)) / 2;",
-            "private property <bool> ambient-motion-active: root.ambient-background-enabled && root.shell-active && root.window-active && !root.reduced-motion && !root.minimized && root.visible-page == \"home\"",
+            "interval: 16ms;\n        running: root.ambient-motion-active;",
+            "root.ambient-wave-step = Math.mod(root.ambient-wave-step + 1, 1500);",
+            "private property <float> ambient-wave-t: (1 - Math.cos(root.ambient-wave-step / 1500 * 360deg)) / 2;",
+            "private property <bool> ambient-motion-active: root.ambient-background-enabled && root.shell-active && root.window-active && !root.reduced-motion && !root.minimized;",
         ] {
             assert!(
                 source.contains(required),
@@ -9335,10 +9335,10 @@ mod tests {
         ] {
             assert!(wave_b.contains(required), "wave B missing: {required}");
         }
-        // The connection module is a flat surface; state lives in its hairline and badge.
-        assert!(source.contains("background: root.has-profile ? Theme.surface : #101721;"));
+        // The connection module carries state through a restrained navy gradient and hairline.
+        assert!(source.contains("? @linear-gradient(110deg, #0b2d34 0%, #0b2537 58%, #0a1b31 100%)"));
         assert!(components.contains(
-            "background: root.selected ? Theme.elevated : row-touch.has-hover && root.enabled ? #ffffff06 : transparent;"
+            "background: root.selected ? Theme.raised : row-touch.has-hover && root.enabled ? #159fff0f : transparent;"
         ));
         assert!(!components.contains("#172433"));
         assert!(home_layer.contains("ambient-pointer-glow := Rectangle"));
