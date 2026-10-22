@@ -1,22 +1,31 @@
-// MultiCore Native Control Center: restrained Windows-native dark surfaces.
+// TerrieFlow Depth & Glow: dark navy layers with restrained cyan illumination.
+// Keep these colors centralized: the desktop window and the tray share the same
+// visual hierarchy and must never drift into separate themes.
 export global Theme {
-    out property <color> void: #0d0f12;
-    out property <color> canvas: #0d0f12;
-    out property <color> surface: #15181d;
-    out property <color> elevated: #1c2026;
-    out property <color> line: #2a3038;
+    out property <color> void: #030914;
+    out property <color> canvas: #06101f;
+    out property <color> surface: #08182b;
+    out property <color> elevated: #0c2037;
+    out property <color> raised: #102a46;
+    out property <color> active-surface: #123c66;
+    out property <color> line: #1b3c59;
+    out property <color> line-soft: #15324c;
+    out property <color> line-accent: #159fff8c;
 
-    out property <color> text-primary: #f3f5f7;
-    out property <color> text-secondary: #d5dbe2;
-    out property <color> text-muted: #9ca5b1;
+    out property <color> text-primary: #f3f7ff;
+    out property <color> text-secondary: #c8d7ea;
+    out property <color> text-muted: #8fa5c1;
 
-    out property <color> accent-blue: #4c9dff;
-    out property <color> accent-blue-hover: #69adff;
-    out property <color> accent-blue-pressed: #3488ec;
-    out property <color> accent-green: #3ccb7f;
-    out property <color> warning: #e7aa45;
-    out property <color> error: #f06a6a;
-    out property <color> focus: #83bdff;
+    out property <color> accent-blue: #159fff;
+    out property <color> accent-blue-hover: #35d5ff;
+    out property <color> accent-blue-pressed: #0b7ed1;
+    out property <color> accent-cyan: #35d5ff;
+    out property <color> accent-teal: #17c9b4;
+    out property <color> accent-green: #18dfa1;
+    out property <color> warning: #f3c34a;
+    out property <color> high-latency: #fb923c;
+    out property <color> error: #f0526a;
+    out property <color> focus: #6ce4ff;
 
     out property <string> font-family: "Segoe UI Variable Text";
     out property <string> emoji-font-family: "Twemoji Mozilla";
@@ -31,9 +40,9 @@ export global Theme {
     out property <int> weight-bold: 700;
 
     out property <length> radius-small: 8px;
-    out property <length> radius-medium: 8px;
-    out property <length> radius-large: 12px;
-    out property <length> radius-panel: 12px;
+    out property <length> radius-medium: 12px;
+    out property <length> radius-large: 16px;
+    out property <length> radius-panel: 18px;
 
     out property <length> space-1: 4px;
     out property <length> space-2: 8px;

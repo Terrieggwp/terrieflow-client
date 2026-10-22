@@ -95,15 +95,17 @@ component NavItem inherits Rectangle {
 
     height: root.compact ? 44px : 40px;
     animate height { duration: 180ms; easing: ease-in-out; }
-    background: root.active ? Theme.elevated : nav-touch.has-hover ? #ffffff08 : transparent;
-    border-radius: 8px;
-    border-width: nav-focus.has-focus ? 2px : 0px;
-    border-color: Theme.focus;
+    background: root.active ? Theme.raised : nav-touch.has-hover ? #159fff14 : transparent;
+    border-radius: 12px;
+    border-width: nav-focus.has-focus ? 2px : root.active ? 1px : 0px;
+    border-color: nav-focus.has-focus ? Theme.focus : Theme.line-accent;
+    drop-shadow-blur: root.active ? 14px : 0px;
+    drop-shadow-color: root.active ? #159fff26 : transparent;
     accessible-role: button;
     accessible-label: root.label;
     accessible-enabled: root.enabled;
     accessible-action-default => { if (root.enabled) { root.activated(); } }
-    animate background { duration: 140ms; easing: ease-out; }
+    animate background, border-color, drop-shadow-blur { duration: 160ms; easing: ease-out; }
 
     Rectangle {
         x: 0;
@@ -260,8 +262,8 @@ component SmallAction inherits Rectangle {
     max-width: 160px;
     horizontal-stretch: 0;
     height: 44px;
-    background: root.selected ? #4c9dff18 : root.enabled ? (small-touch.pressed ? Theme.elevated : small-touch.has-hover ? #ffffff0d : transparent) : transparent;
-    border-color: small-focus.has-focus ? Theme.focus : root.selected ? #4c9dff88 : Theme.line;
+    background: root.selected ? #159fff18 : root.enabled ? (small-touch.pressed ? Theme.elevated : small-touch.has-hover ? #ffffff0d : transparent) : transparent;
+    border-color: small-focus.has-focus ? Theme.focus : root.selected ? #159fff88 : Theme.line;
     border-width: small-focus.has-focus ? 2px : 1px;
     border-radius: 8px;
     opacity: root.enabled ? 1 : 0.45;
@@ -324,8 +326,8 @@ component LogRangeOption inherits Rectangle {
 
     height: 58px;
     border-radius: 10px;
-    background: root.selected ? #4c9dff1a : range-touch.has-hover ? #ffffff0f : #ffffff08;
-    border-color: range-focus.has-focus ? Theme.focus : root.selected ? #4c9dff66 : range-touch.has-hover ? #ffffff1a : #ffffff0d;
+    background: root.selected ? #159fff1a : range-touch.has-hover ? #ffffff0f : #ffffff08;
+    border-color: range-focus.has-focus ? Theme.focus : root.selected ? #159fff66 : range-touch.has-hover ? #ffffff1a : #ffffff0d;
     border-width: range-focus.has-focus ? Theme.focus-width : 1px;
     animate background, border-color { duration: Motion.reduced ? 0ms : 140ms; easing: ease-out; }
     accessible-role: radio-button;
@@ -441,7 +443,7 @@ component LogRangeButton inherits Rectangle {
     border-color: button-focus.has-focus ? Theme.focus : transparent;
     border-width: button-focus.has-focus ? Theme.focus-width : 0px;
     drop-shadow-blur: root.primary ? 12px : 0px;
-    drop-shadow-color: root.primary ? #4c9dff1a : transparent;
+    drop-shadow-color: root.primary ? #159fff1a : transparent;
     animate background { duration: Motion.reduced ? 0ms : 120ms; easing: ease-out; }
     accessible-role: button;
     accessible-label: root.label;
@@ -603,7 +605,7 @@ component PageHeader inherits Rectangle {
         HorizontalLayout {
             height: 36px;
             spacing: 4px;
-            Text { text: root.title; color: Theme.text-primary; font-size: 20px; font-weight: Theme.weight-semibold; vertical-alignment: center; accessible-role: text; }
+            Text { text: root.title; color: Theme.text-primary; font-size: Theme.type-title-size; font-weight: Theme.weight-bold; vertical-alignment: center; accessible-role: text; }
             Rectangle { horizontal-stretch: 1; background: transparent; }
             @children
         }
@@ -613,7 +615,7 @@ component PageHeader inherits Rectangle {
     Rectangle {
         y: parent.height - 1px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
         opacity: root.scrolled ? 1 : 0;
         animate opacity { duration: root.reduced-motion ? 0ms : 160ms; easing: ease-out; }
     }
@@ -735,7 +737,7 @@ component UrlField inherits Rectangle {
     border-radius: 8px;
     background: Theme.elevated;
     border-width: 1px;
-    border-color: url-input.has-focus ? #4c9dff99 : Theme.line;
+    border-color: url-input.has-focus ? #159fff99 : Theme.line;
     opacity: root.enabled ? 1 : 0.6;
     animate border-color { duration: 160ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
 
@@ -847,7 +849,7 @@ component ActionRow inherits Rectangle {
         y: parent.height - 1px;
         width: parent.width - 48px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
     }
     row-focus := FocusScope {
         enabled: root.enabled;
@@ -880,6 +882,8 @@ component HealthRow inherits Rectangle {
         height: 8px;
         border-radius: 4px;
         background: root.tone == "success" ? Theme.accent-green : root.tone == "danger" ? Theme.error : root.tone == "warning" ? Theme.warning : Theme.text-muted;
+        drop-shadow-blur: root.tone == "success" ? 8px : 0px;
+        drop-shadow-color: #18dfa180;
         animate background { duration: 240ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
     }
     Text {
@@ -893,24 +897,34 @@ component HealthRow inherits Rectangle {
         vertical-alignment: center;
         overflow: elide;
     }
-    Text {
+    Rectangle {
         x: parent.width - self.width - 16px;
-        width: 140px;
-        height: parent.height;
-        text: root.value;
-        color: Theme.text-secondary;
-        font-family: Theme.font-family;
-        font-size: Theme.type-metadata-size;
-        horizontal-alignment: right;
-        vertical-alignment: center;
-        overflow: elide;
+        y: (parent.height - self.height) / 2;
+        width: 86px;
+        height: 26px;
+        border-radius: 13px;
+        background: root.tone == "success" ? #18dfa112 : root.tone == "danger" ? #f0526a12 : root.tone == "warning" ? #f3c34a12 : #159fff0d;
+        border-color: root.tone == "success" ? #18dfa14d : root.tone == "danger" ? #f0526a4d : root.tone == "warning" ? #f3c34a4d : Theme.line-soft;
+        border-width: 1px;
+        Text {
+            width: parent.width;
+            height: parent.height;
+            text: root.value;
+            color: root.tone == "success" ? Theme.accent-green : root.tone == "danger" ? Theme.error : root.tone == "warning" ? Theme.warning : Theme.text-secondary;
+            font-family: Theme.font-family;
+            font-size: Theme.type-metadata-size;
+            font-weight: Theme.weight-semibold;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            overflow: elide;
+        }
     }
     if root.show-separator: Rectangle {
         x: 36px;
         y: parent.height - 1px;
         width: parent.width - 36px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
     }
 }
 
@@ -1035,13 +1049,14 @@ component LanguageRow inherits Rectangle {
         y: parent.height - 1px;
         width: parent.width + 16px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
     }
 }
 
 component ToggleRow inherits Rectangle {
     in property <string> label;
     in property <string> description;
+    in property <image> icon;
     in property <bool> checked;
     in property <bool> enabled: true;
     in property <bool> show-separator: false;
@@ -1055,8 +1070,30 @@ component ToggleRow inherits Rectangle {
     accessible-enabled: root.enabled;
     accessible-action-default => { if (root.enabled) { root.toggled(!root.checked); } }
 
-    Text {
+    if root.icon.width > 0: Rectangle {
         x: 0;
+        y: (parent.height - self.height) / 2;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: Theme.raised;
+        border-color: Theme.line-soft;
+        border-width: 1px;
+        Image {
+            x: 9px;
+            y: 9px;
+            width: 18px;
+            height: 18px;
+            source: root.icon;
+            colorize: root.checked ? Theme.accent-cyan : Theme.text-secondary;
+            image-fit: contain;
+            animate colorize { duration: 180ms; easing: ease-out; }
+            accessible-role: none;
+        }
+    }
+
+    Text {
+        x: root.icon.width > 0 ? 52px : 0px;
         y: root.description == "" ? 0px : 10px;
         width: parent.width - 64px;
         height: root.description == "" ? parent.height : 20px;
@@ -1069,7 +1106,7 @@ component ToggleRow inherits Rectangle {
         overflow: elide;
     }
     if root.description != "": Text {
-        x: 0;
+        x: root.icon.width > 0 ? 52px : 0px;
         y: 31px;
         width: parent.width - 64px;
         text: root.description;
@@ -1103,11 +1140,11 @@ component ToggleRow inherits Rectangle {
         }
     }
     if root.show-separator: Rectangle {
-        x: 0;
+        x: root.icon.width > 0 ? 52px : 0px;
         y: parent.height - 1px;
         width: parent.width + 16px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
     }
     toggle-focus := FocusScope {
         enabled: root.enabled;
@@ -1175,7 +1212,7 @@ component TitleBarButton inherits Rectangle {
             y: -3px;
             width: 9px;
             height: 8px;
-            background: #0a0c0f;
+            background: #06101f;
             border-width: 1px;
             border-color: Theme.text-secondary;
         }
@@ -1319,7 +1356,7 @@ component RouteSearchRow inherits Rectangle {
         y: parent.height - 1px;
         width: parent.width - 56px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
     }
     }
 
@@ -1370,7 +1407,7 @@ component RouteSkeletonRow inherits Rectangle {
     Rectangle { x: 16px; y: 13px; width: 22px; height: 22px; border-radius: 11px; background: #ffffff; opacity: 0.05 + 0.04 * root.phase; }
     Rectangle { x: 56px; y: 19px; width: root.label-width; height: 10px; border-radius: 5px; background: #ffffff; opacity: 0.06 + 0.05 * root.phase; }
     Rectangle { x: parent.width - self.width - 20px; y: 20px; width: 34px; height: 8px; border-radius: 4px; background: #ffffff; opacity: 0.05 + 0.04 * root.phase; }
-    if root.show-separator: Rectangle { x: 56px; y: parent.height - 1px; width: parent.width - 56px; height: 1px; background: #ffffff0f; }
+    if root.show-separator: Rectangle { x: 56px; y: parent.height - 1px; width: parent.width - 56px; height: 1px; background: #7cc8ff18; }
 }
 
 // 14px traffic gauge (title chip, its dropdown): a faint track and, from 12
@@ -1671,7 +1708,7 @@ export component AppWindow inherits Window {
     private property <int> ambient-wave-step: 0;
     // 0 → 1 → 0 over 24 s (12 s each way), cosine-eased like ease-in-out.
     private property <float> ambient-wave-t: (1 - Math.cos(root.ambient-wave-step / 96 * 360deg)) / 2;
-    private property <bool> ambient-motion-active: root.ambient-background-enabled && root.shell-active && root.window-active && !root.reduced-motion && !root.minimized && root.visible-page == "home";
+    private property <bool> ambient-motion-active: root.ambient-background-enabled && root.shell-active && root.window-active && !root.reduced-motion && !root.minimized;
     in-out property <bool> replace-editor-open: false;
     in-out property <int> import-success-serial: 0;
     in-out property <bool> first-run-manual-open: false;
@@ -2224,7 +2261,7 @@ export component AppWindow inherits Window {
 
             title-bar := Rectangle {
                 height: 44px;
-                background: #0a0c0f;
+                background: #06101f;
                 border-color: Theme.line;
                 border-width: 0px;
 
@@ -2369,9 +2406,9 @@ export component AppWindow inherits Window {
                                 opacity: root.chip-shows-logo && !root.chip-logo-entering ? 1 : 0;
                                 visible: self.opacity > 0;
                                 transform-scale: root.chip-logo-entering ? 0.6 : 1;
-                                border-color: self.popping ? #4c9dff66 : #ffffff1a;
+                                border-color: self.popping ? #159fff66 : #ffffff1a;
                                 drop-shadow-blur: self.popping ? 8px : 0px;
-                                drop-shadow-color: #4c9dff4d;
+                                drop-shadow-color: #159fff4d;
                                 // The entering frame jumps to the start state; the pop animates from there.
                                 animate opacity { duration: Motion.reduced || root.chip-logo-entering ? 0ms : 240ms; easing: ease-out; }
                                 animate transform-scale { duration: Motion.reduced || root.chip-logo-entering ? 0ms : 350ms; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -2386,7 +2423,7 @@ export component AppWindow inherits Window {
                                 border-radius: 4.5px;
                                 background: Theme.accent-green;
                                 border-width: 1px;
-                                border-color: #0a0c0f;
+                                border-color: #06101f;
                                 opacity: root.chip-phase == "hold" ? 1 : 0;
                                 visible: self.opacity > 0;
                                 animate opacity { duration: Motion.reduced ? 0ms : 160ms; easing: ease-out; }
@@ -2614,7 +2651,7 @@ export component AppWindow inherits Window {
                                 height: 7px;
                                 border-radius: 3.5px;
                                 border-width: 1.5px;
-                                border-color: #0a0c0f;
+                                border-color: #06101f;
                                 background: root.subscription-announcement-tone == "danger" ? Theme.error
                                     : root.subscription-announcement-tone == "success" ? Theme.accent-green
                                     : Theme.accent-blue;
@@ -2636,7 +2673,7 @@ export component AppWindow inherits Window {
 
         navigation-rail := Rectangle {
             width: root.rail-width-live >= 0px ? root.rail-width-live : root.navigation-collapsed ? 64px : 176px;
-            background: #0a0c0f;
+            background: #06101f;
             border-color: Theme.line;
             border-width: 0px;
             // Host-driven frames are already eased; only animate on its own.
@@ -2685,7 +2722,62 @@ export component AppWindow inherits Window {
         }
 
         main-pane := Rectangle {
-            background: Theme.canvas;
+            background: @linear-gradient(145deg, Theme.canvas 0%, #07182b 55%, #06101f 100%);
+            clip: true;
+
+            // A single inexpensive ambient layer sits behind every page. The
+            // same slow phase drives three vector strokes, so there are no
+            // per-card animation clocks or large blurred textures.
+            ambient-page-glow := Rectangle {
+                width: parent.width;
+                height: parent.height;
+                visible: root.ambient-background-enabled;
+                background: @radial-gradient(
+                    circle 620px at parent.width - 120px 90px,
+                    #159fff1f 0%,
+                    #17c9b40c 38%,
+                    #00000000 76%
+                );
+            }
+            ambient-page-wave-a := Path {
+                visible: root.ambient-background-enabled;
+                x: -80px + 44px * root.ambient-wave-t;
+                y: -30px - 14px * root.ambient-wave-t;
+                width: parent.width + 180px;
+                height: parent.height + 100px;
+                viewbox-width: 1100;
+                viewbox-height: 760;
+                commands: "M -20 245 C 170 92 352 114 520 224 C 700 342 852 172 1120 112";
+                fill: transparent;
+                stroke: #159fff52;
+                stroke-width: 1px;
+            }
+            ambient-page-wave-b := Path {
+                visible: root.ambient-background-enabled;
+                x: -40px - 32px * root.ambient-wave-t;
+                y: 90px + 26px * root.ambient-wave-t;
+                width: parent.width + 160px;
+                height: parent.height + 80px;
+                viewbox-width: 1100;
+                viewbox-height: 760;
+                commands: "M -30 146 C 180 254 360 232 536 116 C 716 -4 900 42 1130 198";
+                fill: transparent;
+                stroke: #35d5ff2e;
+                stroke-width: 1px;
+            }
+            ambient-page-wave-c := Path {
+                visible: root.ambient-background-enabled;
+                x: -54px + 26px * root.ambient-wave-t;
+                y: 310px - 18px * root.ambient-wave-t;
+                width: parent.width + 150px;
+                height: parent.height;
+                viewbox-width: 1100;
+                viewbox-height: 760;
+                commands: "M -20 292 C 208 116 354 162 542 286 C 714 400 902 344 1120 214";
+                fill: transparent;
+                stroke: #17c9b426;
+                stroke-width: 1px;
+            }
 
             if root.visible-page == "home": Rectangle {
                 opacity: root.page-entering ? 0 : 1;
@@ -2762,12 +2854,16 @@ export component AppWindow inherits Window {
                             : root.first-run-manual-open
                                 ? (root.import-error == "" ? 174px : 200px)
                                 : (root.import-error == "" ? 124px : 150px);
-                        background: root.has-profile ? Theme.surface : #101721;
-                        border-color: !root.has-profile ? #4c9dff55
-                            : root.shown-busy ? #4c9dff59
-                            : root.shown-tone == "success" ? #3ccb7f59
-                            : root.shown-tone == "danger" ? #f06a6a66
-                            : root.shown-tone == "warning" ? #e7aa4566
+                        background: root.has-profile
+                            ? root.shown-tone == "success"
+                                ? @linear-gradient(110deg, #0b2d34 0%, #0b2537 58%, #0a1b31 100%)
+                                : @linear-gradient(110deg, Theme.surface 0%, Theme.elevated 100%)
+                            : @linear-gradient(110deg, #0a1a30 0%, Theme.surface 100%);
+                        border-color: !root.has-profile ? #159fff55
+                            : root.shown-busy ? #159fff59
+                            : root.shown-tone == "success" ? #18dfa159
+                            : root.shown-tone == "danger" ? #f0526a66
+                            : root.shown-tone == "warning" ? #f3c34a66
                             : #ffffff0a;
                         border-width: 1px;
                         border-radius: 14px;
@@ -2776,7 +2872,7 @@ export component AppWindow inherits Window {
                         // at rest, and the software renderer simply ignores the shadow.
                         drop-shadow-blur: strip-glow-touch.has-hover ? 20px : 0px;
                         drop-shadow-offset-y: strip-glow-touch.has-hover ? 6px : 0px;
-                        drop-shadow-color: strip-glow-touch.has-hover ? #00000073 : #00000000;
+                        drop-shadow-color: root.shown-tone == "success" ? #18dfa12e : strip-glow-touch.has-hover ? #159fff2e : #00000000;
                         animate border-color { duration: 220ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                         animate drop-shadow-blur, drop-shadow-offset-y, drop-shadow-color { duration: 180ms; easing: ease-out; }
 
@@ -2791,9 +2887,9 @@ export component AppWindow inherits Window {
                                 property <bool> active: strip-glow-touch.has-hover;
                                 property <length> cursor-x: strip-glow-touch.mouse-x;
                                 property <length> cursor-y: strip-glow-touch.mouse-y;
-                                property <color> glow-strong: root.shown-tone == "success" ? #22c55e3d : root.shown-tone == "danger" ? #f06a6a3d : #0091ff47;
-                                property <color> glow-medium: root.shown-tone == "success" ? #22c55e24 : root.shown-tone == "danger" ? #f06a6a24 : #0091ff29;
-                                property <color> glow-soft: root.shown-tone == "success" ? #22c55e0f : root.shown-tone == "danger" ? #f06a6a0f : #0091ff0f;
+                                property <color> glow-strong: root.shown-tone == "success" ? #18dfa13d : root.shown-tone == "danger" ? #f0526a3d : #159fff47;
+                                property <color> glow-medium: root.shown-tone == "success" ? #18dfa124 : root.shown-tone == "danger" ? #f0526a24 : #159fff29;
+                                property <color> glow-soft: root.shown-tone == "success" ? #18dfa10f : root.shown-tone == "danger" ? #f0526a0f : #159fff0f;
                                 property <color> grid-line-strong: root.shown-tone == "success" ? #8ea39770 : root.shown-tone == "danger" ? #a3939370 : #8f9eae70;
                                 x: 0;
                                 y: 0;
@@ -2848,9 +2944,9 @@ export component AppWindow inherits Window {
                                 width: 44px;
                                 height: 44px;
                                 border-radius: 12px;
-                                background: root.shown-tone == "success" ? #3ccb7f24
-                                    : root.shown-tone == "danger" ? #f06a6a24
-                                    : root.shown-tone == "warning" && !root.shown-busy ? #e7aa4524
+                                background: root.shown-tone == "success" ? #18dfa124
+                                    : root.shown-tone == "danger" ? #f0526a24
+                                    : root.shown-tone == "warning" && !root.shown-busy ? #f3c34a24
                                     : Theme.elevated;
                                 animate background { duration: 180ms; easing: ease-in-out; }
 
@@ -3015,12 +3111,12 @@ export component AppWindow inherits Window {
                                         background: root.shown-on && !root.shown-busy ? #28a863 : #1a1e24;
                                         animate background { duration: 220ms; easing: ease-out; }
                                         border-color: power-action.has-focus ? Theme.focus
-                                            : root.shown-busy ? #4c9dff99
+                                            : root.shown-busy ? #159fff99
                                             : root.shown-on ? #ffffff26
                                             : (power-button.hovered ? #4a525e : #2a3038);
                                         border-width: power-action.has-focus ? Theme.focus-width : 1px;
                                         drop-shadow-blur: root.shown-on && !root.shown-busy ? (power-button.hovered ? 16px : 10px) : 0px;
-                                        drop-shadow-color: #3ccb7f55;
+                                        drop-shadow-color: #18dfa155;
                                         animate border-color, drop-shadow-blur { duration: 220ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
 
                                         // Sheen on the upper half of the lit rail.
@@ -3057,7 +3153,7 @@ export component AppWindow inherits Window {
                                         border-radius: self.height / 2;
                                         // Solid fill: gradients ignore border-radius in the software renderer.
                                         background: root.shown-on && !root.shown-busy ? #2fbf73 : (power-button.hovered ? #242931 : #1e2229);
-                                        border-color: root.shown-busy ? #4c9dff80
+                                        border-color: root.shown-busy ? #159fff80
                                             : root.shown-on ? #ffffff4d
                                             : (power-button.hovered ? #ffffff2e : #ffffff14);
                                         border-width: 1px;
@@ -3086,7 +3182,7 @@ export component AppWindow inherits Window {
                                             height: parent.height + 6px;
                                             border-radius: self.height / 2;
                                             border-width: 1px;
-                                            border-color: root.shown-busy ? #4c9dff59 : #3ccb7f66;
+                                            border-color: root.shown-busy ? #159fff59 : #18dfa166;
                                             background: transparent;
                                             opacity: root.shown-on || root.shown-busy ? 1 : 0;
                                             animate opacity { duration: 220ms; easing: ease-out; }
@@ -3142,8 +3238,8 @@ export component AppWindow inherits Window {
                             width: parent.width;
                             height: parent.height;
                             opacity: root.conflict-banner-entering ? 0 : 1;
-                            background: Theme.surface;
-                            border-color: #f06a6a59;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: #f0526a59;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -3202,8 +3298,8 @@ export component AppWindow inherits Window {
                         Rectangle {
                             width: parent.width;
                             height: parent.height;
-                            background: Theme.surface;
-                            border-color: #4c9dff47;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: #159fff47;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -3267,13 +3363,24 @@ export component AppWindow inherits Window {
 
                                 HorizontalLayout {
                                     alignment: center;
-                                    Image {
-                                        width: 44px;
-                                        height: 44px;
-                                        source: @image-url("../assets/app-icon.svg");
-                                        opacity: 0.85;
-                                        image-fit: contain;
-                                        accessible-role: none;
+                                    Rectangle {
+                                        width: 64px;
+                                        height: 64px;
+                                        border-radius: 18px;
+                                        background: @radial-gradient(circle 54px at 32px 29px, #159fff38 0%, Theme.elevated 72%);
+                                        border-color: Theme.line-accent;
+                                        border-width: 1px;
+                                        drop-shadow-blur: 22px;
+                                        drop-shadow-color: #159fff4d;
+                                        Image {
+                                            x: 10px;
+                                            y: 10px;
+                                            width: 44px;
+                                            height: 44px;
+                                            source: @image-url("../assets/app-icon.svg");
+                                            image-fit: contain;
+                                            accessible-role: none;
+                                        }
                                     }
                                 }
                                 Rectangle { height: 22px; background: transparent; }
@@ -3302,10 +3409,12 @@ export component AppWindow inherits Window {
 
                                 first-run-card := Rectangle {
                                     height: first-run-actions.preferred-height;
-                                    background: Theme.surface;
-                                    border-color: #ffffff0a;
+                                    background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                    border-color: Theme.line-accent;
                                     border-width: 1px;
-                                    border-radius: 14px;
+                                    border-radius: 18px;
+                                    drop-shadow-blur: 24px;
+                                    drop-shadow-color: #159fff24;
                                     clip: true;
                                     animate height { duration: Motion.reduced ? 0ms : 240ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
 
@@ -3562,7 +3671,7 @@ export component AppWindow inherits Window {
                                             viewbox-width: 32;
                                             viewbox-height: 32;
                                             commands: "M 16 2 A 14 14 0 0 1 30 16";
-                                            stroke: #4c9dff;
+                                            stroke: #159fff;
                                             stroke-width: 2px;
                                             stroke-line-cap: round;
                                             fill: transparent;
@@ -3593,7 +3702,7 @@ export component AppWindow inherits Window {
                                     border-radius: 10px;
                                     background: #15181d;
                                     border-width: 1px;
-                                    border-color: route-search-input.has-focus ? #4c9dff99 : Theme.line;
+                                    border-color: route-search-input.has-focus ? #159fff99 : Theme.line;
                                     animate border-color { duration: 140ms; easing: ease-out; }
                                     Image {
                                         x: 12px;
@@ -3737,7 +3846,7 @@ export component AppWindow inherits Window {
                                     self.scroll-target = max(0px, min(self.max-scroll, self.scroll-x + direction * self.viewport-width * 0.6));
                                 }
                                 height: 38px;
-                                background: #0a0c0f;
+                                background: #06101f;
                                 border-color: Theme.line;
                                 border-width: 1px;
                                 border-radius: 10px;
@@ -3823,7 +3932,7 @@ export component AppWindow inherits Window {
                                     opacity: route-group-track.scroll-x > 0.5px ? 1 : 0;
                                     visible: self.opacity > 0;
                                     animate opacity { duration: root.reduced-motion ? 0ms : 140ms; easing: ease-out; }
-                                    background: @linear-gradient(90deg, #0a0c0f 0%, #0a0c0f 60%, #0a0c0f00 100%);
+                                    background: @linear-gradient(90deg, #06101f 0%, #06101f 60%, #06101f00 100%);
                                     route-group-prev := TouchArea {
                                         x: 0;
                                         width: 28px;
@@ -3849,7 +3958,7 @@ export component AppWindow inherits Window {
                                     opacity: route-group-track.scroll-x < route-group-track.max-scroll - 0.5px ? 1 : 0;
                                     visible: self.opacity > 0;
                                     animate opacity { duration: root.reduced-motion ? 0ms : 140ms; easing: ease-out; }
-                                    background: @linear-gradient(90deg, #0a0c0f00 0%, #0a0c0f 40%, #0a0c0f 100%);
+                                    background: @linear-gradient(90deg, #06101f00 0%, #06101f 40%, #06101f 100%);
                                     route-group-next := TouchArea {
                                         x: parent.width - self.width;
                                         width: 28px;
@@ -3888,8 +3997,8 @@ export component AppWindow inherits Window {
                             // A failed catalog load is a card with a retry, in place of the list.
                             if root.catalog-error != "": catalog-error-card := Rectangle {
                                 height: Math.max(56px, catalog-error-copy.preferred-height + 28px);
-                                background: Theme.surface;
-                                border-color: #ffffff0a;
+                                background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                border-color: Theme.line-soft;
                                 border-width: 1px;
                                 border-radius: 14px;
                                 HorizontalLayout {
@@ -3927,8 +4036,8 @@ export component AppWindow inherits Window {
                                 row-count: root.catalog-nodes.length;
                                 row-height: 48px;
                                 // iOS-style inset grouped list: one card, hairlines between rows.
-                                card-background: Theme.surface;
-                                card-border-color: #ffffff0a;
+                                card-background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                card-border-color: Theme.line-soft;
                                 card-border-width: 1px;
                                 card-radius: 14px;
                                 for node[index] in root.catalog-nodes: RouteNodeRow {
@@ -3967,8 +4076,8 @@ export component AppWindow inherits Window {
                                     // The failed-catalog card stands in for the list.
                                     visible: root.catalog-error == "";
                                     height: root.catalog-error == "" ? route-placeholder.preferred-height : 0px;
-                                    background: Theme.surface;
-                                    border-color: #ffffff0a;
+                                    background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                    border-color: Theme.line-soft;
                                     border-width: 1px;
                                     border-radius: 14px;
                                     clip: true;
@@ -3984,7 +4093,7 @@ export component AppWindow inherits Window {
                                             Rectangle { x: 16px; y: 13px; width: 22px; height: 22px; border-radius: 6px; background: #ffffff; opacity: 0.06 + 0.06 * root.skeleton-pulse; }
                                             Rectangle { x: 56px; y: 20px; width: i == 0 ? 112px : i == 1 ? 84px : i == 2 ? 132px : i == 3 ? 96px : 72px; height: 9px; border-radius: 4.5px; background: #ffffff; opacity: 0.05 + 0.06 * root.skeleton-pulse; }
                                             Rectangle { x: parent.width - self.width - 20px; y: 20px; width: 40px; height: 8px; border-radius: 4px; background: #ffffff; opacity: 0.04 + 0.05 * root.skeleton-pulse; }
-                                            if i < 4: Rectangle { x: 56px; y: parent.height - 1px; width: parent.width - 56px; height: 1px; background: #ffffff0f; }
+                                            if i < 4: Rectangle { x: 56px; y: parent.height - 1px; width: parent.width - 56px; height: 1px; background: #7cc8ff18; }
                                         }
                                     }
                                     if root.catalog-nodes.length == 0 && !root.catalog-loading: Text { height: 52px; text: @tr("В этой группе нет доступных серверов"); color: Theme.text-muted; font-size: Theme.type-metadata-size; vertical-alignment: center; horizontal-alignment: center; }
@@ -4000,8 +4109,8 @@ export component AppWindow inherits Window {
                                 animate opacity { duration: 200ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                                 row-count: root.route-search-hits.length;
                                 row-height: 48px;
-                                card-background: Theme.surface;
-                                card-border-color: #ffffff0a;
+                                card-background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                card-border-color: Theme.line-soft;
                                 card-border-width: 1px;
                                 card-radius: 14px;
                                 footer-text: @tr("Найдено {n} · поиск по всем группам" | "Найдено {n} · поиск по всем группам" % root.route-search-hits.length);
@@ -4043,8 +4152,8 @@ export component AppWindow inherits Window {
                                     spacing: 8px;
                                     if root.route-search-loading: route-search-skeleton := Rectangle {
                                         height: 144px;
-                                        background: Theme.surface;
-                                        border-color: #ffffff0a;
+                                        background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                        border-color: Theme.line-soft;
                                         border-width: 1px;
                                         border-radius: 14px;
                                         clip: true;
@@ -4082,6 +4191,7 @@ export component AppWindow inherits Window {
                 // Title and log actions stay put; the cards scroll under them when the window is short.
                 PageHeader {
                     title: @tr("Состояние");
+                    subtitle: @tr("Проверка состояния ядер и системных компонентов");
                     scrolled: status-scroll.scrolled;
                     reduced-motion: root.reduced-motion;
                     VerticalLayout {
@@ -4134,8 +4244,8 @@ export component AppWindow inherits Window {
                             opacity: root.page-entering ? 0 : 1;
                             animate opacity { duration: 280ms; delay: 24ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: 132px;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -4156,8 +4266,8 @@ export component AppWindow inherits Window {
                             animate opacity { duration: 280ms; delay: 48ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             // Up to three rows show at once; more scroll inside the card.
                             height: root.diagnostic-mappings.length == 0 ? 44px : Math.min(3, root.diagnostic-mappings.length) * 44px;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -4181,7 +4291,7 @@ export component AppWindow inherits Window {
                                             Text { width: 128px; text: mapping.address; color: Theme.text-muted; font-size: Theme.type-metadata-size; horizontal-alignment: right; vertical-alignment: center; }
                                             Text { width: 132px; text: mapping.xray-label; color: Theme.text-secondary; font-size: Theme.type-metadata-size; horizontal-alignment: right; vertical-alignment: center; overflow: elide; }
                                         }
-                                        if index < root.diagnostic-mappings.length - 1: Rectangle { x: 46px; y: parent.height - 1px; width: parent.width - 46px; height: 1px; background: #ffffff0f; }
+                                        if index < root.diagnostic-mappings.length - 1: Rectangle { x: 46px; y: parent.height - 1px; width: parent.width - 46px; height: 1px; background: #7cc8ff18; }
                                     }
                                     if root.diagnostic-mappings.length == 0: Text { height: 44px; text: @tr("Маппинги появятся после загрузки подписки"); color: Theme.text-muted; font-size: Theme.type-metadata-size; vertical-alignment: center; horizontal-alignment: center; }
                                 }
@@ -4193,7 +4303,7 @@ export component AppWindow inherits Window {
                         Rectangle { height: 8px; background: transparent; }
                         event-filter-track := Rectangle {
                             height: 38px;
-                            background: #0a0c0f;
+                            background: #06101f;
                             border-color: Theme.line;
                             border-width: 1px;
                             border-radius: 10px;
@@ -4213,8 +4323,8 @@ export component AppWindow inherits Window {
                             animate opacity { duration: 280ms; delay: 72ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             vertical-stretch: 1;
                             min-height: 88px;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -4255,7 +4365,7 @@ export component AppWindow inherits Window {
                                                 accessible-label: (event.level == "error" ? @tr("Ошибка") : @tr("Событие")) + (event.component == "" ? "" : ", " + event.component) + (event.timestamp == "" ? "" : ", " + event.timestamp) + ": " + event.message;
                                             }
                                         }
-                                        if index < root.events.length - 1: Rectangle { x: 86px; y: parent.height - 1px; width: parent.width - 86px; height: 1px; background: #ffffff0f; }
+                                        if index < root.events.length - 1: Rectangle { x: 86px; y: parent.height - 1px; width: parent.width - 86px; height: 1px; background: #7cc8ff18; }
                                     }
                                     if root.events.length == 0: Text { height: 64px; text: @tr("Событий пока нет"); color: Theme.text-muted; font-size: Theme.type-metadata-size; vertical-alignment: center; horizontal-alignment: center; }
                                 }
@@ -4277,6 +4387,7 @@ export component AppWindow inherits Window {
                 // The title stays put; the sections scroll under it.
                 PageHeader {
                     title: @tr("Настройки");
+                    subtitle: @tr("Подключение, приложение и обновления");
                     scrolled: settings-scroll.scrolled;
                     reduced-motion: root.reduced-motion;
                 }
@@ -4300,8 +4411,8 @@ export component AppWindow inherits Window {
                         opacity: root.page-entering ? 0 : 1;
                         animate opacity { duration: 280ms; delay: 24ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: connection-rows.preferred-height;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -4310,6 +4421,7 @@ export component AppWindow inherits Window {
                                 padding-right: 16px;
                                 spacing: 0px;
                                 if root.tun-toggle-available: ToggleRow {
+                                    icon: @image-url("../assets/link.svg");
                                     label: @tr("Режим TUN — весь трафик");
                                     description: root.toggle-on || root.toggle-busy
                                         ? @tr("Применится при следующем подключении")
@@ -4323,6 +4435,7 @@ export component AppWindow inherits Window {
                                     toggled(value) => { root.tun-enabled = value; }
                                 }
                                 ToggleRow {
+                                    icon: @image-url("../assets/power.svg");
                                     label: @tr("Подключаться после входа в систему");
                                     description: root.launch-at-sign-in-enabled ? @tr("Когда появится сеть и профиль будет готов") : @tr("Сначала включите автозапуск");
                                     checked: root.auto-connect-on-startup;
@@ -4364,8 +4477,8 @@ export component AppWindow inherits Window {
                             opacity: root.page-entering ? 0 : 1;
                             animate opacity { duration: 280ms; delay: 36ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: Math.max(60px, service-row.preferred-height);
-                            background: Theme.surface;
-                            border-color: #4c9dff55;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: #159fff55;
                             border-width: 1px;
                             border-radius: 14px;
                             service-row := HorizontalLayout {
@@ -4406,8 +4519,8 @@ export component AppWindow inherits Window {
                         opacity: root.page-entering ? 0 : 1;
                         animate opacity { duration: 280ms; delay: 48ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: app-rows.preferred-height;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -4416,6 +4529,7 @@ export component AppWindow inherits Window {
                                 padding-right: 16px;
                                 spacing: 0px;
                                 ToggleRow {
+                                    icon: @image-url("../assets/app-icon.svg");
                                     label: @tr("Запускать при входе в {}", root.system-name);
                                     description: root.launch-at-sign-in-stale ? @tr("Путь приложения изменился — включите заново") : "";
                                     checked: root.launch-at-sign-in-enabled;
@@ -4424,6 +4538,7 @@ export component AppWindow inherits Window {
                                     toggled(value) => { root.set-launch-at-sign-in(value); }
                                 }
                                 ToggleRow {
+                                    icon: @image-url("../assets/layers.svg");
                                     label: @tr("Живой фон");
                                     description: root.reduced-motion ? @tr("Анимация отключена настройками {}", root.system-name) : @tr("Спокойные волны на главной");
                                     // Under system reduced-motion the animation never runs, so the
@@ -4479,8 +4594,8 @@ export component AppWindow inherits Window {
                             opacity: root.page-entering ? 0 : 1;
                             animate opacity { duration: 280ms; delay: 72ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: Math.max(60px, troubleshoot-row.preferred-height);
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             troubleshoot-row := HorizontalLayout {
@@ -4513,8 +4628,8 @@ export component AppWindow inherits Window {
                         opacity: root.page-entering ? 0 : 1;
                         animate opacity { duration: 280ms; delay: 96ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: Math.max(60px, updates-row.preferred-height);
-                            background: Theme.surface;
-                            border-color: root.update-available ? #4c9dff55 : #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: root.update-available ? #159fff55 : #ffffff0a;
                             border-width: 1px;
                             border-radius: 14px;
                             updates-row := HorizontalLayout {
@@ -4676,8 +4791,8 @@ export component AppWindow inherits Window {
                             padding-bottom: 16px;
                             add-subscription-card := Rectangle {
                                 height: 56px;
-                                background: Theme.surface;
-                                border-color: #ffffff0a;
+                                background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                border-color: Theme.line-soft;
                                 border-width: 1px;
                                 border-radius: 14px;
                                 HorizontalLayout {
@@ -4748,8 +4863,8 @@ export component AppWindow inherits Window {
                         }
                         if !root.profile-menu-loading && root.profile-menu-error == "" && root.subscription-profiles.length == 0: Rectangle {
                             height: 64px;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             Text { text: @tr("Подписок пока нет"); color: Theme.text-muted; font-size: Theme.type-metadata-size; vertical-alignment: center; horizontal-alignment: center; }
@@ -4759,8 +4874,8 @@ export component AppWindow inherits Window {
                         opacity: root.page-entering ? 0 : 1;
                         animate opacity { duration: 280ms; delay: 24ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: profile-list.preferred-height;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -4773,7 +4888,7 @@ export component AppWindow inherits Window {
                                     property <bool> pending: root.profile-pending-id == profile.id;
                                     height: 56px + (self.editing || self.confirming ? 52px : 0px);
                                     clip: true;
-                                    background: profile.active ? Theme.elevated : transparent;
+                                    background: profile.active ? Theme.raised : transparent;
                                     animate height { duration: Motion.reduced ? 0ms : 240ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                                     animate background { duration: 200ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
 
@@ -4788,12 +4903,12 @@ export component AppWindow inherits Window {
                                         key-pressed(event) => { if ((event.text == " " || event.text == "\n") && self.enabled) { root.activate-profile(profile.id); return accept; } return reject; }
                                         activate-profile-touch := TouchArea { enabled: parent.enabled; clicked => { root.activate-profile(profile.id); } }
                                     }
-                                    if profile.active: Rectangle { x: 0; y: 18px; width: 3px; height: 20px; border-radius: 1.5px; background: Theme.accent-blue; }
+                                    if profile.active: Rectangle { x: 0; y: 10px; width: 3px; height: 36px; border-radius: 1.5px; background: Theme.accent-cyan; drop-shadow-blur: 8px; drop-shadow-color: #35d5ff80; }
 
                                     Rectangle {
                                         x: 12px; y: 14px; width: 28px; height: 28px;
                                         border-radius: 14px;
-                                        background: profile.active ? #4c9dff26 : #ffffff0d;
+                                        background: profile.active ? #159fff26 : #ffffff0d;
                                         opacity: profile.available || profile.active ? 1 : 0.62;
                                         if profile.has-logo: Image { x: 5px; y: 5px; width: 18px; height: 18px; source: profile.logo; image-fit: contain; accessible-role: none; }
                                         if !profile.has-logo: Text { text: profile.fallback; color: profile.active ? Theme.accent-blue : Theme.text-secondary; font-size: 11px; font-weight: Theme.weight-bold; horizontal-alignment: center; vertical-alignment: center; }
@@ -4812,7 +4927,7 @@ export component AppWindow inherits Window {
                                         x: subscription-name.x + subscription-name.width + 8px; y: 11px; height: 16px;
                                         width: active-tag.preferred-width + 12px;
                                         border-radius: 4px;
-                                        background: #3ccb7f1f;
+                                        background: #18dfa11f;
                                         active-tag := Text { text: @tr("АКТИВНА"); color: Theme.accent-green; font-size: 10px; font-weight: Theme.weight-bold; letter-spacing: 0.5px; horizontal-alignment: center; vertical-alignment: center; }
                                     }
                                     Text {
@@ -4850,7 +4965,7 @@ export component AppWindow inherits Window {
                                         focus-on-click: true; focus-on-tab-navigation: true;
                                         accessible-role: button; accessible-label: @tr("Изменить URL {}", profile.title); accessible-enabled: self.enabled;
                                         accessible-action-default => { if (self.enabled) { root.profile-delete-confirm-id = ""; root.profile-edit-draft = ""; root.profile-edit-id = root.profile-edit-id == profile.id ? "" : profile.id; } }
-                                        Rectangle { border-radius: 8px; opacity: parent.enabled ? 1 : 0.45; background: settings-profile-row.editing ? #4c9dff26 : edit-profile-touch.has-hover && parent.enabled ? #ffffff0d : transparent; border-color: Theme.focus; border-width: parent.has-focus ? Theme.focus-width : 0px; animate background { duration: 160ms; easing: cubic-bezier(0.22, 1, 0.36, 1); } Image { x: 8px; y: 8px; width: 16px; height: 16px; source: @image-url("../assets/edit.svg"); colorize: settings-profile-row.editing ? Theme.accent-blue : edit-profile-touch.has-hover ? Theme.text-primary : Theme.text-muted; image-fit: contain; accessible-role: none; } }
+                                        Rectangle { border-radius: 8px; opacity: parent.enabled ? 1 : 0.45; background: settings-profile-row.editing ? #159fff26 : edit-profile-touch.has-hover && parent.enabled ? #ffffff0d : transparent; border-color: Theme.focus; border-width: parent.has-focus ? Theme.focus-width : 0px; animate background { duration: 160ms; easing: cubic-bezier(0.22, 1, 0.36, 1); } Image { x: 8px; y: 8px; width: 16px; height: 16px; source: @image-url("../assets/edit.svg"); colorize: settings-profile-row.editing ? Theme.accent-blue : edit-profile-touch.has-hover ? Theme.text-primary : Theme.text-muted; image-fit: contain; accessible-role: none; } }
                                         key-pressed(event) => { if ((event.text == " " || event.text == "\n") && self.enabled) { root.profile-delete-confirm-id = ""; root.profile-edit-draft = ""; root.profile-edit-id = root.profile-edit-id == profile.id ? "" : profile.id; return accept; } return reject; }
                                         edit-profile-touch := TouchArea { enabled: parent.enabled; clicked => { root.profile-delete-confirm-id = ""; root.profile-edit-draft = ""; root.profile-edit-id = root.profile-edit-id == profile.id ? "" : profile.id; } }
                                     }
@@ -4863,7 +4978,7 @@ export component AppWindow inherits Window {
                                         accessible-action-default => { if (self.enabled) { root.profile-edit-id = ""; root.profile-delete-confirm-id = profile.id; } }
                                         init => { if (root.profile-delete-control-focus-id == profile.id && root.profile-delete-control-focus-serial > 0) { self.focus(); } }
                                         changed focus-serial => { if (root.profile-delete-control-focus-id == profile.id && self.enabled) { self.focus(); } }
-                                        Rectangle { border-radius: 8px; opacity: parent.enabled ? 1 : 0.45; background: settings-profile-row.confirming ? #f06a6a1f : delete-profile-touch.has-hover && parent.enabled ? #f06a6a14 : transparent; border-color: Theme.focus; border-width: parent.has-focus ? Theme.focus-width : 0px; animate background { duration: 160ms; easing: cubic-bezier(0.22, 1, 0.36, 1); } Image { x: 8px; y: 8px; width: 16px; height: 16px; source: @image-url("../assets/trash.svg"); colorize: settings-profile-row.confirming || delete-profile-touch.has-hover ? Theme.error : Theme.text-muted; image-fit: contain; accessible-role: none; } }
+                                        Rectangle { border-radius: 8px; opacity: parent.enabled ? 1 : 0.45; background: settings-profile-row.confirming ? #f0526a1f : delete-profile-touch.has-hover && parent.enabled ? #f0526a14 : transparent; border-color: Theme.focus; border-width: parent.has-focus ? Theme.focus-width : 0px; animate background { duration: 160ms; easing: cubic-bezier(0.22, 1, 0.36, 1); } Image { x: 8px; y: 8px; width: 16px; height: 16px; source: @image-url("../assets/trash.svg"); colorize: settings-profile-row.confirming || delete-profile-touch.has-hover ? Theme.error : Theme.text-muted; image-fit: contain; accessible-role: none; } }
                                         key-pressed(event) => { if ((event.text == " " || event.text == "\n") && self.enabled) { root.profile-edit-id = ""; root.profile-delete-confirm-id = profile.id; return accept; } return reject; }
                                         delete-profile-touch := TouchArea { enabled: parent.enabled; clicked => { root.profile-edit-id = ""; root.profile-delete-confirm-id = profile.id; } }
                                     }
@@ -4900,7 +5015,7 @@ export component AppWindow inherits Window {
                                         VerticalLayout { alignment: center; TextAction { label: @tr("Отмена"); tone: "neutral"; enabled: root.profile-pending-operation == "none"; activated => { root.profile-delete-control-focus-id = profile.id; root.profile-delete-confirm-id = ""; root.profile-delete-control-focus-serial += 1; } } }
                                         VerticalLayout { alignment: center; TextAction { label: @tr("Удалить"); tone: "danger"; enabled: root.profile-pending-operation == "none"; activated => { root.delete-profile(profile.id); } } }
                                     }
-                                    if index < root.subscription-profiles.length - 1: Rectangle { x: 52px; y: parent.height - 1px; width: parent.width - 52px; height: 1px; background: #ffffff0f; }
+                                    if index < root.subscription-profiles.length - 1: Rectangle { x: 52px; y: parent.height - 1px; width: parent.width - 52px; height: 1px; background: #7cc8ff18; }
                                 }
                             }
                         }
@@ -5327,7 +5442,7 @@ export component AppWindow inherits Window {
                                 property <color> tone-color: profile.quota-tone == "danger" ? Theme.error
                                     : profile.quota-tone == "warning" ? Theme.warning
                                     : Theme.accent-blue;
-                                background: profile.active ? (self.hovered ? #4c9dff1f : #4c9dff14)
+                                background: profile.active ? (self.hovered ? #159fff1f : #159fff14)
                                     : self.hovered ? #ffffff0d : transparent;
                                 opacity: profile.expired ? 0.5 : self.switchable ? 1 : 0.62;
                                 animate background { duration: 120ms; easing: ease-out; }
@@ -5562,7 +5677,7 @@ export component AppWindow inherits Window {
                 transform-origin: { x: 0px, y: 0px };
                 transform-scale: self.shown ? 1 : 0.97;
                 background: Theme.elevated;
-                border-color: root.subscription-announcement-tone == "danger" ? #f06a6a66 : root.subscription-announcement-tone == "success" ? #3ccb7f66 : #4c9dff66;
+                border-color: root.subscription-announcement-tone == "danger" ? #f0526a66 : root.subscription-announcement-tone == "success" ? #18dfa166 : #159fff66;
                 border-width: 1px;
                 border-radius: 12px;
                 drop-shadow-blur: 24px;

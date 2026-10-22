@@ -124,9 +124,9 @@ component TraySegment inherits Rectangle {
     horizontal-stretch: 1;
     height: 26px;
     border-radius: 7px;
-    background: root.selected ? Theme.elevated : segment-touch.has-hover && root.enabled ? #ffffff08 : transparent;
-    border-color: Theme.focus;
-    border-width: segment-focus.has-focus ? Theme.focus-width : 0px;
+    background: root.selected ? Theme.active-surface : segment-touch.has-hover && root.enabled ? #159fff14 : transparent;
+    border-color: segment-focus.has-focus ? Theme.focus : Theme.line-accent;
+    border-width: segment-focus.has-focus ? Theme.focus-width : root.selected ? 1px : 0px;
     opacity: root.enabled ? 1 : 0.5;
     accessible-role: button;
     accessible-label: root.label + (root.selected ? @tr(", выбрано") : "");
@@ -204,7 +204,7 @@ component TrayNodeRow inherits Rectangle {
     callback focus-request-taken();
 
     height: 44px;
-    background: root.selected ? Theme.elevated : node-touch.has-hover && root.enabled ? #ffffff06 : transparent;
+    background: root.selected ? Theme.raised : node-touch.has-hover && root.enabled ? #159fff0f : transparent;
     border-color: Theme.focus;
     border-width: node-focus.has-focus ? Theme.focus-width : 0px;
     accessible-role: button;
@@ -275,20 +275,36 @@ component TrayNodeRow inherits Rectangle {
         accessible-role: none;
     }
 
-    latency-label := Text {
+    latency-label := Rectangle {
         x: parent.width - self.width - 14px;
-        width: Math.min(self.preferred-width, 88px);
-        height: parent.height;
-        text: root.latency;
-        color: root.tone == "success" ? Theme.accent-green
-            : root.tone == "warning" ? Theme.warning
-            : root.tone == "danger" ? Theme.error
-            : Theme.text-muted;
-        font-size: 12px;
-        font-weight: Theme.weight-semibold;
-        horizontal-alignment: right;
-        vertical-alignment: center;
-        accessible-role: none;
+        y: (parent.height - self.height) / 2;
+        width: root.latency == "" ? 0px : Math.max(54px, Math.min(88px, latency-text.preferred-width + 20px));
+        height: root.latency == "" ? 0px : 24px;
+        border-radius: 12px;
+        background: root.tone == "success" ? #18dfa114
+            : root.tone == "warning" ? #f3c34a14
+            : root.tone == "danger" ? #f0526a14
+            : #159fff0d;
+        border-color: root.tone == "success" ? #18dfa180
+            : root.tone == "warning" ? #f3c34a80
+            : root.tone == "danger" ? #f0526a80
+            : Theme.line-soft;
+        border-width: root.latency == "" ? 0px : 1px;
+        animate background, border-color { duration: root.reduced-motion ? 0ms : 180ms; easing: ease-out; }
+        latency-text := Text {
+            width: parent.width;
+            height: parent.height;
+            text: root.latency;
+            color: root.tone == "success" ? Theme.accent-green
+                : root.tone == "warning" ? Theme.warning
+                : root.tone == "danger" ? Theme.error
+                : Theme.text-muted;
+            font-size: 12px;
+            font-weight: Theme.weight-semibold;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
     }
 
     // Hairline inset to where the name starts; none under the last row.
@@ -297,7 +313,7 @@ component TrayNodeRow inherits Rectangle {
         y: parent.height - 1px;
         width: parent.width - 42px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
     }
 
     // Focus is taken once the row exists and the event loop runs again, never while the
@@ -455,11 +471,38 @@ export component TrayPopup inherits Window {
             y: 1px;
             width: parent.width - 2px;
             height: parent.height - 2px;
-            background: Theme.canvas;
-            border-color: #ffffff0f;
+            background: @linear-gradient(145deg, Theme.canvas 0%, #071a2d 55%, Theme.canvas 100%);
+            border-color: Theme.line;
             border-width: 1px;
             border-radius: 12px;
             clip: true;
+
+            // Quick Panel stays static while open: two quiet network traces add
+            // depth without scheduling continuous animation frames.
+            Path {
+                x: -24px;
+                y: 20px;
+                width: parent.width + 60px;
+                height: 220px;
+                viewbox-width: 520;
+                viewbox-height: 220;
+                commands: "M -20 132 C 92 44 176 54 264 118 C 352 182 428 94 540 54";
+                fill: transparent;
+                stroke: #159fff26;
+                stroke-width: 1px;
+            }
+            Path {
+                x: -10px;
+                y: 190px;
+                width: parent.width + 40px;
+                height: 250px;
+                viewbox-width: 520;
+                viewbox-height: 250;
+                commands: "M -20 74 C 98 156 182 142 282 72 C 382 2 454 44 540 126";
+                fill: transparent;
+                stroke: #17c9b41f;
+                stroke-width: 1px;
+            }
 
             // Header: wordmark left, active subscription right.
             tray-header := Rectangle {
@@ -494,7 +537,7 @@ export component TrayPopup inherits Window {
                     height: parent.height;
                     alignment: end;
                     spacing: 0px;
-                    if root.has-profile: Text {
+                    if root.has-profile && root.subscription-title != "TerrieFlow": Text {
                         horizontal-stretch: 1;
                         max-width: self.preferred-width;
                         text: root.subscription-title;
@@ -550,15 +593,16 @@ export component TrayPopup inherits Window {
                 y: 56px;
                 width: parent.width - 20px;
                 height: 68px;
-                background: Theme.surface;
+                background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
                 border-radius: 12px;
                 border-width: 1px;
-                border-color: root.shown-busy ? #4c9dff59
-                    : root.shown-tone == "success" ? #3ccb7f59
-                    : root.shown-tone == "danger" ? #f06a6a66
-                    : root.shown-tone == "warning" ? #e7aa4566
+                border-color: root.shown-busy ? #159fff59
+                    : root.shown-tone == "success" ? #18dfa159
+                    : root.shown-tone == "danger" ? #f0526a66
+                    : root.shown-tone == "warning" ? #f3c34a66
                     : #ffffff0a;
                 clip: true;
+
                 animate border-color { duration: 220ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
 
                 // Cursor-reactive cell mesh, only while the pointer is over the card.
@@ -566,8 +610,8 @@ export component TrayPopup inherits Window {
                     property <bool> active: card-touch.has-hover;
                     property <length> cursor-x: card-touch.mouse-x;
                     property <length> cursor-y: card-touch.mouse-y;
-                    property <color> glow-strong: root.shown-tone == "success" ? #22c55e32 : root.shown-tone == "danger" ? #f06a6a32 : #0091ff3d;
-                    property <color> glow-medium: root.shown-tone == "success" ? #22c55e1d : root.shown-tone == "danger" ? #f06a6a1d : #0091ff24;
+                    property <color> glow-strong: root.shown-tone == "success" ? #18dfa132 : root.shown-tone == "danger" ? #f0526a32 : #159fff3d;
+                    property <color> glow-medium: root.shown-tone == "success" ? #18dfa11d : root.shown-tone == "danger" ? #f0526a1d : #159fff24;
                     property <color> grid-line: root.shown-tone == "success" ? #8ea39758 : root.shown-tone == "danger" ? #a3939358 : #8f9eae58;
                     background: @radial-gradient(
                         circle 120px at cursor-x cursor-y,
@@ -608,9 +652,9 @@ export component TrayPopup inherits Window {
                     height: 38px;
                     border-radius: 10px;
                     background: root.shown-busy ? Theme.elevated
-                        : root.shown-tone == "success" ? #3ccb7f24
-                        : root.shown-tone == "danger" ? #f06a6a24
-                        : root.shown-tone == "warning" ? #e7aa4524
+                        : root.shown-tone == "success" ? #18dfa124
+                        : root.shown-tone == "danger" ? #f0526a24
+                        : root.shown-tone == "warning" ? #f3c34a24
                         : Theme.elevated;
                     animate background { duration: 220ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
 
@@ -705,12 +749,12 @@ export component TrayPopup inherits Window {
                         border-radius: self.height / 2;
                         background: switch-track.lit ? #28a863 : #1a1e24;
                         border-color: switch-focus.has-focus ? Theme.focus
-                            : root.shown-busy ? #4c9dff99
+                            : root.shown-busy ? #159fff99
                             : switch-track.lit ? #ffffff26
                             : (switch-track.hovered ? #4a525e : #2a3038);
                         border-width: switch-focus.has-focus ? Theme.focus-width : 1px;
                         drop-shadow-blur: switch-track.lit ? (switch-track.hovered ? 12px : 8px) : 0px;
-                        drop-shadow-color: #3ccb7f55;
+                        drop-shadow-color: #18dfa155;
                         animate background, border-color, drop-shadow-blur { duration: 220ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                         Rectangle {
                             x: 2px;
@@ -741,7 +785,7 @@ export component TrayPopup inherits Window {
                         height: self.size;
                         border-radius: self.height / 2;
                         background: switch-track.lit ? #2fbf73 : (switch-track.hovered ? #242931 : #1e2229);
-                        border-color: root.shown-busy ? #4c9dff80
+                        border-color: root.shown-busy ? #159fff80
                             : switch-track.lit ? #ffffff4d
                             : (switch-track.hovered ? #ffffff2e : #ffffff14);
                         border-width: 1px;
@@ -766,7 +810,7 @@ export component TrayPopup inherits Window {
                             height: parent.height + 6px;
                             border-radius: self.height / 2;
                             border-width: 1px;
-                            border-color: root.shown-busy ? #4c9dff59 : #3ccb7f66;
+                            border-color: root.shown-busy ? #159fff59 : #18dfa166;
                             background: transparent;
                             opacity: root.shown-on || root.shown-busy ? 1 : 0;
                             animate opacity { duration: 220ms; easing: ease-out; }
@@ -824,8 +868,8 @@ export component TrayPopup inherits Window {
                 y: 56px;
                 width: parent.width - 20px;
                 height: 60px;
-                background: Theme.surface;
-                border-color: #ffffff0a;
+                background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                border-color: Theme.line-soft;
                 border-width: 1px;
                 border-radius: 12px;
                 add-touch := TouchArea {
@@ -838,7 +882,7 @@ export component TrayPopup inherits Window {
                     width: 36px;
                     height: 36px;
                     border-radius: 10px;
-                    background: #4c9dff1f;
+                    background: #159fff1f;
                     Image {
                         x: 10px;
                         y: 10px;
@@ -912,7 +956,7 @@ export component TrayPopup inherits Window {
                 y: 134px;
                 width: parent.width - 20px;
                 height: 32px;
-                background: #0a0c0f;
+                background: #06101f;
                 border-color: Theme.line;
                 border-width: 1px;
                 border-radius: 9px;
@@ -985,7 +1029,7 @@ export component TrayPopup inherits Window {
                     opacity: group-track.scroll-x > 0.5px ? 1 : 0;
                     visible: self.opacity > 0;
                     animate opacity { duration: root.reduced-motion ? 0ms : 140ms; easing: ease-out; }
-                    background: @linear-gradient(90deg, #0a0c0f 0%, #0a0c0f 50%, #0a0c0f00 100%);
+                    background: @linear-gradient(90deg, #06101f 0%, #06101f 50%, #06101f00 100%);
                     group-prev := TouchArea {
                         width: 22px;
                         height: parent.height;
@@ -1010,7 +1054,7 @@ export component TrayPopup inherits Window {
                     opacity: group-track.scroll-x < group-track.max-scroll - 0.5px ? 1 : 0;
                     visible: self.opacity > 0;
                     animate opacity { duration: root.reduced-motion ? 0ms : 140ms; easing: ease-out; }
-                    background: @linear-gradient(90deg, #0a0c0f00 0%, #0a0c0f 50%, #0a0c0f 100%);
+                    background: @linear-gradient(90deg, #06101f00 0%, #06101f 50%, #06101f 100%);
                     group-next := TouchArea {
                         x: parent.width - self.width;
                         width: 22px;
@@ -1036,8 +1080,8 @@ export component TrayPopup inherits Window {
                 y: root.group-rows.length > 0 && !root.dumb-mode ? 176px : 134px;
                 width: parent.width - 20px;
                 height: Math.min(root.node-rows.length > 0 ? root.node-rows.length * 44px : 48px, parent.height - self.y - 54px);
-                background: Theme.surface;
-                border-color: #ffffff0a;
+                background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                border-color: Theme.line-soft;
                 border-width: 1px;
                 border-radius: 12px;
                 clip: true;

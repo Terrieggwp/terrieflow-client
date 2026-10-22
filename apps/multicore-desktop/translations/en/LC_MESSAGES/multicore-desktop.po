@@ -2066,3 +2066,9 @@ msgstr "{}–now"
 
 msgid "Сегодня {}"
 msgstr "Today {}"
+
+msgid "Проверка состояния ядер и системных компонентов"
+msgstr "Core and system component health"
+
+msgid "Подключение, приложение и обновления"
+msgstr "Connection, application, and updates"

@@ -6848,7 +6848,7 @@ mod window_tests {
         assert!(row.contains("root.tone == \"success\" ? Theme.accent-green"));
         assert!(row.contains("root.tone == \"warning\" ? Theme.warning"));
         assert!(row.contains("root.tone == \"danger\" ? Theme.error"));
-        assert!(row.contains("background: root.selected ? Theme.elevated"));
+        assert!(row.contains("background: root.selected ? Theme.raised"));
         assert!(row.contains("if root.show-separator: Rectangle {"));
     }
 
@@ -7142,7 +7142,7 @@ mod window_tests {
         assert!(speedtest.contains("accessible-label: @tr(\"Проверить пинг\");"));
         assert!(speedtest.contains("../assets/gauge.svg"));
         assert!(speedtest.contains("if root.latency-check-loading: latency-check-ring := Path"));
-        assert!(speedtest.contains("stroke: #4c9dff;"));
+        assert!(speedtest.contains("stroke: #159fff;"));
         assert!(speedtest.contains("root.check-latency()"));
         assert!(speedtest.contains("!root.reduced-motion"));
         assert!(rust.contains("ui.on_check_latency("));
@@ -9069,7 +9069,7 @@ mod window_tests {
             .nth(1)
             .expect("conflict card");
         let card = card.chars().take(900).collect::<String>();
-        assert!(card.contains("background: Theme.surface;"));
+        assert!(card.contains("background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);"));
         assert!(card.contains("border-radius: 14px;"));
         assert!(card.contains(&format!(
             "animate opacity {{ duration: 240ms; easing: {ENTER}; }}"
@@ -9124,7 +9124,7 @@ mod window_tests {
         assert!(ui.contains("visible: root.catalog-error == \"\";"));
         assert!(rust.contains("ui.on_retry_catalog(move || {"));
         // Connection module tones: busy is blue, a failed connect reads its reason in red.
-        assert!(ui.contains(": root.shown-busy ? #4c9dff59\n                            : root.shown-tone == \"success\" ? #3ccb7f59"));
+        assert!(ui.contains(": root.shown-busy ? #159fff59\n                            : root.shown-tone == \"success\" ? #18dfa159"));
         assert!(ui.contains("source: root.shown-busy ? @image-url(\"../assets/shield.svg\")"));
         assert!(
             ui.contains("color: root.shown-tone == \"danger\" ? #f0a3a3 : Theme.text-secondary;")
