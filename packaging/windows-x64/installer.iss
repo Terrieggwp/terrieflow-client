@@ -66,7 +66,7 @@ WizardStyle=modern
 CloseApplications=yes
 CloseApplicationsFilter=MultiCore.exe,multicore-daemon.exe,multicore-updater.exe,multicore-core-host.exe,mihomo.exe,xray.exe
 RestartApplications=no
-UninstallDisplayIcon={app}\TerrieFlow.ico
+UninstallDisplayIcon={app}\TerrieFlow-Symbol.ico
 SetupIconFile={#SetupIconPath}
 VersionInfoVersion={#AppVersion}
 VersionInfoProductName={#AppName}
@@ -146,17 +146,22 @@ Name: "cleandata"; Description: "{cm:CleanDataTask}"; GroupDescription: "{cm:Dat
 
 [Files]
 Source: "{#PayloadDir}\*"; DestDir: "{app}\current"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#SetupIconPath}"; DestDir: "{app}"; DestName: "TerrieFlow.ico"; Flags: ignoreversion
+Source: "{#SetupIconPath}"; DestDir: "{app}"; DestName: "TerrieFlow-Symbol.ico"; Flags: ignoreversion
 
 [InstallDelete]
 ; Up to 1.1.1 the shortcuts were "MultiCore.lnk". NTFS is case-insensitive, so writing
 ; "TerrieFlow.lnk" over them would keep the old name: delete them before [Icons] recreates them.
 Type: files; Name: "{autoprograms}\MultiCore.lnk"
 Type: files; Name: "{autodesktop}\MultiCore.lnk"; Tasks: desktopicon
+; Recreate TerrieFlow shortcuts instead of updating them in place: Explorer caches icons by the
+; shortcut and icon paths, so an older square-backed icon could otherwise survive reinstalling.
+Type: files; Name: "{autoprograms}\TerrieFlow.lnk"
+Type: files; Name: "{autodesktop}\TerrieFlow.lnk"; Tasks: desktopicon
+Type: files; Name: "{app}\TerrieFlow.ico"
 
 [Icons]
-Name: "{autoprograms}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"; IconFilename: "{app}\TerrieFlow.ico"
-Name: "{autodesktop}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"; IconFilename: "{app}\TerrieFlow.ico"; Tasks: desktopicon
+Name: "{autoprograms}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"; IconFilename: "{app}\TerrieFlow-Symbol.ico"
+Name: "{autodesktop}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"; IconFilename: "{app}\TerrieFlow-Symbol.ico"; Tasks: desktopicon
 
 [Registry]
 ; Service mode: an elevated Setup may run as another account (a standard user typing an
