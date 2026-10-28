@@ -3718,13 +3718,29 @@ fn wire_account(
 
     let weak = ui.as_weak();
     let timer = Timer::default();
+    let mut previous_phase = String::new();
     timer.start(TimerMode::Repeated, Duration::from_millis(100), move || {
         let Some(ui) = weak.upgrade() else {
             return;
         };
         while let Some(event) = controller.try_event() {
             match event {
-                AccountEvent::State(state) => apply_account_state(&ui, &state),
+                AccountEvent::State(state) => {
+                    let refresh_completed = previous_phase == "refreshing"
+                        && state.authenticated
+                        && state.phase != "refreshing";
+                    previous_phase = state.phase.to_owned();
+                    apply_account_state(&ui, &state);
+                    if refresh_completed {
+                        ui.set_account_refresh_success(true);
+                        let reset = weak.clone();
+                        Timer::single_shot(Duration::from_millis(1_200), move || {
+                            if let Some(ui) = reset.upgrade() {
+                                ui.set_account_refresh_success(false);
+                            }
+                        });
+                    }
+                }
                 AccountEvent::OpenBrowser(url) => {
                     let _ = webbrowser::open(&url);
                 }

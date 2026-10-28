@@ -504,6 +504,15 @@ msgstr "Open TerrieFlow"
 msgid "Выйти"
 msgstr "Quit"
 
+msgid "Открыть личный кабинет"
+msgstr "Open account dashboard"
+
+msgid "Обновить"
+msgstr "Refresh"
+
+msgid "Обновлено"
+msgstr "Refreshed"
+
 msgid "Не удалось подключиться"
 msgstr "Couldn't connect"
 
@@ -1575,8 +1584,8 @@ msgstr "Open"
 msgid "ОБНОВЛЕНИЯ"
 msgstr "UPDATES"
 
-msgid "До 100 подписок · активна только одна · ссылки хранятся только на этом устройстве"
-msgstr "Up to 100 subscriptions · one active at a time · links stay on this device"
+msgid "До 100 подписок · выбран только один локальный профиль · ссылки хранятся только на этом устройстве"
+msgstr "Up to 100 subscriptions · one local profile selected · links stay on this device"
 
 msgid "Добавляем подписку с {}…"
 msgstr "Adding from {}…"
@@ -1602,8 +1611,11 @@ msgstr "Make {} active"
 msgid "Отключитесь, чтобы сменить подписку"
 msgstr "Disconnect to switch subscriptions"
 
-msgid "АКТИВНА"
-msgstr "ACTIVE"
+msgid "ВЫБРАНА"
+msgstr "SELECTED"
+
+msgid "СРОК ИСТЁК · {}"
+msgstr "EXPIRED · {}"
 
 msgid "Меняем ссылку…"
 msgstr "Changing link…"
@@ -1620,8 +1632,8 @@ msgstr "{} · {} · Unavailable for now"
 msgid "Временно недоступна"
 msgstr "Unavailable for now"
 
-msgid "Активна"
-msgstr "Active"
+msgid "Выбранный локальный профиль"
+msgstr "Selected local profile"
 
 msgid "Доступна"
 msgstr "Available"

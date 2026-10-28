@@ -632,6 +632,28 @@ fn profiles(count: usize) -> ModelRc<UiSubscriptionProfile> {
     ModelRc::new(VecModel::from(rows))
 }
 
+fn expired_selected_profile() -> ModelRc<UiSubscriptionProfile> {
+    ModelRc::new(VecModel::from(vec![UiSubscriptionProfile {
+        id: s("terrieflow-account"),
+        title: s("TerrieFlow"),
+        usage: s("0.4 GB"),
+        expiry: s("Срок истёк"),
+        active: true,
+        available: true,
+        has_logo: false,
+        logo: Default::default(),
+        logo_small: Default::default(),
+        fallback: s("T"),
+        remaining: s("0 GB"),
+        days: s("Срок истёк"),
+        used_fraction: 1.0,
+        unlimited: false,
+        quota_tone: s("danger"),
+        expired: true,
+        quota_tooltip: s("Срок подписки истёк"),
+    }]))
+}
+
 /// The «Сохранить лог» popup open over the status page with `range` chosen, with the hints
 /// `session_logs::range_hints` writes.
 fn log_range_open(ui: &AppWindow, range: &str) {
@@ -1469,6 +1491,11 @@ fn scenarios() -> Vec<Scenario> {
             ui.set_subscription_profiles(profiles(5));
             ui.set_local_page(s("subscriptions"));
         }),
+        ("subscriptions-expired-selected", 840, 620, |ui| {
+            ready(ui);
+            ui.set_subscription_profiles(expired_selected_profile());
+            ui.set_local_page(s("subscriptions"));
+        }),
         ("subscriptions-min", 700, 620, |ui| {
             ready(ui);
             ui.set_local_page(s("subscriptions"));
@@ -1882,6 +1909,28 @@ fn render_ui_previews() {
         ready(&ui);
         ui.set_account_menu_open(true);
         capture(&ui, "account-menu-guest", 840, 720);
+    }
+
+    if wanted("account-menu-authenticated") {
+        let ui = new_app();
+        ready(&ui);
+        ui.set_account_authenticated(true);
+        ui.set_account_display_name(s("Aleksandr TerrieFlow Long Name"));
+        ui.set_account_username(s("@terr1e"));
+        ui.set_account_detail(s("Аккаунт подключён"));
+        ui.set_account_menu_open(true);
+        capture(&ui, "account-menu-authenticated", 840, 720);
+    }
+
+    if wanted("account-sidebar-authenticated") {
+        let ui = new_app();
+        ready(&ui);
+        ui.set_navigation_collapsed(false);
+        ui.set_account_authenticated(true);
+        ui.set_account_display_name(s("Aleksandr TerrieFlow Long Name"));
+        ui.set_account_username(s("@terr1e"));
+        ui.set_account_detail(s("Аккаунт подключён"));
+        capture(&ui, "account-sidebar-authenticated", 1016, 720);
     }
 
     if wanted("account-email-login") {
