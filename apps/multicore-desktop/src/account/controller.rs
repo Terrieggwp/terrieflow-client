@@ -1,20 +1,28 @@
 use super::{
-    AccountApi, AccountApiError, AccountUser, CredentialSessionStore, LoginPoll, SessionStore,
-    StoredSession, telegram_login_url,
+    AccountApi, AccountApiError, AccountUser, CredentialSessionStore, EmailLoginError, LoginPoll,
+    SessionStore, StoredSession, telegram_login_url,
 };
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 const LOGIN_POLL_INTERVAL: Duration = Duration::from_secs(3);
 
 pub(crate) enum AccountCommand {
     Restore,
     Login,
+    EmailLogin(EmailCredentials),
     CancelLogin,
     Refresh,
     Logout,
     Shutdown,
+}
+
+#[derive(Zeroize, ZeroizeOnDrop)]
+pub(crate) struct EmailCredentials {
+    pub(crate) email: String,
+    pub(crate) password: String,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -85,6 +93,16 @@ fn worker(
                 if login.is_none() {
                     begin_login(&api, &events, &mut login);
                 }
+            }
+            Ok(AccountCommand::EmailLogin(credentials)) => {
+                login = None;
+                begin_email_login(
+                    &api,
+                    &store,
+                    &events,
+                    &mut session,
+                    credentials,
+                );
             }
             Ok(AccountCommand::CancelLogin) => {
                 login = None;
@@ -180,6 +198,78 @@ fn begin_login(
         }
         Err(_) => publish(events, error_state("Не удалось начать вход")),
     }
+}
+
+fn begin_email_login(
+    api: &AccountApi,
+    store: &CredentialSessionStore,
+    events: &Sender<AccountEvent>,
+    session: &mut Option<StoredSession>,
+    mut credentials: EmailCredentials,
+) {
+    credentials.email = credentials.email.trim().to_lowercase();
+    if !valid_email(&credentials.email) || credentials.password.is_empty() {
+        publish(
+            events,
+            email_error_state("Введите корректную почту и пароль"),
+        );
+        return;
+    }
+
+    publish(events, email_login_state());
+    match api.email_login(
+        &credentials.email,
+        &credentials.password,
+        SystemTime::now(),
+    ) {
+        Ok(current) => {
+            if store.save(&current).is_err() {
+                publish(
+                    events,
+                    email_error_state("Не удалось безопасно сохранить сессию"),
+                );
+                return;
+            }
+            *session = restore_loaded(api, store, events, current);
+        }
+        Err(EmailLoginError::InvalidCredentials) => publish(
+            events,
+            email_error_state("Не удалось войти. Проверьте почту и пароль"),
+        ),
+        Err(EmailLoginError::EmailNotVerified) => publish(
+            events,
+            email_error_state("Подтвердите почту по ссылке из письма и повторите вход"),
+        ),
+        Err(EmailLoginError::RateLimited(wait)) => publish(
+            events,
+            email_error_state(&format!(
+                "Слишком много попыток. Повторите через {} с",
+                wait.as_secs()
+            )),
+        ),
+        Err(EmailLoginError::Network | EmailLoginError::ServerUnavailable) => publish(
+            events,
+            email_error_state("Кабинет временно недоступен. Проверьте соединение"),
+        ),
+        Err(EmailLoginError::InvalidResponse | EmailLoginError::UnexpectedStatus) => publish(
+            events,
+            email_error_state("Не удалось войти. Повторите попытку позже"),
+        ),
+    }
+}
+
+fn valid_email(email: &str) -> bool {
+    if email.is_empty() || email.len() > 254 || email.contains(char::is_whitespace) {
+        return false;
+    }
+    let Some((local, domain)) = email.rsplit_once('@') else {
+        return false;
+    };
+    !local.is_empty()
+        && local.len() <= 64
+        && domain.contains('.')
+        && !domain.starts_with('.')
+        && !domain.ends_with('.')
 }
 
 fn restore(
@@ -326,7 +416,7 @@ fn guest_state() -> AccountViewState {
     AccountViewState {
         phase: "guest",
         display_name: "Войти в аккаунт".into(),
-        detail: "Через Telegram".into(),
+        detail: "Telegram или email".into(),
         ..Default::default()
     }
 }
@@ -364,7 +454,26 @@ fn expired_state() -> AccountViewState {
     AccountViewState {
         phase: "expired",
         display_name: "Сессия завершена".into(),
-        detail: "Войдите снова через Telegram".into(),
+        detail: "Войдите снова удобным способом".into(),
+        ..Default::default()
+    }
+}
+
+fn email_login_state() -> AccountViewState {
+    AccountViewState {
+        phase: "email-login",
+        display_name: "Входим в аккаунт…".into(),
+        detail: "Проверяем почту и пароль".into(),
+        busy: true,
+        ..Default::default()
+    }
+}
+
+fn email_error_state(detail: &str) -> AccountViewState {
+    AccountViewState {
+        phase: "email-error",
+        display_name: "Войти в TerrieFlow".into(),
+        detail: detail.into(),
         ..Default::default()
     }
 }
@@ -385,5 +494,20 @@ fn error_state(detail: &str) -> AccountViewState {
         display_name: "Ошибка аккаунта".into(),
         detail: detail.into(),
         ..Default::default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::valid_email;
+
+    #[test]
+    fn email_validation_rejects_incomplete_or_unsafe_values() {
+        assert!(valid_email("user@example.com"));
+        assert!(valid_email("user.name+vpn@sub.example.com"));
+        assert!(!valid_email("user"));
+        assert!(!valid_email("@example.com"));
+        assert!(!valid_email("user@example"));
+        assert!(!valid_email("user @example.com"));
     }
 }

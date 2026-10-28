@@ -779,6 +779,128 @@ component UrlField inherits Rectangle {
     }
 }
 
+component AccountField inherits Rectangle {
+    in-out property <string> text;
+    in property <string> placeholder;
+    in property <bool> password: false;
+    in property <bool> reveal: false;
+    in property <bool> enabled: true;
+    in property <string> accessible-name;
+    callback accepted();
+    callback toggle-reveal();
+    forward-focus: account-field-input;
+
+    height: 44px;
+    border-radius: 10px;
+    background: #071a2dcc;
+    border-width: 1px;
+    border-color: account-field-input.has-focus ? Theme.accent-cyan : Theme.line-accent;
+    opacity: root.enabled ? 1 : 0.65;
+    animate border-color { duration: 170ms; easing: ease-out; }
+
+    if root.text == "": Text {
+        x: 14px;
+        width: parent.width - (root.password ? 54px : 28px);
+        height: parent.height;
+        text: root.placeholder;
+        color: Theme.text-muted;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+        accessible-role: none;
+    }
+
+    account-field-input := TextInput {
+        x: 14px;
+        width: parent.width - (root.password ? 54px : 28px);
+        height: parent.height;
+        text <=> root.text;
+        enabled: root.enabled;
+        single-line: true;
+        input-type: root.password && !root.reveal ? InputType.password : InputType.text;
+        color: Theme.text-primary;
+        font-size: 13px;
+        vertical-alignment: center;
+        accessible-label: root.accessible-name;
+        accepted => { root.accepted(); }
+    }
+
+    if root.password: Rectangle {
+        x: parent.width - 42px;
+        y: 5px;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background: account-eye-touch.has-hover ? #159fff18 : transparent;
+        border-color: Theme.focus;
+        border-width: account-eye-focus.has-focus ? 2px : 0px;
+        Image {
+            x: 8px;
+            y: 8px;
+            width: 18px;
+            height: 18px;
+            source: root.reveal ? @image-url("../assets/eye-off.svg") : @image-url("../assets/eye.svg");
+            colorize: account-eye-touch.has-hover ? Theme.accent-cyan : Theme.text-muted;
+            image-fit: contain;
+        }
+        account-eye-focus := FocusScope {
+            enabled: root.enabled;
+            focus-on-click: true;
+            focus-on-tab-navigation: true;
+            accessible-role: button;
+            accessible-label: root.reveal ? @tr("Скрыть пароль") : @tr("Показать пароль");
+            key-pressed(event) => {
+                if (event.text == " " || event.text == "\n") {
+                    root.toggle-reveal();
+                    return accept;
+                }
+                return reject;
+            }
+            account-eye-touch := TouchArea { enabled: root.enabled; clicked => { root.toggle-reveal(); } }
+        }
+    }
+}
+
+component AccountButton inherits Rectangle {
+    in property <string> label;
+    in property <image> icon;
+    in property <bool> primary: false;
+    in property <bool> enabled: true;
+    callback activated();
+
+    height: 44px;
+    border-radius: 10px;
+    background: root.primary
+        ? (account-button-touch.pressed ? #117ec8 : account-button-touch.has-hover ? #198fdd : #176fba)
+        : account-button-touch.has-hover ? #159fff1f : #0d2b47cc;
+    border-color: account-button-focus.has-focus ? Theme.focus : root.primary ? #31b7ff : #159fff70;
+    border-width: account-button-focus.has-focus ? 2px : 1px;
+    opacity: root.enabled ? 1 : 0.55;
+    animate background { duration: 150ms; easing: ease-out; }
+
+    HorizontalLayout {
+        alignment: center;
+        spacing: 9px;
+        Image { width: 17px; height: 17px; source: root.icon; colorize: root.primary ? white : Theme.accent-cyan; image-fit: contain; }
+        Text { text: root.label; color: root.primary ? white : Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
+    }
+    account-button-focus := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: true;
+        focus-on-tab-navigation: true;
+        accessible-role: button;
+        accessible-label: root.label;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.activated();
+                return accept;
+            }
+            return reject;
+        }
+        account-button-touch := TouchArea { enabled: root.enabled; clicked => { root.activated(); } }
+    }
+}
+
 // Tappable row of an inset grouped card (first-run actions).
 component ActionRow inherits Rectangle {
     in property <string> label;
@@ -1819,6 +1941,11 @@ export component AppWindow inherits Window {
     in property <string> account-detail: @tr("Через Telegram");
     in property <bool> account-authenticated: false;
     in property <bool> account-busy: false;
+    in-out property <bool> account-email-login-open: false;
+    in-out property <string> account-login-email;
+    in-out property <string> account-login-password;
+    in-out property <bool> account-password-visible: false;
+    in property <string> account-email-error;
     // Dim for everything under the title bar while the profile menu is open.
     private property <color> menu-scrim: #00000073;
     // True for one frame after the page changes, so the new page starts hidden and
@@ -1880,11 +2007,23 @@ export component AppWindow inherits Window {
     callback add-subscription();
     callback retry-profile-menu();
     callback account-login();
+    callback account-email-login(string, string);
     callback account-cancel-login();
     callback account-refresh();
     callback account-logout();
     callback account-open-cabinet();
+    callback account-open-password-recovery();
+    callback account-open-registration();
     callback primary-action();
+
+    function close-account-email-login() {
+        if (!root.account-busy) {
+            root.account-email-login-open = false;
+            root.account-login-password = "";
+            root.account-password-visible = false;
+            root.account-cancel-login();
+        }
+    }
     // Optimistic switch: the knob and title follow the user's intent at once; the
     // real connection state takes over as soon as the daemon reports it, so network
     // latency never reads as a laggy UI.
@@ -2198,7 +2337,7 @@ export component AppWindow inherits Window {
     }
 
     visual-frame := FocusScope {
-        enabled: !root.deep-link-confirm-open && !root.update-confirm-open && !root.log-range-open;
+        enabled: !root.deep-link-confirm-open && !root.update-confirm-open && !root.log-range-open && !root.account-email-login-open;
         x: root.resize-border;
         y: root.resize-border;
         width: parent.width - 2 * root.resize-border;
@@ -3475,7 +3614,7 @@ export component AppWindow inherits Window {
                                 onboarding-copy := VerticalLayout {
                                     spacing: 8px;
                                     Text {
-                                        text: root.account-authenticated ? @tr("Добавьте VPN-подписку") : @tr("Войдите в TerrieFlow");
+                                        text: root.account-authenticated ? @tr("Добавьте VPN-подписку") : @tr("Добро пожаловать в TerrieFlow");
                                         color: Theme.text-primary;
                                         font-size: 20px;
                                         font-weight: Theme.weight-semibold;
@@ -3486,7 +3625,7 @@ export component AppWindow inherits Window {
                                     Text {
                                         text: root.account-authenticated
                                             ? @tr("Аккаунт подключён. VPN-подписка пока не добавлена")
-                                            : @tr("Подтвердите вход в Telegram, чтобы подключить аккаунт");
+                                            : @tr("Войдите в аккаунт или добавьте VPN-подписку вручную");
                                         color: Theme.text-secondary;
                                         font-size: Theme.type-label-size;
                                         horizontal-alignment: center;
@@ -3510,20 +3649,60 @@ export component AppWindow inherits Window {
                                     first-run-actions := VerticalLayout {
                                         alignment: start;
                                         spacing: 0px;
+                                        if !root.account-authenticated: Rectangle {
+                                            height: 34px;
+                                            Text {
+                                                x: 16px;
+                                                width: parent.width - 32px;
+                                                height: parent.height;
+                                                text: @tr("ВХОД В TERRIEFLOW");
+                                                color: Theme.accent-cyan;
+                                                font-size: 10px;
+                                                font-weight: Theme.weight-semibold;
+                                                letter-spacing: 0.7px;
+                                                vertical-alignment: center;
+                                            }
+                                        }
                                         if !root.account-authenticated: ActionRow {
                                             label: root.account-busy ? root.account-display-name : root.account-phase == "expired" ? @tr("Войти снова через Telegram") : @tr("Войти через Telegram");
                                             state-label: @tr("Войти в аккаунт TerrieFlow через Telegram");
-                                            icon: @image-url("../assets/account.svg");
+                                            icon: @image-url("../assets/telegram.svg");
                                             accent: true;
                                             show-separator: true;
                                             enabled: !root.account-busy;
                                             activated => { root.account-login(); }
                                         }
+                                        if !root.account-authenticated: ActionRow {
+                                            label: @tr("Войти по почте и паролю");
+                                            state-label: @tr("Открыть форму входа в TerrieFlow по электронной почте");
+                                            icon: @image-url("../assets/mail.svg");
+                                            chevron: true;
+                                            enabled: !root.account-busy;
+                                            activated => {
+                                                root.account-menu-open = false;
+                                                root.account-email-login-open = true;
+                                            }
+                                        }
+                                        if !root.account-authenticated: Rectangle {
+                                            height: 38px;
+                                            Rectangle { x: 16px; y: 18px; width: 54px; height: 1px; background: Theme.line-accent; }
+                                            Text {
+                                                x: 80px;
+                                                width: 104px;
+                                                height: parent.height;
+                                                text: @tr("ИЛИ ПО ССЫЛКЕ");
+                                                color: Theme.text-muted;
+                                                font-size: 10px;
+                                                letter-spacing: 0.5px;
+                                                vertical-alignment: center;
+                                            }
+                                            Rectangle { x: 184px; y: 18px; width: parent.width - 200px; height: 1px; background: Theme.line-accent; }
+                                        }
                                         ActionRow {
                                             label: root.import-pending ? @tr("Добавляем…") : @tr("Вставить из буфера");
                                             state-label: @tr("Вставить подписку из буфера обмена");
                                             icon: @image-url("../assets/clipboard.svg");
-                                            accent: root.account-authenticated;
+                                            accent: false;
                                             show-separator: true;
                                             enabled: !root.import-pending;
                                             activated => { root.paste-subscription(); }
@@ -3602,7 +3781,9 @@ export component AppWindow inherits Window {
                                     accessible-live-region: polite;
                                 }
                                 if root.import-error == "": Text {
-                                    text: @tr("Ссылка хранится только на этом устройстве");
+                                    text: root.account-authenticated
+                                        ? @tr("Ссылка хранится только на этом устройстве")
+                                        : @tr("Вход необязателен. Можно использовать сторонние VPN-подписки");
                                     color: Theme.text-muted;
                                     font-size: Theme.type-metadata-size;
                                     horizontal-alignment: center;
@@ -3610,12 +3791,10 @@ export component AppWindow inherits Window {
                                 }
                                 Rectangle { height: 40px; background: transparent; }
 
-                                HorizontalLayout {
+                                if root.account-authenticated: HorizontalLayout {
                                     alignment: center;
                                     spacing: 12px;
-                                    for step[i] in root.account-authenticated
-                                        ? [@tr("1 СКОПИРУЙТЕ ССЫЛКУ"), @tr("2 ВСТАВЬТЕ"), @tr("3 ВКЛЮЧИТЕ ЗАЩИТУ")]
-                                        : [@tr("1 ОТКРОЙТЕ TELEGRAM"), @tr("2 ПОДТВЕРДИТЕ ВХОД"), @tr("3 ДОБАВЬТЕ VPN")]: HorizontalLayout {
+                                    for step[i] in [@tr("1 СКОПИРУЙТЕ ССЫЛКУ"), @tr("2 ВСТАВЬТЕ"), @tr("3 ВКЛЮЧИТЕ ЗАЩИТУ")]: HorizontalLayout {
                                         spacing: 12px;
                                         if i > 0: Text { text: "·"; color: Theme.text-muted; opacity: 0.5; font-size: 11px; }
                                         SectionCaption { text: step; font-weight: Theme.weight-medium; }
@@ -5415,16 +5594,16 @@ export component AppWindow inherits Window {
                 x: Math.max(8px, parent.width - self.width - 8px);
                 y: root.account-menu-open ? -2px : -8px;
                 width: 286px;
-                height: root.account-authenticated ? 184px : root.account-busy ? 136px : 150px;
+                height: root.account-authenticated ? 184px : root.account-busy ? 150px : 216px;
                 visible: self.opacity > 0;
                 opacity: root.account-menu-open ? 1 : 0;
-                background: Theme.elevated;
-                border-color: #ffffff1a;
+                background: @linear-gradient(145deg, #09213af5 0%, #071523fa 58%, #0b2940f5 100%);
+                border-color: #19bdf070;
                 border-width: 1px;
                 border-radius: 12px;
                 drop-shadow-blur: 24px;
                 drop-shadow-offset-y: 8px;
-                drop-shadow-color: #00000080;
+                drop-shadow-color: #0b8ed050;
                 animate opacity { duration: 160ms; easing: ease-out; }
                 animate y { duration: 160ms; easing: ease-out; }
 
@@ -5437,24 +5616,33 @@ export component AppWindow inherits Window {
                             width: 34px;
                             height: 34px;
                             border-radius: 10px;
-                            background: root.account-authenticated ? #22d3a81f : #169cff18;
+                            background: root.account-authenticated ? #22d3a81f : #159fff22;
+                            border-color: root.account-authenticated ? #22d3a845 : #22c8ff48;
+                            border-width: 1px;
                             Image { x: 8px; y: 8px; width: 18px; height: 18px; source: @image-url("../assets/account.svg"); colorize: root.account-authenticated ? Theme.accent-green : Theme.accent-blue; }
                         }
                         VerticalLayout {
                             horizontal-stretch: 1;
                             spacing: 1px;
-                            Text { text: root.account-display-name; color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; overflow: elide; }
-                            Text { text: root.account-username != "" ? root.account-username : root.account-email != "" ? root.account-email : root.account-detail; color: Theme.text-muted; font-size: 11px; overflow: elide; }
+                            Text { text: root.account-authenticated ? root.account-display-name : @tr("Войти в TerrieFlow"); color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; overflow: elide; }
+                            Text { text: root.account-authenticated ? (root.account-username != "" ? root.account-username : root.account-email != "" ? root.account-email : root.account-detail) : @tr("Выберите способ авторизации"); color: Theme.text-muted; font-size: 11px; overflow: elide; }
                         }
                     }
                     Rectangle { height: 1px; background: Theme.line; }
 
-                    if !root.account-authenticated && !root.account-busy: Rectangle {
-                        height: 38px;
-                        border-radius: 8px;
-                        background: account-login-touch.pressed ? #168de0 : Theme.accent-blue;
-                        Text { text: root.account-phase == "expired" ? @tr("Войти снова через Telegram") : @tr("Войти через Telegram"); color: white; font-size: 12px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; }
-                        account-login-touch := TouchArea { clicked => { root.account-login(); } }
+                    if !root.account-authenticated && !root.account-busy: AccountButton {
+                        label: @tr("Через Telegram");
+                        icon: @image-url("../assets/telegram.svg");
+                        primary: true;
+                        activated => { root.account-login(); }
+                    }
+                    if !root.account-authenticated && !root.account-busy: AccountButton {
+                        label: @tr("По почте и паролю");
+                        icon: @image-url("../assets/mail.svg");
+                        activated => {
+                            root.account-menu-open = false;
+                            root.account-email-login-open = true;
+                        }
                     }
                     if !root.account-authenticated && root.account-busy: Rectangle {
                         height: 38px;
@@ -5964,6 +6152,174 @@ export component AppWindow inherits Window {
             }
             }
         }
+        }
+    }
+
+    account-email-overlay := Rectangle {
+        x: root.resize-border;
+        y: root.resize-border;
+        width: parent.width - 2 * root.resize-border;
+        height: parent.height - 2 * root.resize-border;
+        background: #02070dcc;
+        opacity: root.account-email-login-open ? 1 : 0;
+        visible: self.opacity > 0;
+        animate opacity { duration: Motion.reduced ? 0ms : 180ms; easing: ease-out; }
+
+        TouchArea {
+            width: parent.width;
+            height: parent.height;
+            enabled: root.account-email-login-open && !root.account-busy;
+            clicked => { root.close-account-email-login(); }
+        }
+
+        email-login-card := Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2 + (root.account-email-login-open ? 0px : 10px);
+            width: Math.min(440px, parent.width - 40px);
+            height: Math.min(510px, parent.height - 40px);
+            background: @linear-gradient(145deg, #0a2742fa 0%, #071523fc 52%, #0c2d45fa 100%);
+            border-color: #1bc8ef99;
+            border-width: 1px;
+            border-radius: 18px;
+            drop-shadow-blur: 42px;
+            drop-shadow-offset-y: 14px;
+            drop-shadow-color: #038ec05c;
+            clip: true;
+            animate y { duration: Motion.reduced ? 0ms : 180ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+            TouchArea { width: parent.width; height: parent.height; }
+
+            email-login-focus := FocusScope {
+                width: parent.width;
+                height: parent.height;
+                focus-on-tab-navigation: false;
+                key-pressed(event) => {
+                    if (event.text == Key.Escape) {
+                        root.close-account-email-login();
+                        return accept;
+                    }
+                    return reject;
+                }
+
+                VerticalLayout {
+                    padding: 22px;
+                    spacing: 8px;
+
+                    HorizontalLayout {
+                        height: 42px;
+                        spacing: 12px;
+                        Rectangle {
+                            width: 42px;
+                            height: 42px;
+                            border-radius: 12px;
+                            background: #159fff22;
+                            border-color: #22c8ff48;
+                            border-width: 1px;
+                            Image { x: 10px; y: 10px; width: 22px; height: 22px; source: @image-url("../assets/account.svg"); colorize: Theme.accent-cyan; image-fit: contain; }
+                        }
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 1px;
+                            Text { text: @tr("Вход в TerrieFlow"); color: Theme.text-primary; font-size: 18px; font-weight: Theme.weight-semibold; overflow: elide; }
+                            Text { text: @tr("Введите почту и пароль от кабинета"); color: Theme.text-muted; font-size: 11px; overflow: elide; }
+                        }
+                        Rectangle {
+                            width: 32px;
+                            height: 32px;
+                            border-radius: 8px;
+                            background: email-close-touch.has-hover ? #ffffff0d : transparent;
+                            border-color: Theme.focus;
+                            border-width: email-close-focus.has-focus ? 2px : 0px;
+                            Image { x: 9px; y: 9px; width: 14px; height: 14px; source: @image-url("../assets/close.svg"); colorize: Theme.text-secondary; image-fit: contain; }
+                            email-close-focus := FocusScope {
+                                enabled: !root.account-busy;
+                                focus-on-click: true;
+                                focus-on-tab-navigation: true;
+                                accessible-role: button;
+                                accessible-label: @tr("Закрыть форму входа");
+                                key-pressed(event) => {
+                                    if (event.text == " " || event.text == "\n") {
+                                        root.close-account-email-login();
+                                        return accept;
+                                    }
+                                    return reject;
+                                }
+                                email-close-touch := TouchArea { enabled: !root.account-busy; clicked => { root.close-account-email-login(); } }
+                            }
+                        }
+                    }
+
+                    Rectangle { height: 6px; background: transparent; }
+                    Text { text: @tr("ЭЛЕКТРОННАЯ ПОЧТА"); color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; letter-spacing: 0.5px; }
+                    email-login-email := AccountField {
+                        text <=> root.account-login-email;
+                        placeholder: "user@example.com";
+                        accessible-name: @tr("Электронная почта");
+                        enabled: !root.account-busy;
+                        init => { self.focus(); }
+                        accepted => {
+                            if (!root.account-busy && root.account-login-email != "" && root.account-login-password != "") {
+                                root.account-email-login(root.account-login-email, root.account-login-password);
+                            }
+                        }
+                    }
+                    Text { text: @tr("ПАРОЛЬ"); color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; letter-spacing: 0.5px; }
+                    AccountField {
+                        text <=> root.account-login-password;
+                        placeholder: @tr("Введите пароль");
+                        accessible-name: @tr("Пароль");
+                        password: true;
+                        reveal: root.account-password-visible;
+                        enabled: !root.account-busy;
+                        toggle-reveal => { root.account-password-visible = !root.account-password-visible; }
+                        accepted => {
+                            if (!root.account-busy && root.account-login-email != "" && root.account-login-password != "") {
+                                root.account-email-login(root.account-login-email, root.account-login-password);
+                            }
+                        }
+                    }
+
+                    if root.account-email-error != "": Text {
+                        height: 34px;
+                        text: root.account-email-error;
+                        color: Theme.error;
+                        font-size: 11px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        wrap: word-wrap;
+                        accessible-live-region: polite;
+                    }
+                    if root.account-email-error == "": Rectangle { height: 10px; background: transparent; }
+
+                    AccountButton {
+                        label: root.account-busy && root.account-phase == "email-login" ? @tr("Входим…") : @tr("Войти");
+                        icon: @image-url("../assets/account.svg");
+                        primary: true;
+                        enabled: !root.account-busy && root.account-login-email != "" && root.account-login-password != "";
+                        activated => { root.account-email-login(root.account-login-email, root.account-login-password); }
+                    }
+
+                    HorizontalLayout {
+                        height: 30px;
+                        alignment: center;
+                        spacing: 16px;
+                        TextAction { label: @tr("Забыли пароль?"); tone: "neutral"; enabled: !root.account-busy; activated => { root.account-open-password-recovery(); } }
+                        TextAction { label: @tr("Зарегистрироваться"); tone: "neutral"; enabled: !root.account-busy; activated => { root.account-open-registration(); } }
+                    }
+
+                    Rectangle { height: 1px; background: Theme.line-accent; }
+                    AccountButton {
+                        label: @tr("Вернуться к входу через Telegram");
+                        icon: @image-url("../assets/telegram.svg");
+                        enabled: !root.account-busy;
+                        activated => {
+                            root.account-email-login-open = false;
+                            root.account-login-password = "";
+                            root.account-password-visible = false;
+                            root.account-login();
+                        }
+                    }
+                }
+            }
         }
     }
 

@@ -48,7 +48,10 @@ mod windows_identity;
 mod windows_shell;
 
 use multicore_i18n::tr;
-use account::{AccountApi, AccountCommand, AccountController, AccountEvent, AccountViewState, CredentialSessionStore};
+use account::{
+    AccountApi, AccountCommand, AccountController, AccountEvent, AccountViewState,
+    CredentialSessionStore, EmailCredentials,
+};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, VecDeque};
 use std::ffi::{OsStr, OsString};
@@ -3679,6 +3682,13 @@ fn saved_local_proxy_address() -> String {
 fn wire_account(ui: &AppWindow, controller: Rc<AccountController>) -> Timer {
     let login = controller.clone();
     ui.on_account_login(move || login.send(AccountCommand::Login));
+    let email_login = controller.clone();
+    ui.on_account_email_login(move |email, password| {
+        email_login.send(AccountCommand::EmailLogin(EmailCredentials {
+            email: email.to_string(),
+            password: password.to_string(),
+        }));
+    });
     let cancel = controller.clone();
     ui.on_account_cancel_login(move || cancel.send(AccountCommand::CancelLogin));
     let refresh = controller.clone();
@@ -3687,6 +3697,12 @@ fn wire_account(ui: &AppWindow, controller: Rc<AccountController>) -> Timer {
     ui.on_account_logout(move || logout.send(AccountCommand::Logout));
     ui.on_account_open_cabinet(move || {
         let _ = webbrowser::open(account::CABINET_URL);
+    });
+    ui.on_account_open_password_recovery(move || {
+        let _ = webbrowser::open(account::CABINET_LOGIN_URL);
+    });
+    ui.on_account_open_registration(move || {
+        let _ = webbrowser::open(account::CABINET_LOGIN_URL);
     });
 
     let weak = ui.as_weak();
@@ -3715,6 +3731,18 @@ fn apply_account_state(ui: &AppWindow, state: &AccountViewState) {
     ui.set_account_detail(state.detail.as_str().into());
     ui.set_account_authenticated(state.authenticated);
     ui.set_account_busy(state.busy);
+    ui.set_account_email_error(
+        if state.phase == "email-error" {
+            state.detail.as_str()
+        } else {
+            ""
+        }
+        .into(),
+    );
+    if state.authenticated {
+        ui.set_account_email_login_open(false);
+        ui.set_account_login_password("".into());
+    }
 }
 
 fn wire_local_proxy(ui: &AppWindow) {

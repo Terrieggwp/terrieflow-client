@@ -3,13 +3,16 @@ mod controller;
 mod secure_store;
 mod session;
 
-pub(crate) use api::{AccountApi, AccountApiError, LoginPoll};
-pub(crate) use controller::{AccountCommand, AccountController, AccountEvent, AccountViewState};
+pub(crate) use api::{AccountApi, AccountApiError, EmailLoginError, LoginPoll};
+pub(crate) use controller::{
+    AccountCommand, AccountController, AccountEvent, AccountViewState, EmailCredentials,
+};
 pub(crate) use secure_store::{CredentialSessionStore, SessionStore};
 pub(crate) use session::{AccountUser, StoredSession};
 
 pub(crate) const CABINET_API_BASE_URL: &str = "https://cp.terrieflow.shop/api";
 pub(crate) const CABINET_URL: &str = "https://cp.terrieflow.shop";
+pub(crate) const CABINET_LOGIN_URL: &str = "https://cp.terrieflow.shop/login";
 pub(crate) const TELEGRAM_BOT_USERNAME: &str = "TerrieFlow_bot";
 
 pub(crate) fn telegram_login_url(token: &str) -> Option<String> {

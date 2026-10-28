@@ -29,6 +29,17 @@ pub(crate) enum LoginPoll {
 }
 
 #[derive(Debug)]
+pub(crate) enum EmailLoginError {
+    InvalidCredentials,
+    EmailNotVerified,
+    RateLimited(Duration),
+    Network,
+    ServerUnavailable,
+    InvalidResponse,
+    UnexpectedStatus,
+}
+
+#[derive(Debug)]
 pub(crate) enum AccountApiError {
     InvalidConfiguration,
     Network,
@@ -85,6 +96,12 @@ struct PollRequest<'a> {
 #[derive(Serialize)]
 struct RefreshRequest<'a> {
     refresh_token: &'a str,
+}
+
+#[derive(Serialize)]
+struct EmailLoginRequest<'a> {
+    email: &'a str,
+    password: &'a str,
 }
 
 impl AccountApi {
@@ -152,6 +169,46 @@ impl AccountApi {
             StatusCode::GONE => Ok(LoginPoll::Expired),
             StatusCode::TOO_MANY_REQUESTS => Ok(LoginPoll::RateLimited(retry_after(&response))),
             status => Err(classify_status(status)),
+        }
+    }
+
+    pub(crate) fn email_login(
+        &self,
+        email: &str,
+        password: &str,
+        now: SystemTime,
+    ) -> Result<StoredSession, EmailLoginError> {
+        let response = self
+            .client
+            .post(
+                self.endpoint("cabinet/auth/email/login")
+                    .map_err(|_| EmailLoginError::InvalidResponse)?,
+            )
+            .json(&EmailLoginRequest { email, password })
+            .send()
+            .map_err(|_| EmailLoginError::Network)?;
+        match response.status() {
+            StatusCode::OK => {
+                let auth: AuthResponse = response
+                    .json()
+                    .map_err(|_| EmailLoginError::InvalidResponse)?;
+                validate_tokens(&auth.access_token, &auth.refresh_token)
+                    .map_err(|_| EmailLoginError::InvalidResponse)?;
+                Ok(StoredSession::new(
+                    auth.access_token,
+                    auth.refresh_token,
+                    Duration::from_secs(auth.expires_in),
+                    auth.user,
+                    now,
+                ))
+            }
+            StatusCode::UNAUTHORIZED => Err(EmailLoginError::InvalidCredentials),
+            StatusCode::FORBIDDEN => Err(EmailLoginError::EmailNotVerified),
+            StatusCode::TOO_MANY_REQUESTS => {
+                Err(EmailLoginError::RateLimited(retry_after(&response)))
+            }
+            status if status.is_server_error() => Err(EmailLoginError::ServerUnavailable),
+            _ => Err(EmailLoginError::UnexpectedStatus),
         }
     }
 
@@ -276,4 +333,5 @@ mod tests {
         }
         assert!(AccountApi::new("not a url").is_err());
     }
+
 }
