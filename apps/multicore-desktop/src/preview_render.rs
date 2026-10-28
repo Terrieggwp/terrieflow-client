@@ -1877,6 +1877,20 @@ fn render_ui_previews() {
         capture(&ui, name, width, height);
     }
 
+    if wanted("account-menu-guest") {
+        let ui = new_app();
+        ready(&ui);
+        ui.set_account_menu_open(true);
+        capture(&ui, "account-menu-guest", 840, 720);
+    }
+
+    if wanted("account-email-login") {
+        let ui = new_app();
+        ready(&ui);
+        ui.set_account_email_login_open(true);
+        capture(&ui, "account-email-login", 840, 720);
+    }
+
     // Motion frame 2: the provider logo right after it popped in (before the
     // 350 ms phase timer hands over to the hold).
     let ui = new_app();

@@ -104,6 +104,11 @@ struct EmailLoginRequest<'a> {
     password: &'a str,
 }
 
+#[derive(Deserialize)]
+struct ConnectionLinkResponse {
+    subscription_url: Option<String>,
+}
+
 impl AccountApi {
     pub(crate) fn new(base_url: &str) -> Result<Self, AccountApiError> {
         let mut base_url = reqwest::Url::parse(base_url)
@@ -223,6 +228,23 @@ impl AccountApi {
         parse_success(response)
     }
 
+    pub(crate) fn connection_link(
+        &self,
+        access_token: &str,
+    ) -> Result<Option<String>, AccountApiError> {
+        validate_single_token(access_token)?;
+        let response = self
+            .client
+            .get(self.endpoint("cabinet/subscription/connection-link")?)
+            .bearer_auth(access_token)
+            .send()
+            .map_err(map_transport_error)?;
+        let link: ConnectionLinkResponse = parse_success(response)?;
+        link.subscription_url
+            .map(|value| validate_subscription_url(&value))
+            .transpose()
+    }
+
     pub(crate) fn refresh(
         &self,
         refresh_token: &str,
@@ -270,6 +292,22 @@ fn validate_single_token(token: &str) -> Result<(), AccountApiError> {
 fn validate_tokens(access_token: &str, refresh_token: &str) -> Result<(), AccountApiError> {
     validate_single_token(access_token)?;
     validate_single_token(refresh_token)
+}
+
+fn validate_subscription_url(value: &str) -> Result<String, AccountApiError> {
+    let value = value.trim();
+    if value.is_empty() || value.len() > 16 * 1024 {
+        return Err(AccountApiError::InvalidResponse);
+    }
+    let parsed = reqwest::Url::parse(value).map_err(|_| AccountApiError::InvalidResponse)?;
+    if parsed.scheme() != "https"
+        || parsed.host_str().is_none()
+        || !parsed.username().is_empty()
+        || parsed.password().is_some()
+    {
+        return Err(AccountApiError::InvalidResponse);
+    }
+    Ok(value.to_owned())
 }
 
 fn map_transport_error(_error: reqwest::Error) -> AccountApiError {
@@ -332,6 +370,18 @@ mod tests {
             assert!(AccountApi::new("http://example.test/api").is_err());
         }
         assert!(AccountApi::new("not a url").is_err());
+    }
+
+    #[test]
+    fn subscription_links_require_tls_and_no_embedded_credentials() {
+        assert_eq!(
+            validate_subscription_url(" https://example.test/sub?token=secret ")
+                .expect("valid subscription URL"),
+            "https://example.test/sub?token=secret"
+        );
+        assert!(validate_subscription_url("http://example.test/sub").is_err());
+        assert!(validate_subscription_url("https://user:pass@example.test/sub").is_err());
+        assert!(validate_subscription_url("not a url").is_err());
     }
 
 }

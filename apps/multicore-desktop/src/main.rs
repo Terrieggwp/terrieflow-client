@@ -199,6 +199,9 @@ enum PendingImportOutcome {
 
 impl PendingSubscriptionImports {
     fn enqueue(&mut self, url: String) -> bool {
+        if self.urls.iter().any(|queued| queued == &url) {
+            return true;
+        }
         if self.urls.len() >= MAX_PENDING_SUBSCRIPTION_IMPORTS {
             return false;
         }
@@ -956,11 +959,16 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
     // created; the app's own language (Russian unless chosen or set by the provider) wins.
     select_slint_language(language::current());
     sync_language(&ui);
+    let pending_subscription_imports = Arc::new(Mutex::new(PendingSubscriptionImports::default()));
     let account_controller = Rc::new(AccountController::start(
         AccountApi::new(account::CABINET_API_BASE_URL).expect("valid TerrieFlow cabinet API URL"),
         CredentialSessionStore,
     ));
-    let _account_timer = wire_account(&ui, account_controller.clone());
+    let _account_timer = wire_account(
+        &ui,
+        account_controller.clone(),
+        pending_subscription_imports.clone(),
+    );
     account_controller.send(AccountCommand::Restore);
     // Ambient motion only while the window has focus; winit reports it once shown.
     ui.set_window_active(false);
@@ -1035,7 +1043,6 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
     }
     apply_launch_at_sign_in(&ui, windows_settings::query_launch_at_sign_in());
     apply_saved_placement(&ui, &loaded_preferences);
-    let pending_subscription_imports = Arc::new(Mutex::new(PendingSubscriptionImports::default()));
     let pending_subscription_consents =
         Arc::new(Mutex::new(PendingSubscriptionConsents::default()));
     wire_import(
@@ -3679,7 +3686,11 @@ fn saved_local_proxy_address() -> String {
 
 /// «Локальный прокси: 127.0.0.1:PORT» in Settings and its copy action. The daemon saves the
 /// port at start and changes it only when another app took it, which a connect reveals.
-fn wire_account(ui: &AppWindow, controller: Rc<AccountController>) -> Timer {
+fn wire_account(
+    ui: &AppWindow,
+    controller: Rc<AccountController>,
+    pending: Arc<Mutex<PendingSubscriptionImports>>,
+) -> Timer {
     let login = controller.clone();
     ui.on_account_login(move || login.send(AccountCommand::Login));
     let email_login = controller.clone();
@@ -3716,6 +3727,17 @@ fn wire_account(ui: &AppWindow, controller: Rc<AccountController>) -> Timer {
                 AccountEvent::State(state) => apply_account_state(&ui, &state),
                 AccountEvent::OpenBrowser(url) => {
                     let _ = webbrowser::open(&url);
+                }
+                AccountEvent::ImportSubscription(url) => {
+                    if !pending
+                        .lock()
+                        .expect("pending subscription imports lock")
+                        .enqueue(url)
+                    {
+                        ui.set_import_error(
+                            tr!("Не удалось открыть ссылку подписки. Проверьте её и повторите попытку.").into(),
+                        );
+                    }
                 }
             }
         }
@@ -9363,6 +9385,7 @@ mod window_tests {
     fn queued_installer_urls_wait_for_import_and_keep_arrival_order() {
         let mut pending = PendingSubscriptionImports::default();
         let now = Instant::now();
+        assert!(pending.enqueue("https://example.com/first".into()));
         assert!(pending.enqueue("https://example.com/first".into()));
         assert!(pending.enqueue("https://example.com/second".into()));
         assert!(!pending.dispatch_next(now, |_| false));

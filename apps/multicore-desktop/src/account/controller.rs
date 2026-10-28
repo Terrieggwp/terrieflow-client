@@ -39,6 +39,7 @@ pub(crate) struct AccountViewState {
 pub(crate) enum AccountEvent {
     State(AccountViewState),
     OpenBrowser(String),
+    ImportSubscription(String),
 }
 
 pub(crate) struct AccountController {
@@ -147,8 +148,7 @@ fn worker(
                                 if store.save(&current).is_err() {
                                     publish(&events, error_state("Не удалось безопасно сохранить сессию"));
                                 } else {
-                                    publish(&events, authenticated_state(&current));
-                                    session = Some(current);
+                                    session = restore_loaded(&api, &store, &events, current);
                                 }
                             }
                             Err(error) if error.is_offline() => {
@@ -321,6 +321,7 @@ fn restore_loaded(
             current.user = user;
             let _ = store.save(&current);
             publish(events, authenticated_state(&current));
+            publish_subscription(api, events, &current);
             Some(current)
         }
         Err(AccountApiError::Unauthorized) => {
@@ -330,6 +331,7 @@ fn restore_loaded(
                         current.user = user;
                         let _ = store.save(&current);
                         publish(events, authenticated_state(&current));
+                        publish_subscription(api, events, &current);
                         Some(current)
                     }
                     _ => {
@@ -352,6 +354,16 @@ fn restore_loaded(
             publish(events, error_state("Не удалось проверить аккаунт"));
             Some(current)
         }
+    }
+}
+
+fn publish_subscription(
+    api: &AccountApi,
+    events: &Sender<AccountEvent>,
+    current: &StoredSession,
+) {
+    if let Ok(Some(url)) = api.connection_link(&current.access_token) {
+        let _ = events.send(AccountEvent::ImportSubscription(url));
     }
 }
 

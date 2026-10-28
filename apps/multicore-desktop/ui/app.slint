@@ -879,10 +879,14 @@ component AccountButton inherits Rectangle {
     animate background { duration: 150ms; easing: ease-out; }
 
     HorizontalLayout {
+        x: 0;
+        y: (parent.height - self.height) / 2;
+        width: parent.width;
+        height: 20px;
         alignment: center;
         spacing: 9px;
         Image { width: 17px; height: 17px; source: root.icon; colorize: root.primary ? white : Theme.accent-cyan; image-fit: contain; }
-        Text { text: root.label; color: root.primary ? white : Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
+        Text { height: 20px; text: root.label; color: root.primary ? white : Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
     }
     account-button-focus := FocusScope {
         enabled: root.enabled;
@@ -5610,7 +5614,9 @@ export component AppWindow inherits Window {
                 VerticalLayout {
                     padding: 14px;
                     spacing: 8px;
+                    alignment: start;
                     HorizontalLayout {
+                        height: 34px;
                         spacing: 10px;
                         Rectangle {
                             width: 34px;
@@ -5624,8 +5630,8 @@ export component AppWindow inherits Window {
                         VerticalLayout {
                             horizontal-stretch: 1;
                             spacing: 1px;
-                            Text { text: root.account-authenticated ? root.account-display-name : @tr("Войти в TerrieFlow"); color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; overflow: elide; }
-                            Text { text: root.account-authenticated ? (root.account-username != "" ? root.account-username : root.account-email != "" ? root.account-email : root.account-detail) : @tr("Выберите способ авторизации"); color: Theme.text-muted; font-size: 11px; overflow: elide; }
+                            Text { height: 18px; text: root.account-authenticated ? root.account-display-name : @tr("Войти в TerrieFlow"); color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; overflow: elide; vertical-alignment: center; }
+                            Text { height: 15px; text: root.account-authenticated ? (root.account-username != "" ? root.account-username : root.account-email != "" ? root.account-email : root.account-detail) : @tr("Выберите способ авторизации"); color: Theme.text-muted; font-size: 11px; overflow: elide; vertical-alignment: center; }
                         }
                     }
                     Rectangle { height: 1px; background: Theme.line; }
@@ -6176,7 +6182,7 @@ export component AppWindow inherits Window {
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2 + (root.account-email-login-open ? 0px : 10px);
             width: Math.min(440px, parent.width - 40px);
-            height: Math.min(510px, parent.height - 40px);
+            height: Math.min(root.account-email-error != "" ? 442px : 418px, parent.height - 40px);
             background: @linear-gradient(145deg, #0a2742fa 0%, #071523fc 52%, #0c2d45fa 100%);
             border-color: #1bc8ef99;
             border-width: 1px;
@@ -6203,6 +6209,7 @@ export component AppWindow inherits Window {
                 VerticalLayout {
                     padding: 22px;
                     spacing: 8px;
+                    alignment: start;
 
                     HorizontalLayout {
                         height: 42px;
@@ -6219,8 +6226,9 @@ export component AppWindow inherits Window {
                         VerticalLayout {
                             horizontal-stretch: 1;
                             spacing: 1px;
-                            Text { text: @tr("Вход в TerrieFlow"); color: Theme.text-primary; font-size: 18px; font-weight: Theme.weight-semibold; overflow: elide; }
-                            Text { text: @tr("Введите почту и пароль от кабинета"); color: Theme.text-muted; font-size: 11px; overflow: elide; }
+                            alignment: center;
+                            Text { height: 22px; text: @tr("Вход в TerrieFlow"); color: Theme.text-primary; font-size: 18px; font-weight: Theme.weight-semibold; overflow: elide; vertical-alignment: center; }
+                            Text { height: 16px; text: @tr("Введите почту и пароль от кабинета"); color: Theme.text-muted; font-size: 11px; overflow: elide; vertical-alignment: center; }
                         }
                         Rectangle {
                             width: 32px;
@@ -6249,7 +6257,7 @@ export component AppWindow inherits Window {
                     }
 
                     Rectangle { height: 6px; background: transparent; }
-                    Text { text: @tr("ЭЛЕКТРОННАЯ ПОЧТА"); color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; letter-spacing: 0.5px; }
+                    Text { height: 14px; text: @tr("ЭЛЕКТРОННАЯ ПОЧТА"); color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; letter-spacing: 0.5px; vertical-alignment: center; }
                     email-login-email := AccountField {
                         text <=> root.account-login-email;
                         placeholder: "user@example.com";
@@ -6262,7 +6270,7 @@ export component AppWindow inherits Window {
                             }
                         }
                     }
-                    Text { text: @tr("ПАРОЛЬ"); color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; letter-spacing: 0.5px; }
+                    Text { height: 14px; text: @tr("ПАРОЛЬ"); color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; letter-spacing: 0.5px; vertical-alignment: center; }
                     AccountField {
                         text <=> root.account-login-password;
                         placeholder: @tr("Введите пароль");
