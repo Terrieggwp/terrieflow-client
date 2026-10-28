@@ -1,6 +1,7 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod app_icon;
+mod account;
 mod appimage_handoff;
 mod bootstrap;
 mod clipboard_text;
@@ -47,6 +48,7 @@ mod windows_identity;
 mod windows_shell;
 
 use multicore_i18n::tr;
+use account::{AccountApi, AccountCommand, AccountController, AccountEvent, AccountViewState, CredentialSessionStore};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, VecDeque};
 use std::ffi::{OsStr, OsString};
@@ -951,6 +953,12 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
     // created; the app's own language (Russian unless chosen or set by the provider) wins.
     select_slint_language(language::current());
     sync_language(&ui);
+    let account_controller = Rc::new(AccountController::start(
+        AccountApi::new(account::CABINET_API_BASE_URL).expect("valid TerrieFlow cabinet API URL"),
+        CredentialSessionStore,
+    ));
+    let _account_timer = wire_account(&ui, account_controller.clone());
+    account_controller.send(AccountCommand::Restore);
     // Ambient motion only while the window has focus; winit reports it once shown.
     ui.set_window_active(false);
     let focus_ui = ui.as_weak();
@@ -3668,6 +3676,47 @@ fn saved_local_proxy_address() -> String {
 
 /// «Локальный прокси: 127.0.0.1:PORT» in Settings and its copy action. The daemon saves the
 /// port at start and changes it only when another app took it, which a connect reveals.
+fn wire_account(ui: &AppWindow, controller: Rc<AccountController>) -> Timer {
+    let login = controller.clone();
+    ui.on_account_login(move || login.send(AccountCommand::Login));
+    let cancel = controller.clone();
+    ui.on_account_cancel_login(move || cancel.send(AccountCommand::CancelLogin));
+    let refresh = controller.clone();
+    ui.on_account_refresh(move || refresh.send(AccountCommand::Refresh));
+    let logout = controller.clone();
+    ui.on_account_logout(move || logout.send(AccountCommand::Logout));
+    ui.on_account_open_cabinet(move || {
+        let _ = webbrowser::open(account::CABINET_URL);
+    });
+
+    let weak = ui.as_weak();
+    let timer = Timer::default();
+    timer.start(TimerMode::Repeated, Duration::from_millis(100), move || {
+        let Some(ui) = weak.upgrade() else {
+            return;
+        };
+        while let Some(event) = controller.try_event() {
+            match event {
+                AccountEvent::State(state) => apply_account_state(&ui, &state),
+                AccountEvent::OpenBrowser(url) => {
+                    let _ = webbrowser::open(&url);
+                }
+            }
+        }
+    });
+    timer
+}
+
+fn apply_account_state(ui: &AppWindow, state: &AccountViewState) {
+    ui.set_account_phase(state.phase.into());
+    ui.set_account_display_name(state.display_name.as_str().into());
+    ui.set_account_username(state.username.as_str().into());
+    ui.set_account_email(state.email.as_str().into());
+    ui.set_account_detail(state.detail.as_str().into());
+    ui.set_account_authenticated(state.authenticated);
+    ui.set_account_busy(state.busy);
+}
+
 fn wire_local_proxy(ui: &AppWindow) {
     ui.set_local_proxy_address(saved_local_proxy_address().into());
     let weak = ui.as_weak();
