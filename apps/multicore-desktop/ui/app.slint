@@ -866,6 +866,8 @@ component AccountButton inherits Rectangle {
     in property <image> icon;
     in property <bool> primary: false;
     in property <bool> enabled: true;
+    in property <bool> emphasized: false;
+    out property <bool> hovered: account-button-touch.has-hover;
     callback activated();
 
     height: 44px;
@@ -875,8 +877,12 @@ component AccountButton inherits Rectangle {
         : account-button-touch.has-hover ? #159fff1f : #0d2b47cc;
     border-color: account-button-focus.has-focus ? Theme.focus : root.primary ? #31b7ff : #159fff70;
     border-width: account-button-focus.has-focus ? 2px : 1px;
+    drop-shadow-blur: root.emphasized && account-button-touch.has-hover ? 22px : 0px;
+    drop-shadow-offset-y: root.emphasized && account-button-touch.has-hover ? 5px : 0px;
+    drop-shadow-color: #159fff70;
     opacity: root.enabled ? 1 : 0.55;
     animate background { duration: 150ms; easing: ease-out; }
+    animate drop-shadow-blur, drop-shadow-offset-y { duration: 150ms; easing: ease-out; }
 
     HorizontalLayout {
         x: 0;
@@ -910,11 +916,15 @@ component RenewalCard inherits Rectangle {
     in property <string> end-date;
     in property <bool> busy: false;
     in property <bool> show-subscriptions-action: false;
+    in property <string> last-checked;
+    in property <string> status-message;
+    in property <bool> status-error: false;
+    in property <bool> stale: false;
     callback renew();
     callback refresh();
     callback open-subscriptions();
 
-    height: root.show-subscriptions-action ? 230px : 196px;
+    height: root.show-subscriptions-action ? 272px : 238px;
     border-radius: 18px;
     background: @linear-gradient(135deg, #0b2943f2 0%, #081b30f4 58%, #102640f2 100%);
     border-color: #ff64705e;
@@ -948,8 +958,8 @@ component RenewalCard inherits Rectangle {
         }
         if root.plan != "" || root.end-date != "": Text {
             height: 18px;
-            text: root.plan != "" && root.end-date != "" ? root.plan + " · " + @tr("до {}", root.end-date)
-                : root.plan != "" ? root.plan : @tr("Срок действия до {}", root.end-date);
+            text: root.plan != "" && root.end-date != "" ? root.plan + " · " + @tr("истекла {}", root.end-date)
+                : root.plan != "" ? root.plan : @tr("Истекла {}", root.end-date);
             color: Theme.text-muted;
             font-size: Theme.type-metadata-size;
             overflow: elide;
@@ -957,20 +967,38 @@ component RenewalCard inherits Rectangle {
         HorizontalLayout {
             height: 44px;
             spacing: 10px;
-            AccountButton {
+            renew-button := AccountButton {
                 horizontal-stretch: 1;
                 label: @tr("Продлить подписку");
                 icon: @image-url("../assets/external-link.svg");
                 primary: true;
+                emphasized: true;
                 activated => { root.renew(); }
             }
             AccountButton {
                 horizontal-stretch: 1;
-                label: root.busy ? @tr("Обновляем…") : @tr("Обновить сведения");
+                label: root.busy ? @tr("Проверяем…") : @tr("Проверить статус");
                 icon: @image-url("../assets/refresh.svg");
                 enabled: !root.busy;
                 activated => { root.refresh(); }
             }
+        }
+        Text {
+            height: 18px;
+            text: renew-button.hovered
+                ? @tr("Откроется личный кабинет TerrieFlow")
+                : root.status-message != "" ? root.status-message
+                : root.stale ? @tr("Новые данные временно недоступны. Показан последний подтверждённый статус")
+                : root.last-checked != "" ? @tr("Последняя проверка: {}", root.last-checked)
+                : @tr("Статус ещё не проверялся");
+            color: renew-button.hovered ? Theme.accent-cyan
+                : root.status-error || root.stale ? Theme.warning
+                : root.status-message != "" ? Theme.accent-green
+                : Theme.text-muted;
+            font-size: 11px;
+            horizontal-alignment: center;
+            overflow: elide;
+            accessible-live-region: polite;
         }
         if root.show-subscriptions-action: HorizontalLayout {
             alignment: center;
@@ -2028,6 +2056,12 @@ export component AppWindow inherits Window {
     in property <string> account-access-status;
     in property <string> account-access-plan;
     in property <string> account-access-end-date;
+    in property <string> account-access-end-date-display;
+    in property <string> account-access-last-checked;
+    in-out property <string> account-status-check-message;
+    in-out property <bool> account-status-check-error: false;
+    in property <bool> account-access-stale: false;
+    in-out property <bool> expired-connect-notice: false;
     in-out property <string> account-profile-id;
     private property <bool> account-selected-expired: root.account-authenticated
         && root.account-access-known
@@ -2133,10 +2167,19 @@ export component AppWindow inherits Window {
         if (!root.primary-pressable) {
             return;
         }
+        if (root.account-selected-expired && !root.toggle-on) {
+            root.expired-connect-notice = true;
+            return;
+        }
         if (!root.toggle-busy) {
             root.toggle-intent = root.toggle-on ? "off" : "on";
         }
         root.primary-action();
+    }
+    expired-connect-notice-timer := Timer {
+        interval: 5s;
+        running: root.expired-connect-notice;
+        triggered => { root.expired-connect-notice = false; }
     }
     callback open-dashboard();
     callback install-service();
@@ -3565,6 +3608,37 @@ export component AppWindow inherits Window {
 
                     }
 
+                    if root.expired-connect-notice: Rectangle {
+                        height: 62px;
+                        border-radius: 14px;
+                        background: @linear-gradient(110deg, #2b1824f2 0%, #11243af2 100%);
+                        border-color: #ff647066;
+                        border-width: 1px;
+                        HorizontalLayout {
+                            padding-left: 18px;
+                            padding-right: 18px;
+                            spacing: 12px;
+                            VerticalLayout {
+                                width: 20px;
+                                alignment: center;
+                                Image { width: 20px; height: 20px; source: @image-url("../assets/shield-off.svg"); colorize: Theme.error; image-fit: contain; }
+                            }
+                            Text {
+                                horizontal-stretch: 1;
+                                text: @tr("Подключение недоступно. Продлите подписку TerrieFlow, чтобы восстановить доступ");
+                                color: Theme.text-primary;
+                                font-size: Theme.type-metadata-size;
+                                wrap: word-wrap;
+                                vertical-alignment: center;
+                                accessible-live-region: assertive;
+                            }
+                            TextAction {
+                                label: @tr("Продлить");
+                                activated => { root.account-open-cabinet(); }
+                            }
+                        }
+                    }
+
                     // An iOS-style card (surface, tinted hairline, icon tile, quiet text
                     // actions). The outer rectangle is the layout slot; the card inside
                     // eases in (fade + 6px rise) the moment the banner appears.
@@ -3916,8 +3990,12 @@ export component AppWindow inherits Window {
                             spacing: 12px;
                             if root.account-selected-expired: RenewalCard {
                                 plan: root.account-access-plan;
-                                end-date: root.account-access-end-date;
+                                end-date: root.account-access-end-date-display;
                                 busy: root.account-busy;
+                                last-checked: root.account-access-last-checked;
+                                status-message: root.account-status-check-message;
+                                status-error: root.account-status-check-error;
+                                stale: root.account-access-stale;
                                 show-subscriptions-action: true;
                                 renew => { root.account-open-cabinet(); }
                                 refresh => { root.account-refresh(); }
@@ -5418,10 +5496,15 @@ export component AppWindow inherits Window {
                                 }
                             }
                         }
+                        if root.account-selected-expired: Rectangle { height: 22px; background: transparent; }
                         if root.account-selected-expired: RenewalCard {
                             plan: root.account-access-plan;
-                            end-date: root.account-access-end-date;
+                            end-date: root.account-access-end-date-display;
                             busy: root.account-busy;
+                            last-checked: root.account-access-last-checked;
+                            status-message: root.account-status-check-message;
+                            status-error: root.account-status-check-error;
+                            stale: root.account-access-stale;
                             show-subscriptions-action: false;
                             renew => { root.account-open-cabinet(); }
                             refresh => { root.account-refresh(); }
@@ -5439,6 +5522,40 @@ export component AppWindow inherits Window {
                         Rectangle { vertical-stretch: 1; background: transparent; }
                     }
                 }
+                }
+            }
+
+            if root.account-status-check-message != "" && !root.account-selected-expired: Rectangle {
+                width: Math.min(390px, parent.width - 32px);
+                height: 58px;
+                x: parent.width - self.width - 16px;
+                y: 16px;
+                border-radius: 12px;
+                background: Theme.elevated;
+                border-color: root.account-status-check-error ? #f3c34a80 : #18dfa180;
+                border-width: 1px;
+                drop-shadow-blur: 22px;
+                drop-shadow-offset-y: 7px;
+                drop-shadow-color: #00000080;
+                HorizontalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    spacing: 10px;
+                    Image {
+                        width: 18px;
+                        height: 18px;
+                        source: root.account-status-check-error ? @image-url("../assets/shield-alert.svg") : @image-url("../assets/shield-check.svg");
+                        colorize: root.account-status-check-error ? Theme.warning : Theme.accent-green;
+                    }
+                    Text {
+                        horizontal-stretch: 1;
+                        text: root.account-status-check-message;
+                        color: Theme.text-primary;
+                        font-size: Theme.type-metadata-size;
+                        vertical-alignment: center;
+                        wrap: word-wrap;
+                        accessible-live-region: polite;
+                    }
                 }
             }
 

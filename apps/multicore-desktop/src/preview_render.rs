@@ -789,7 +789,9 @@ fn expired_account(ui: &AppWindow, profile_id: &str) {
     ui.set_account_access_expired(true);
     ui.set_account_access_status(s("expired"));
     ui.set_account_access_plan(s("Premium Pro"));
-    ui.set_account_access_end_date(s("28.10.2026"));
+    ui.set_account_access_end_date(s("2026-10-23T21:00:00.000Z"));
+    ui.set_account_access_end_date_display(s("24 октября 2026"));
+    ui.set_account_access_last_checked(s("14:32"));
     ui.set_account_profile_id(s(profile_id));
 }
 
@@ -1457,6 +1459,18 @@ fn scenarios() -> Vec<Scenario> {
             ui.set_subscription_title(s("TerrieFlow"));
             ui.set_subscription_expiry(s("Срок истёк"));
             expired_account(ui, "p1");
+        }),
+        ("home-account-expired-connect-notice", 840, 720, |ui| {
+            ready(ui);
+            ui.set_subscription_title(s("TerrieFlow"));
+            expired_account(ui, "p1");
+            ui.set_expired_connect_notice(true);
+        }),
+        ("home-account-expired-api-unavailable", 840, 720, |ui| {
+            ready(ui);
+            ui.set_subscription_title(s("TerrieFlow"));
+            expired_account(ui, "p1");
+            ui.set_account_access_stale(true);
         }),
         ("home-account-restored", 840, 720, |ui| {
             ready(ui);

@@ -528,6 +528,39 @@ msgstr "Renew subscription"
 msgid "Обновить сведения"
 msgstr "Refresh details"
 
+msgid "Проверить статус"
+msgstr "Check status"
+
+msgid "истекла {}"
+msgstr "expired {}"
+
+msgid "Истекла {}"
+msgstr "Expired {}"
+
+msgid "Откроется личный кабинет TerrieFlow"
+msgstr "Opens your TerrieFlow account in the browser"
+
+msgid "Последняя проверка: {}"
+msgstr "Last checked: {}"
+
+msgid "Статус ещё не проверялся"
+msgstr "Status has not been checked yet"
+
+msgid "Новые данные временно недоступны. Показан последний подтверждённый статус"
+msgstr "New data is temporarily unavailable. Showing the last confirmed status"
+
+msgid "Статус проверен. Подписка пока не продлена"
+msgstr "Status checked. The subscription has not been renewed yet"
+
+msgid "Подписка активна. Доступ восстановлен"
+msgstr "Subscription active. Access restored"
+
+msgid "Не удалось проверить статус. Попробуйте позже"
+msgstr "Could not check the status. Try again later"
+
+msgid "Подключение недоступно. Продлите подписку TerrieFlow, чтобы восстановить доступ"
+msgstr "Connection unavailable. Renew your TerrieFlow subscription to restore access"
+
 msgid "Открыть раздел «Подписки»"
 msgstr "Open Subscriptions"
 

@@ -41,6 +41,7 @@ pub(crate) enum AccountEvent {
     OpenBrowser(String),
     ImportSubscription(String),
     SubscriptionAccess(AccountSubscriptionAccess),
+    SubscriptionAccessUnavailable,
 }
 
 pub(crate) struct AccountController {
@@ -308,11 +309,13 @@ fn restore_loaded(
                     events,
                     offline_state(Some(&current.user), "Нет связи с кабинетом"),
                 );
+                let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
                 return Some(current);
             }
             Err(_) => {
                 let _ = store.clear();
                 publish(events, expired_state());
+                let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
                 return None;
             }
         }
@@ -338,21 +341,25 @@ fn restore_loaded(
                     _ => {
                         let _ = store.clear();
                         publish(events, expired_state());
+                        let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
                         None
                     }
                 }
             } else {
                 let _ = store.clear();
                 publish(events, expired_state());
+                let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
                 None
             }
         }
         Err(error) if error.is_offline() => {
             publish(events, offline_state(Some(&current.user), "Нет связи с кабинетом"));
+            let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
             Some(current)
         }
         Err(_) => {
             publish(events, error_state("Не удалось проверить аккаунт"));
+            let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
             Some(current)
         }
     }
@@ -363,8 +370,13 @@ fn publish_subscription(
     events: &Sender<AccountEvent>,
     current: &StoredSession,
 ) {
-    if let Ok(Some(access)) = api.subscription_access(&current.access_token) {
-        let _ = events.send(AccountEvent::SubscriptionAccess(access));
+    match api.subscription_access(&current.access_token) {
+        Ok(Some(access)) => {
+            let _ = events.send(AccountEvent::SubscriptionAccess(access));
+        }
+        Ok(None) | Err(_) => {
+            let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
+        }
     }
     if let Ok(Some(url)) = api.connection_link(&current.access_token) {
         let _ = events.send(AccountEvent::ImportSubscription(url));
@@ -382,11 +394,13 @@ fn refresh_session(
         Ok(()) => restore_loaded(api, store, events, current),
         Err(error) if error.is_offline() => {
             publish(events, offline_state(Some(&current.user), "Нет связи с кабинетом"));
+            let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
             Some(current)
         }
         Err(_) => {
             let _ = store.clear();
             publish(events, expired_state());
+            let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
             None
         }
     }

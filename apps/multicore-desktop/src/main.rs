@@ -3718,10 +3718,27 @@ fn wire_account(
     });
     let cancel = controller.clone();
     ui.on_account_cancel_login(move || cancel.send(AccountCommand::CancelLogin));
+    let status_check_requested = Rc::new(Cell::new(false));
     let refresh = controller.clone();
-    ui.on_account_refresh(move || refresh.send(AccountCommand::Refresh));
+    let refresh_requested = status_check_requested.clone();
+    let refresh_weak = ui.as_weak();
+    ui.on_account_refresh(move || {
+        if refresh_requested.replace(true) {
+            return;
+        }
+        if let Some(ui) = refresh_weak.upgrade() {
+            ui.set_account_busy(true);
+            ui.set_account_status_check_message("".into());
+            ui.set_account_status_check_error(false);
+        }
+        refresh.send(AccountCommand::Refresh);
+    });
     let logout = controller.clone();
-    ui.on_account_logout(move || logout.send(AccountCommand::Logout));
+    let logout_requested = status_check_requested.clone();
+    ui.on_account_logout(move || {
+        logout_requested.set(false);
+        logout.send(AccountCommand::Logout);
+    });
     ui.on_account_open_cabinet(move || {
         let _ = webbrowser::open(account::CABINET_URL);
     });
@@ -3734,6 +3751,7 @@ fn wire_account(
 
     let weak = ui.as_weak();
     let timer = Timer::default();
+    let status_message_generation = Rc::new(Cell::new(0_u64));
     let mut previous_phase = String::new();
     timer.start(TimerMode::Repeated, Duration::from_millis(100), move || {
         let Some(ui) = weak.upgrade() else {
@@ -3753,6 +3771,11 @@ fn wire_account(
                         ui.set_account_access_status("".into());
                         ui.set_account_access_plan("".into());
                         ui.set_account_access_end_date("".into());
+                        ui.set_account_access_end_date_display("".into());
+                        ui.set_account_access_last_checked("".into());
+                        ui.set_account_access_stale(false);
+                        ui.set_account_status_check_message("".into());
+                        ui.set_account_status_check_error(false);
                     }
                     if refresh_completed {
                         ui.set_account_refresh_success(true);
@@ -3779,16 +3802,104 @@ fn wire_account(
                     }
                 }
                 AccountEvent::SubscriptionAccess(access) => {
+                    let expired = access.blocks_routes();
                     ui.set_account_access_known(true);
-                    ui.set_account_access_expired(access.blocks_routes());
+                    ui.set_account_access_expired(expired);
                     ui.set_account_access_status(access.status.into());
                     ui.set_account_access_plan(access.tariff_name.into());
-                    ui.set_account_access_end_date(access.end_date.into());
+                    ui.set_account_access_end_date(access.end_date.clone().into());
+                    ui.set_account_access_end_date_display(
+                        format_subscription_end_date(&access.end_date).into(),
+                    );
+                    ui.set_account_access_last_checked(
+                        chrono::Local::now().format("%H:%M").to_string().into(),
+                    );
+                    ui.set_account_access_stale(false);
+                    if status_check_requested.replace(false) {
+                        ui.set_account_status_check_error(false);
+                        ui.set_account_status_check_message(
+                            if expired {
+                                tr!("Статус проверен. Подписка пока не продлена")
+                            } else {
+                                tr!("Подписка активна. Доступ восстановлен")
+                            }
+                            .into(),
+                        );
+                        clear_account_status_message_later(
+                            weak.clone(),
+                            status_message_generation.clone(),
+                        );
+                    }
+                }
+                AccountEvent::SubscriptionAccessUnavailable => {
+                    ui.set_account_access_stale(true);
+                    if status_check_requested.replace(false) {
+                        ui.set_account_status_check_error(true);
+                        ui.set_account_status_check_message(
+                            tr!("Не удалось проверить статус. Попробуйте позже").into(),
+                        );
+                        clear_account_status_message_later(
+                            weak.clone(),
+                            status_message_generation.clone(),
+                        );
+                    }
                 }
             }
         }
     });
     timer
+}
+
+fn clear_account_status_message_later(
+    weak: slint::Weak<AppWindow>,
+    generation: Rc<Cell<u64>>,
+) {
+    let expected = generation.get().wrapping_add(1);
+    generation.set(expected);
+    Timer::single_shot(Duration::from_secs(5), move || {
+        if generation.get() != expected {
+            return;
+        }
+        if let Some(ui) = weak.upgrade() {
+            ui.set_account_status_check_message("".into());
+            ui.set_account_status_check_error(false);
+        }
+    });
+}
+
+fn format_subscription_end_date(value: &str) -> String {
+    use chrono::Datelike as _;
+
+    let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(value.trim()) else {
+        return String::new();
+    };
+    let local = parsed.with_timezone(&chrono::Local);
+    match language::current() {
+        language::Lang::Ru => {
+            let months = [
+                "января", "февраля", "марта", "апреля", "мая", "июня", "июля",
+                "августа", "сентября", "октября", "ноября", "декабря",
+            ];
+            format!(
+                "{} {} {}",
+                local.day(),
+                months[local.month0() as usize],
+                local.year()
+            )
+        }
+        language::Lang::En => {
+            let months = [
+                "January", "February", "March", "April", "May", "June", "July", "August",
+                "September", "October", "November", "December",
+            ];
+            format!(
+                "{} {}, {}",
+                months[local.month0() as usize],
+                local.day(),
+                local.year()
+            )
+        }
+    }
 }
 
 fn apply_account_state(ui: &AppWindow, state: &AccountViewState) {
@@ -4255,6 +4366,17 @@ fn wire_primary_action(
     let weak = ui.as_weak();
     let queued_press = Rc::new(Timer::default());
     ui.on_primary_action(move || {
+        if let Some(ui) = weak.upgrade()
+            && ui.get_account_authenticated()
+            && ui.get_account_access_known()
+            && ui.get_account_access_expired()
+            && !ui.get_toggle_on()
+            && !ui.get_account_profile_id().is_empty()
+            && ui.get_account_profile_id() == ui.get_active_profile_id()
+        {
+            ui.set_expired_connect_notice(true);
+            return;
+        }
         startup_connect_pending.set(false);
         let (action, client, queued, current, waiting) = {
             let mut model = model.lock().expect("view model lock");
@@ -9781,6 +9903,32 @@ mod window_tests {
                 "missing clipboard wiring: {required}"
             );
         }
+    }
+
+    #[test]
+    fn subscription_expiry_is_presented_as_a_local_human_date() {
+        let rendered = super::format_subscription_end_date("2026-10-23T12:34:56.789Z");
+        assert_eq!(rendered, "23 октября 2026");
+        assert!(!rendered.contains('T'));
+        assert!(!rendered.contains('Z'));
+        assert_eq!(super::format_subscription_end_date("not-a-date"), "");
+    }
+
+    #[test]
+    fn expired_account_connection_is_blocked_before_the_daemon_action() {
+        let source = include_str!("main.rs");
+        let wiring = source
+            .split("fn wire_primary_action(")
+            .nth(1)
+            .and_then(|source| source.split("fn run_queued_primary_action(").next())
+            .expect("primary action wiring");
+        assert!(wiring.contains("ui.get_account_access_expired()"));
+        assert!(wiring.contains("!ui.get_toggle_on()"));
+        assert!(wiring.contains("ui.set_expired_connect_notice(true)"));
+        assert!(
+            wiring.find("ui.set_expired_connect_notice(true)").unwrap()
+                < wiring.find("model.begin_primary_action()").unwrap()
+        );
     }
 }
 
