@@ -5448,11 +5448,14 @@ fn run_import(
     profile_preferences: Arc<Mutex<ProfilePreferenceReconciler>>,
     pending: Arc<Mutex<PendingSubscriptionImports>>,
 ) {
-    let account_import = pending
-        .lock()
-        .expect("pending subscription imports lock")
-        .is_account_url(&url);
     thread::spawn(move || {
+        // Automatic imports are dispatched while the UI timer briefly owns
+        // the pending queue. Resolve the account tag on this worker only
+        // after the timer callback returned and released that lock.
+        let account_import = pending
+            .lock()
+            .expect("pending subscription imports lock")
+            .is_account_url(&url);
         let result = client.import_subscription(&url);
         let import_succeeded = result.is_ok();
         let account_profile_id = account_import.then(|| {
@@ -9512,6 +9515,24 @@ mod window_tests {
             PendingImportOutcome::Succeeded
         );
         assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn automatic_import_does_not_relock_the_pending_queue_on_the_ui_thread() {
+        let source = include_str!("main.rs");
+        let run_import = source
+            .split("fn run_import(")
+            .nth(1)
+            .and_then(|source| source.split("fn connect_uses_tun(").next())
+            .expect("run_import source");
+        let worker = run_import.find("thread::spawn").expect("import worker");
+        let account_tag = run_import
+            .find(".is_account_url(&url)")
+            .expect("account import tag lookup");
+        assert!(
+            worker < account_tag,
+            "the pending queue must only be re-locked after the UI dispatcher returned"
+        );
     }
 
     #[test]
