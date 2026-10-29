@@ -2073,6 +2073,21 @@ fn render_ui_previews() {
     tray_connected(&popup);
     capture(&popup, "tray-connected", 304, 460);
 
+    let popup = new_popup();
+    tray_connected(&popup);
+    popup.set_subscription_title(s("TerrieFlow"));
+    popup.set_subscription_remaining(s("0.4 GiB"));
+    popup.set_subscription_days(s("Срок истёк"));
+    popup.set_subscription_quota_tone(s("danger"));
+    popup.set_toggle_title(s("Защита выключена"));
+    popup.set_toggle_on(false);
+    popup.set_status_tone(s("neutral"));
+    popup.set_session_uptime(s(""));
+    popup.set_account_selected_expired(true);
+    popup.set_account_access_plan(s("Premium Pro"));
+    popup.set_account_access_end_date(s("24 октября 2026"));
+    capture(&popup, "tray-account-expired", 304, 460);
+
     // Dragged larger by its top-left corner: only the accent edges light up (no size readout).
     let popup = new_popup();
     tray_connected(&popup);

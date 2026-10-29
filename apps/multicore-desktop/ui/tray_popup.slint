@@ -391,6 +391,11 @@ export component TrayPopup inherits Window {
     in property <bool> subscription-unlimited: true;
     in property <string> subscription-quota-tone: "accent";
     in property <bool> subscription-failed: false;
+    // The same resolved account-access state as the main window. It is true only
+    // for the selected TerrieFlow profile after a successful Cabinet response.
+    in property <bool> account-selected-expired: false;
+    in property <string> account-access-plan;
+    in property <string> account-access-end-date;
     in property <string> toggle-title: @tr("Защита выключена");
     in property <bool> toggle-on: false;
     in property <bool> toggle-busy: false;
@@ -423,6 +428,7 @@ export component TrayPopup inherits Window {
     in property <bool> dumb-mode: false;
     callback open-main();
     callback add-subscription();
+    callback renew-subscription();
     callback exit-app();
     callback dismiss();
 
@@ -437,6 +443,7 @@ export component TrayPopup inherits Window {
         : root.toggle-intent == "off" ? @tr("Отключение…")
         : root.toggle-title;
     private property <string> shown-tone: root.toggle-intent != "none" ? "neutral" : root.status-tone;
+    private property <bool> expired-disconnected: root.account-selected-expired && !root.shown-on;
     function press-toggle() {
         if (!root.connection-enabled) {
             return;
@@ -704,7 +711,7 @@ export component TrayPopup inherits Window {
                         font-weight: Theme.weight-semibold;
                         overflow: elide;
                     }
-                    if root.toggle-detail-is-exit: HorizontalLayout {
+                    if root.toggle-detail-is-exit && !root.expired-disconnected: HorizontalLayout {
                         spacing: 4px;
                         alignment: start;
                         if root.exit-icon-image.width > 0: VerticalLayout {
@@ -717,7 +724,7 @@ export component TrayPopup inherits Window {
                         if root.exit-latency != "": Text { text: "· " + root.exit-latency; color: Theme.text-muted; font-size: 11.5px; vertical-alignment: center; }
                         if root.session-uptime != "": Text { text: "· " + root.session-uptime; color: Theme.text-muted; font-size: 11.5px; vertical-alignment: center; accessible-label: @tr("Время сессии {}", root.session-uptime); }
                     }
-                    if !root.toggle-detail-is-exit: Text {
+                    if !root.toggle-detail-is-exit && !root.expired-disconnected: Text {
                         text: root.supporting;
                         color: root.shown-tone == "danger" ? #f0a3a3 : Theme.text-secondary;
                         font-size: 11.5px;
@@ -919,7 +926,7 @@ export component TrayPopup inherits Window {
 
             // Route groups: a segmented track that scrolls sideways when the groups do not fit
             // (wheel, edge chevrons; the shown group and keyboard focus are kept in view).
-            if root.has-profile && !root.dumb-mode && root.group-rows.length > 0: group-track := Rectangle {
+            if root.has-profile && !root.account-selected-expired && !root.dumb-mode && root.group-rows.length > 0: group-track := Rectangle {
                 property <length> viewport-width: self.width - 2px;
                 // Segments share the track equally while the widest one still fits whole in its
                 // share (`group-measure`); otherwise each takes its natural width and the strip scrolls.
@@ -1075,7 +1082,7 @@ export component TrayPopup inherits Window {
             }
 
             // The shown group's nodes in one inset grouped card; only the rows in view exist.
-            if root.has-profile: node-card := Rectangle {
+            if root.has-profile && !root.account-selected-expired: node-card := Rectangle {
                 x: 10px;
                 y: root.group-rows.length > 0 && !root.dumb-mode ? 176px : 134px;
                 width: parent.width - 20px;
@@ -1131,6 +1138,108 @@ export component TrayPopup inherits Window {
                     font-size: 12px;
                     horizontal-alignment: center;
                     vertical-alignment: center;
+                }
+            }
+
+            // A confirmed final expiry replaces every route selector. The
+            // connection card and footer stay untouched above and below it.
+            if root.has-profile && root.account-selected-expired: expired-card := Rectangle {
+                x: 10px;
+                y: 134px;
+                width: parent.width - 20px;
+                height: Math.min(250px, parent.height - self.y - 54px);
+                background: @linear-gradient(145deg, #101a2af2 0%, #0a2237f2 58%, #081827f2 100%);
+                border-color: #f0526a59;
+                border-width: 1px;
+                border-radius: 12px;
+                clip: true;
+
+                VerticalLayout {
+                    padding-left: 18px;
+                    padding-right: 18px;
+                    padding-top: 18px;
+                    padding-bottom: 16px;
+                    spacing: 8px;
+                    alignment: start;
+
+                    Rectangle {
+                        width: 42px;
+                        height: 42px;
+                        border-radius: 11px;
+                        background: #f0526a18;
+                        border-color: #f0526a33;
+                        border-width: 1px;
+                        Image {
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                            width: 22px;
+                            height: 22px;
+                            source: @image-url("../assets/shield-off.svg");
+                            colorize: Theme.text-muted;
+                            image-fit: contain;
+                            accessible-role: none;
+                        }
+                    }
+                    Text {
+                        text: @tr("Срок подписки истёк");
+                        color: Theme.text-primary;
+                        font-size: 15px;
+                        font-weight: Theme.weight-bold;
+                        wrap: word-wrap;
+                    }
+                    Text {
+                        text: @tr("Продлите подписку TerrieFlow, чтобы восстановить доступ к серверам");
+                        color: Theme.text-secondary;
+                        font-size: 11.5px;
+                        wrap: word-wrap;
+                    }
+                    if root.account-access-plan != "" || root.account-access-end-date != "": Text {
+                        text: root.account-access-plan != "" && root.account-access-end-date != ""
+                            ? root.account-access-plan + " · " + @tr("истекла {}", root.account-access-end-date)
+                            : root.account-access-plan != "" ? root.account-access-plan
+                            : @tr("Истекла {}", root.account-access-end-date);
+                        color: Theme.text-muted;
+                        font-size: 11px;
+                        wrap: word-wrap;
+                    }
+                    Rectangle { vertical-stretch: 1; background: transparent; }
+                    expired-renew := Rectangle {
+                        height: 40px;
+                        border-radius: 10px;
+                        background: expired-renew-touch.pressed ? #0e7fd1
+                            : expired-renew-touch.has-hover ? Theme.accent-blue-hover
+                            : Theme.accent-blue;
+                        border-color: expired-renew-touch.has-hover ? #78c9ff80 : #159fff66;
+                        border-width: 1px;
+                        drop-shadow-blur: expired-renew-touch.has-hover ? 12px : 7px;
+                        drop-shadow-color: #159fff4d;
+                        animate background, border-color, drop-shadow-blur { duration: 160ms; easing: ease-out; }
+                        Text {
+                            text: @tr("Продлить подписку");
+                            color: white;
+                            font-size: 12.5px;
+                            font-weight: Theme.weight-semibold;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        expired-renew-touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.renew-subscription(); }
+                        }
+                        FocusScope {
+                            focus-on-tab-navigation: true;
+                            accessible-role: button;
+                            accessible-label: @tr("Продлить подписку");
+                            accessible-action-default => { root.renew-subscription(); }
+                            key-pressed(event) => {
+                                if (event.text == " " || event.text == "\n") {
+                                    root.renew-subscription();
+                                    return accept;
+                                }
+                                return reject;
+                            }
+                        }
+                    }
                 }
             }
 

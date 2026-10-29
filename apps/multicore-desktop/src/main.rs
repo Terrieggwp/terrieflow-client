@@ -2967,6 +2967,21 @@ fn sync_tray_live_state(popup: &TrayPopup, main: &AppWindow) {
         set_subscription_failed,
         !main.get_subscription_refresh_error().is_empty()
     );
+    mirror!(
+        get_account_selected_expired,
+        set_account_selected_expired,
+        main.get_account_selected_expired()
+    );
+    mirror!(
+        get_account_access_plan,
+        set_account_access_plan,
+        main.get_account_access_plan()
+    );
+    mirror!(
+        get_account_access_end_date,
+        set_account_access_end_date,
+        main.get_account_access_end_date_display()
+    );
     mirror!(get_toggle_title, set_toggle_title, main.get_toggle_title());
     mirror!(get_toggle_on, set_toggle_on, main.get_toggle_on());
     mirror!(get_toggle_busy, set_toggle_busy, main.get_toggle_busy());
@@ -3424,6 +3439,12 @@ fn wire_tray_popup_actions(
     popup.on_open_main(wire_command(TrayCommand::ShowWindow));
     // Without a profile the main window opens on the inline onboarding.
     popup.on_add_subscription(wire_command(TrayCommand::ShowWindow));
+    let renew_ui = ui.clone();
+    popup.on_renew_subscription(move || {
+        if let Some(ui) = renew_ui.upgrade() {
+            ui.invoke_account_open_cabinet();
+        }
+    });
     popup.on_exit_app(wire_command(TrayCommand::Exit));
 
     let wire_in_place = |command_for: fn(String, String) -> TrayCommand| {

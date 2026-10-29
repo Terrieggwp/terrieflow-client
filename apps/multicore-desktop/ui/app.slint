@@ -2063,7 +2063,7 @@ export component AppWindow inherits Window {
     in property <bool> account-access-stale: false;
     in-out property <bool> expired-connect-notice: false;
     in-out property <string> account-profile-id;
-    private property <bool> account-selected-expired: root.account-authenticated
+    out property <bool> account-selected-expired: root.account-authenticated
         && root.account-access-known
         && root.account-access-expired
         && root.account-profile-id != ""
@@ -3631,10 +3631,6 @@ export component AppWindow inherits Window {
                                 wrap: word-wrap;
                                 vertical-alignment: center;
                                 accessible-live-region: assertive;
-                            }
-                            TextAction {
-                                label: @tr("Продлить");
-                                activated => { root.account-open-cabinet(); }
                             }
                         }
                     }
