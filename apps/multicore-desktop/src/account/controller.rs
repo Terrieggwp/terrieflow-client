@@ -2,7 +2,9 @@ use super::{
     AccountApi, AccountApiError, AccountSubscriptionAccess, AccountUser, CredentialSessionStore,
     EmailLoginError, LoginPoll, SessionStore, StoredSession, telegram_login_url,
 };
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -14,7 +16,7 @@ pub(crate) enum AccountCommand {
     Login,
     EmailLogin(EmailCredentials),
     CancelLogin,
-    Refresh,
+    CheckSubscription(u64),
     Logout,
     Shutdown,
 }
@@ -42,30 +44,82 @@ pub(crate) enum AccountEvent {
     ImportSubscription(String),
     SubscriptionAccess(AccountSubscriptionAccess),
     SubscriptionAccessUnavailable,
+    SubscriptionCheckStarted,
+    SubscriptionLinkUnavailable,
 }
 
 pub(crate) struct AccountController {
     commands: Sender<AccountCommand>,
     events: Receiver<AccountEvent>,
+    subscription_check_pending: Arc<AtomicBool>,
+    session_generation: Arc<AtomicU64>,
 }
 
 impl AccountController {
     pub(crate) fn start(api: AccountApi, store: CredentialSessionStore) -> Self {
         let (commands, command_rx) = mpsc::channel();
         let (event_tx, events) = mpsc::channel();
+        let subscription_check_pending = Arc::new(AtomicBool::new(false));
+        let worker_check_pending = subscription_check_pending.clone();
+        let session_generation = Arc::new(AtomicU64::new(0));
+        let worker_session_generation = session_generation.clone();
         thread::Builder::new()
             .name("terrieflow-account".into())
-            .spawn(move || worker(api, store, command_rx, event_tx))
+            .spawn(move || {
+                worker(
+                    api,
+                    store,
+                    command_rx,
+                    event_tx,
+                    worker_check_pending,
+                    worker_session_generation,
+                )
+            })
             .expect("start account worker");
-        Self { commands, events }
+        Self {
+            commands,
+            events,
+            subscription_check_pending,
+            session_generation,
+        }
     }
 
     pub(crate) fn send(&self, command: AccountCommand) {
+        if matches!(
+            &command,
+            AccountCommand::Login | AccountCommand::EmailLogin(_) | AccountCommand::Logout
+        ) {
+            self.session_generation.fetch_add(1, Ordering::AcqRel);
+        }
         let _ = self.commands.send(command);
     }
 
     pub(crate) fn try_event(&self) -> Option<AccountEvent> {
         self.events.try_recv().ok()
+    }
+
+    /// Starts the one shared subscription check, or joins the one already in
+    /// flight. The worker is single-threaded as well, so no stale parallel
+    /// response can overtake a newer one.
+    pub(crate) fn request_subscription_check(&self) -> bool {
+        if self
+            .subscription_check_pending
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
+            return false;
+        }
+        let generation = self.session_generation.load(Ordering::Acquire);
+        if self
+            .commands
+            .send(AccountCommand::CheckSubscription(generation))
+            .is_err()
+        {
+            self.subscription_check_pending
+                .store(false, Ordering::Release);
+            return false;
+        }
+        true
     }
 }
 
@@ -80,9 +134,12 @@ fn worker(
     store: CredentialSessionStore,
     commands: Receiver<AccountCommand>,
     events: Sender<AccountEvent>,
+    subscription_check_pending: Arc<AtomicBool>,
+    session_generation: Arc<AtomicU64>,
 ) {
     let mut session: Option<StoredSession> = None;
     let mut login: Option<PendingLogin> = None;
+    let mut last_access_blocks_routes: Option<bool> = None;
     publish(&events, guest_state());
 
     loop {
@@ -91,7 +148,13 @@ fn worker(
             .map(|pending| pending.next_poll.saturating_duration_since(Instant::now()))
             .unwrap_or(Duration::from_secs(60));
         match commands.recv_timeout(timeout) {
-            Ok(AccountCommand::Restore) => restore(&api, &store, &events, &mut session),
+            Ok(AccountCommand::Restore) => restore(
+                &api,
+                &store,
+                &events,
+                &mut session,
+                &mut last_access_blocks_routes,
+            ),
             Ok(AccountCommand::Login) => {
                 if login.is_none() {
                     begin_login(&api, &events, &mut login);
@@ -99,11 +162,13 @@ fn worker(
             }
             Ok(AccountCommand::EmailLogin(credentials)) => {
                 login = None;
+                last_access_blocks_routes = None;
                 begin_email_login(
                     &api,
                     &store,
                     &events,
                     &mut session,
+                    &mut last_access_blocks_routes,
                     credentials,
                 );
             }
@@ -114,10 +179,24 @@ fn worker(
                     session.as_ref().map(authenticated_state).unwrap_or_else(guest_state),
                 );
             }
-            Ok(AccountCommand::Refresh) => {
-                if let Some(current) = session.take() {
-                    session = refresh_session(&api, &store, &events, current);
+            Ok(AccountCommand::CheckSubscription(generation)) => {
+                let _ = events.send(AccountEvent::SubscriptionCheckStarted);
+                if generation != session_generation.load(Ordering::Acquire) {
+                    // Account/logout changed while the request was queued.
+                } else if let Some(current) = session.as_mut() {
+                    check_subscription(
+                        &api,
+                        &store,
+                        &events,
+                        current,
+                        &mut last_access_blocks_routes,
+                        &session_generation,
+                        generation,
+                    );
+                } else {
+                    let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
                 }
+                subscription_check_pending.store(false, Ordering::Release);
             }
             Ok(AccountCommand::Logout) => {
                 login = None;
@@ -125,6 +204,8 @@ fn worker(
                     let _ = api.logout(&current.refresh_token);
                 }
                 let _ = store.clear();
+                last_access_blocks_routes = None;
+                subscription_check_pending.store(false, Ordering::Release);
                 publish(&events, guest_state());
             }
             Ok(AccountCommand::Shutdown) | Err(RecvTimeoutError::Disconnected) => break,
@@ -147,10 +228,17 @@ fn worker(
                             }
                             Ok(LoginPoll::Authenticated(current)) => {
                                 login = None;
+                                last_access_blocks_routes = None;
                                 if store.save(&current).is_err() {
                                     publish(&events, error_state("Не удалось безопасно сохранить сессию"));
                                 } else {
-                                    session = restore_loaded(&api, &store, &events, current);
+                                    session = restore_loaded(
+                                        &api,
+                                        &store,
+                                        &events,
+                                        current,
+                                        &mut last_access_blocks_routes,
+                                    );
                                 }
                             }
                             Err(error) if error.is_offline() => {
@@ -207,6 +295,7 @@ fn begin_email_login(
     store: &CredentialSessionStore,
     events: &Sender<AccountEvent>,
     session: &mut Option<StoredSession>,
+    last_access_blocks_routes: &mut Option<bool>,
     mut credentials: EmailCredentials,
 ) {
     credentials.email = credentials.email.trim().to_lowercase();
@@ -232,7 +321,13 @@ fn begin_email_login(
                 );
                 return;
             }
-            *session = restore_loaded(api, store, events, current);
+            *session = restore_loaded(
+                api,
+                store,
+                events,
+                current,
+                last_access_blocks_routes,
+            );
         }
         Err(EmailLoginError::InvalidCredentials) => publish(
             events,
@@ -279,7 +374,9 @@ fn restore(
     store: &CredentialSessionStore,
     events: &Sender<AccountEvent>,
     session: &mut Option<StoredSession>,
+    last_access_blocks_routes: &mut Option<bool>,
 ) {
+    *last_access_blocks_routes = None;
     let loaded = match store.load() {
         Ok(Some(value)) => value,
         Ok(None) => {
@@ -291,7 +388,7 @@ fn restore(
             return;
         }
     };
-    *session = restore_loaded(api, store, events, loaded);
+    *session = restore_loaded(api, store, events, loaded, last_access_blocks_routes);
 }
 
 fn restore_loaded(
@@ -299,8 +396,9 @@ fn restore_loaded(
     store: &CredentialSessionStore,
     events: &Sender<AccountEvent>,
     mut current: StoredSession,
+    last_access_blocks_routes: &mut Option<bool>,
 ) -> Option<StoredSession> {
-    publish(events, refreshing_state());
+    publish(events, refreshing_state(Some(&current.user)));
     if !current.access_is_fresh(SystemTime::now()) {
         match refresh_tokens(api, store, &mut current) {
             Ok(()) => {}
@@ -325,7 +423,7 @@ fn restore_loaded(
             current.user = user;
             let _ = store.save(&current);
             publish(events, authenticated_state(&current));
-            publish_subscription(api, events, &current);
+            publish_subscription(api, events, &current, last_access_blocks_routes, true);
             Some(current)
         }
         Err(AccountApiError::Unauthorized) => {
@@ -335,7 +433,7 @@ fn restore_loaded(
                         current.user = user;
                         let _ = store.save(&current);
                         publish(events, authenticated_state(&current));
-                        publish_subscription(api, events, &current);
+                        publish_subscription(api, events, &current, last_access_blocks_routes, true);
                         Some(current)
                     }
                     _ => {
@@ -369,39 +467,85 @@ fn publish_subscription(
     api: &AccountApi,
     events: &Sender<AccountEvent>,
     current: &StoredSession,
+    last_access_blocks_routes: &mut Option<bool>,
+    import_on_first_success: bool,
 ) {
     match api.subscription_access(&current.access_token) {
         Ok(Some(access)) => {
+            let blocks_routes = access.blocks_routes();
+            let restored = last_access_blocks_routes.is_some_and(|previous| previous)
+                && !blocks_routes;
+            let first = last_access_blocks_routes.is_none();
+            *last_access_blocks_routes = Some(blocks_routes);
             let _ = events.send(AccountEvent::SubscriptionAccess(access));
+            if restored || (first && import_on_first_success) {
+                publish_connection_link(api, events, current);
+            }
         }
         Ok(None) | Err(_) => {
             let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
         }
     }
-    if let Ok(Some(url)) = api.connection_link(&current.access_token) {
-        let _ = events.send(AccountEvent::ImportSubscription(url));
+}
+
+fn publish_connection_link(
+    api: &AccountApi,
+    events: &Sender<AccountEvent>,
+    current: &StoredSession,
+) {
+    match api.connection_link(&current.access_token) {
+        Ok(Some(url)) => {
+            let _ = events.send(AccountEvent::ImportSubscription(url));
+        }
+        Ok(None) | Err(_) => {
+            let _ = events.send(AccountEvent::SubscriptionLinkUnavailable);
+        }
     }
 }
 
-fn refresh_session(
+fn check_subscription(
     api: &AccountApi,
     store: &CredentialSessionStore,
     events: &Sender<AccountEvent>,
-    mut current: StoredSession,
-) -> Option<StoredSession> {
-    publish(events, refreshing_state());
-    match refresh_tokens(api, store, &mut current) {
-        Ok(()) => restore_loaded(api, store, events, current),
-        Err(error) if error.is_offline() => {
-            publish(events, offline_state(Some(&current.user), "Нет связи с кабинетом"));
-            let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
-            Some(current)
+    current: &mut StoredSession,
+    last_access_blocks_routes: &mut Option<bool>,
+    session_generation: &AtomicU64,
+    expected_generation: u64,
+) {
+    if !current.access_is_fresh(SystemTime::now())
+        && refresh_tokens(api, store, current).is_err()
+    {
+        let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
+        return;
+    }
+    let result = api.subscription_access(&current.access_token);
+    if session_generation.load(Ordering::Acquire) != expected_generation {
+        return;
+    }
+    match result {
+        Ok(Some(access)) => {
+            let blocks_routes = access.blocks_routes();
+            let restored = last_access_blocks_routes.is_some_and(|previous| previous)
+                && !blocks_routes;
+            *last_access_blocks_routes = Some(blocks_routes);
+            let _ = events.send(AccountEvent::SubscriptionAccess(access));
+            if restored {
+                let link = api.connection_link(&current.access_token);
+                if session_generation.load(Ordering::Acquire) != expected_generation {
+                    return;
+                }
+                match link {
+                    Ok(Some(url)) => {
+                        let _ = events.send(AccountEvent::ImportSubscription(url));
+                    }
+                    Ok(None) | Err(_) => {
+                        let _ = events.send(AccountEvent::SubscriptionLinkUnavailable);
+                    }
+                }
+            }
         }
-        Err(_) => {
-            let _ = store.clear();
-            publish(events, expired_state());
+        Ok(None) | Err(_) => {
             let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
-            None
         }
     }
 }
@@ -471,13 +615,14 @@ fn waiting_state(detail: &str) -> AccountViewState {
     }
 }
 
-fn refreshing_state() -> AccountViewState {
-    AccountViewState {
-        phase: "refreshing",
-        display_name: "Проверяем аккаунт…".into(),
-        busy: true,
-        ..Default::default()
-    }
+fn refreshing_state(user: Option<&AccountUser>) -> AccountViewState {
+    user.map(|user| user_state(user, "refreshing", "Проверяем аккаунт…"))
+        .unwrap_or_else(|| AccountViewState {
+            phase: "refreshing",
+            display_name: "Проверяем аккаунт…".into(),
+            busy: true,
+            ..Default::default()
+        })
 }
 
 fn expired_state() -> AccountViewState {
@@ -529,7 +674,7 @@ fn error_state(detail: &str) -> AccountViewState {
 
 #[cfg(test)]
 mod tests {
-    use super::valid_email;
+    use super::{refreshing_state, valid_email, AccountUser};
 
     #[test]
     fn email_validation_rejects_incomplete_or_unsafe_values() {
@@ -539,5 +684,29 @@ mod tests {
         assert!(!valid_email("@example.com"));
         assert!(!valid_email("user@example"));
         assert!(!valid_email("user @example.com"));
+    }
+
+    #[test]
+    fn refreshing_an_existing_session_keeps_it_authenticated() {
+        let user = AccountUser {
+            id: 1,
+            telegram_id: None,
+            first_name: Some("Alex".into()),
+            last_name: None,
+            username: Some("alex".into()),
+            email: None,
+            email_verified: false,
+            balance_kopeks: 0,
+            balance_rubles: 0.0,
+            referral_code: None,
+            language: String::new(),
+            created_at: String::new(),
+            auth_type: "email".into(),
+        };
+        let state = refreshing_state(Some(&user));
+        assert!(state.authenticated);
+        assert!(state.busy);
+        assert_eq!(state.phase, "refreshing");
+        assert_eq!(state.display_name, "Alex");
     }
 }

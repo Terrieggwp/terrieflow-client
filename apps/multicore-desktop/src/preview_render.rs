@@ -1466,6 +1466,12 @@ fn scenarios() -> Vec<Scenario> {
             expired_account(ui, "p1");
             ui.set_expired_connect_notice(true);
         }),
+        ("home-account-expired-checking", 840, 720, |ui| {
+            ready(ui);
+            ui.set_subscription_title(s("TerrieFlow"));
+            expired_account(ui, "p1");
+            ui.set_account_status_check_loading(true);
+        }),
         ("home-account-expired-api-unavailable", 840, 720, |ui| {
             ready(ui);
             ui.set_subscription_title(s("TerrieFlow"));

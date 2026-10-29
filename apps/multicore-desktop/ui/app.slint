@@ -867,6 +867,7 @@ component AccountButton inherits Rectangle {
     in property <bool> primary: false;
     in property <bool> enabled: true;
     in property <bool> emphasized: false;
+    in property <bool> icon-spinning: false;
     out property <bool> hovered: account-button-touch.has-hover;
     callback activated();
 
@@ -891,7 +892,14 @@ component AccountButton inherits Rectangle {
         height: 20px;
         alignment: center;
         spacing: 9px;
-        Image { width: 17px; height: 17px; source: root.icon; colorize: root.primary ? white : Theme.accent-cyan; image-fit: contain; }
+        Image {
+            width: 17px;
+            height: 17px;
+            source: root.icon;
+            colorize: root.primary ? white : Theme.accent-cyan;
+            image-fit: contain;
+            transform-rotation: root.icon-spinning ? Math.mod(animation-tick() / 1ms, 900) / 900 * 360deg : 0deg;
+        }
         Text { height: 20px; text: root.label; color: root.primary ? white : Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
     }
     account-button-focus := FocusScope {
@@ -979,6 +987,7 @@ component RenewalCard inherits Rectangle {
                 horizontal-stretch: 1;
                 label: root.busy ? @tr("Проверяем…") : @tr("Проверить статус");
                 icon: @image-url("../assets/refresh.svg");
+                icon-spinning: root.busy;
                 enabled: !root.busy;
                 activated => { root.refresh(); }
             }
@@ -2051,9 +2060,11 @@ export component AppWindow inherits Window {
     in property <bool> account-authenticated: false;
     in property <bool> account-busy: false;
     in-out property <bool> account-refresh-success: false;
+    in-out property <bool> account-status-check-loading: false;
     in property <bool> account-access-known: false;
     in property <bool> account-access-expired: false;
     in property <string> account-access-status;
+    in-out property <string> account-access-pending-status;
     in property <string> account-access-plan;
     in property <string> account-access-end-date;
     in property <string> account-access-end-date-display;
@@ -2137,6 +2148,7 @@ export component AppWindow inherits Window {
     callback account-email-login(string, string);
     callback account-cancel-login();
     callback account-refresh();
+    callback account-background-refresh();
     callback account-logout();
     callback account-open-cabinet();
     callback account-open-password-recovery();
@@ -3987,7 +3999,7 @@ export component AppWindow inherits Window {
                             if root.account-selected-expired: RenewalCard {
                                 plan: root.account-access-plan;
                                 end-date: root.account-access-end-date-display;
-                                busy: root.account-busy;
+                                busy: root.account-status-check-loading;
                                 last-checked: root.account-access-last-checked;
                                 status-message: root.account-status-check-message;
                                 status-error: root.account-status-check-error;
@@ -5496,7 +5508,7 @@ export component AppWindow inherits Window {
                         if root.account-selected-expired: RenewalCard {
                             plan: root.account-access-plan;
                             end-date: root.account-access-end-date-display;
-                            busy: root.account-busy;
+                            busy: root.account-status-check-loading;
                             last-checked: root.account-access-last-checked;
                             status-message: root.account-status-check-message;
                             status-error: root.account-status-check-error;
@@ -5922,9 +5934,9 @@ export component AppWindow inherits Window {
                             height: 40px;
                             border-radius: 8px;
                             background: root.account-refresh-success ? #18dfa127 : account-refresh-touch.has-hover ? #169cff20 : #ffffff08;
-                            Image { x: 13px; y: 12px; width: 16px; height: 16px; source: @image-url("../assets/refresh.svg"); colorize: root.account-refresh-success ? #2ee7c3 : Theme.accent-blue; transform-rotation: root.account-busy && !root.reduced-motion ? Math.mod(animation-tick() / 1ms, 900) / 900 * 360deg : 0deg; }
-                            Text { x: 34px; width: parent.width - 42px; text: root.account-busy ? @tr("Обновляем…") : root.account-refresh-success ? @tr("Обновлено") : @tr("Обновить"); color: root.account-refresh-success ? #2ee7c3 : Theme.accent-blue; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; }
-                            account-refresh-touch := TouchArea { enabled: !root.account-busy; clicked => { root.account-refresh(); } }
+                            Image { x: 13px; y: 12px; width: 16px; height: 16px; source: @image-url("../assets/refresh.svg"); colorize: root.account-refresh-success ? #2ee7c3 : Theme.accent-blue; transform-rotation: (root.account-busy || root.account-status-check-loading) && !root.reduced-motion ? Math.mod(animation-tick() / 1ms, 900) / 900 * 360deg : 0deg; }
+                            Text { x: 34px; width: parent.width - 42px; text: root.account-busy || root.account-status-check-loading ? @tr("Обновляем…") : root.account-refresh-success ? @tr("Обновлено") : @tr("Обновить"); color: root.account-refresh-success ? #2ee7c3 : Theme.accent-blue; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; }
+                            account-refresh-touch := TouchArea { enabled: !root.account-busy && !root.account-status-check-loading; clicked => { root.account-refresh(); } }
                         }
                         Rectangle {
                             horizontal-stretch: 1;

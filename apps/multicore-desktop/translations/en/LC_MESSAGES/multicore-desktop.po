@@ -555,6 +555,15 @@ msgstr "Status checked. The subscription has not been renewed yet"
 msgid "Подписка активна. Доступ восстановлен"
 msgstr "Subscription active. Access restored"
 
+msgid "Подписка активна. Восстанавливаем конфигурацию…"
+msgstr "Subscription active. Restoring configuration…"
+
+msgid "Подписка активна, но конфигурацию пока не удалось восстановить"
+msgstr "The subscription is active, but the configuration could not be restored yet"
+
+msgid "Подписка восстановлена. Доступ к серверам TerrieFlow снова открыт"
+msgstr "Subscription restored. Access to TerrieFlow servers is available again"
+
 msgid "Не удалось проверить статус. Попробуйте позже"
 msgstr "Could not check the status. Try again later"
 

@@ -3721,6 +3721,31 @@ fn saved_local_proxy_address() -> String {
     )
 }
 
+fn account_subscription_check_interval(status: &str, expired: bool) -> Duration {
+    if expired || status.eq_ignore_ascii_case("grace") {
+        Duration::from_secs(60)
+    } else {
+        Duration::from_secs(5 * 60)
+    }
+}
+
+fn account_subscription_retry_backoff(failures: u8) -> Duration {
+    Duration::from_secs(match failures {
+        0 | 1 => 30,
+        2 => 60,
+        3 => 120,
+        _ => 5 * 60,
+    })
+}
+
+fn account_access_restore_requires_configuration(
+    was_known: bool,
+    was_expired: bool,
+    now_expired: bool,
+) -> bool {
+    was_known && was_expired && !now_expired
+}
+
 /// «Локальный прокси: 127.0.0.1:PORT» in Settings and its copy action. The daemon saves the
 /// port at start and changes it only when another app took it, which a connect reveals.
 fn wire_account(
@@ -3748,16 +3773,26 @@ fn wire_account(
             return;
         }
         if let Some(ui) = refresh_weak.upgrade() {
-            ui.set_account_busy(true);
+            ui.set_account_status_check_loading(true);
             ui.set_account_status_check_message("".into());
             ui.set_account_status_check_error(false);
         }
-        refresh.send(AccountCommand::Refresh);
+        // False means a background request is already in flight. The manual
+        // request joins it and consumes the same eventual result.
+        refresh.request_subscription_check();
+    });
+    let background_refresh = controller.clone();
+    ui.on_account_background_refresh(move || {
+        background_refresh.request_subscription_check();
     });
     let logout = controller.clone();
     let logout_requested = status_check_requested.clone();
+    let logout_weak = ui.as_weak();
     ui.on_account_logout(move || {
         logout_requested.set(false);
+        if let Some(ui) = logout_weak.upgrade() {
+            ui.set_account_status_check_loading(false);
+        }
         logout.send(AccountCommand::Logout);
     });
     ui.on_account_open_cabinet(move || {
@@ -3773,6 +3808,10 @@ fn wire_account(
     let weak = ui.as_weak();
     let timer = Timer::default();
     let status_message_generation = Rc::new(Cell::new(0_u64));
+    let next_subscription_check = Rc::new(Cell::new(
+        Instant::now() + Duration::from_secs(5 * 60),
+    ));
+    let subscription_check_failures = Rc::new(Cell::new(0_u8));
     let mut previous_phase = String::new();
     timer.start(TimerMode::Repeated, Duration::from_millis(100), move || {
         let Some(ui) = weak.upgrade() else {
@@ -3790,6 +3829,7 @@ fn wire_account(
                         ui.set_account_access_known(false);
                         ui.set_account_access_expired(false);
                         ui.set_account_access_status("".into());
+                        ui.set_account_access_pending_status("".into());
                         ui.set_account_access_plan("".into());
                         ui.set_account_access_end_date("".into());
                         ui.set_account_access_end_date_display("".into());
@@ -3797,6 +3837,8 @@ fn wire_account(
                         ui.set_account_access_stale(false);
                         ui.set_account_status_check_message("".into());
                         ui.set_account_status_check_error(false);
+                        ui.set_account_status_check_loading(false);
+                        status_check_requested.set(false);
                     }
                     if refresh_completed {
                         ui.set_account_refresh_success(true);
@@ -3820,13 +3862,35 @@ fn wire_account(
                         ui.set_import_error(
                             tr!("Не удалось открыть ссылку подписки. Проверьте её и повторите попытку.").into(),
                         );
+                        if ui.get_account_access_status() == "restoring" {
+                            ui.set_account_status_check_loading(false);
+                            ui.set_account_status_check_error(true);
+                            ui.set_account_status_check_message(
+                                tr!("Подписка активна, но конфигурацию пока не удалось восстановить")
+                                    .into(),
+                            );
+                        }
                     }
                 }
                 AccountEvent::SubscriptionAccess(access) => {
                     let expired = access.blocks_routes();
+                    let was_known = ui.get_account_access_known();
+                    let was_expired = was_known && ui.get_account_access_expired();
+                    let restoring_access = account_access_restore_requires_configuration(
+                        was_known,
+                        was_expired,
+                        expired,
+                    );
                     ui.set_account_access_known(true);
-                    ui.set_account_access_expired(expired);
-                    ui.set_account_access_status(access.status.into());
+                    if !restoring_access {
+                        ui.set_account_access_expired(expired);
+                    }
+                    ui.set_account_access_status(
+                        if restoring_access { "restoring" } else { access.status.as_str() }.into(),
+                    );
+                    ui.set_account_access_pending_status(
+                        if restoring_access { access.status.as_str() } else { "" }.into(),
+                    );
                     ui.set_account_access_plan(access.tariff_name.into());
                     ui.set_account_access_end_date(access.end_date.clone().into());
                     ui.set_account_access_end_date_display(
@@ -3836,7 +3900,22 @@ fn wire_account(
                         chrono::Local::now().format("%H:%M").to_string().into(),
                     );
                     ui.set_account_access_stale(false);
-                    if status_check_requested.replace(false) {
+                    subscription_check_failures.set(0);
+                    next_subscription_check.set(
+                        Instant::now()
+                            + account_subscription_check_interval(&access.status, expired),
+                    );
+                    if restoring_access {
+                        status_check_requested.set(false);
+                        ui.set_account_status_check_loading(true);
+                        ui.set_account_status_check_error(false);
+                        ui.set_account_status_check_message(
+                            tr!("Подписка активна. Восстанавливаем конфигурацию…").into(),
+                        );
+                    } else {
+                        ui.set_account_status_check_loading(false);
+                    }
+                    if !restoring_access && status_check_requested.replace(false) {
                         ui.set_account_status_check_error(false);
                         ui.set_account_status_check_message(
                             if expired {
@@ -3850,10 +3929,24 @@ fn wire_account(
                             weak.clone(),
                             status_message_generation.clone(),
                         );
+                        ui.set_account_refresh_success(true);
+                        let reset = weak.clone();
+                        Timer::single_shot(Duration::from_millis(1_200), move || {
+                            if let Some(ui) = reset.upgrade() {
+                                ui.set_account_refresh_success(false);
+                            }
+                        });
                     }
                 }
                 AccountEvent::SubscriptionAccessUnavailable => {
                     ui.set_account_access_stale(true);
+                    ui.set_account_status_check_loading(false);
+                    let failures = subscription_check_failures.get().saturating_add(1).min(5);
+                    subscription_check_failures.set(failures);
+                    next_subscription_check.set(
+                        Instant::now()
+                            + account_subscription_retry_backoff(failures),
+                    );
                     if status_check_requested.replace(false) {
                         ui.set_account_status_check_error(true);
                         ui.set_account_status_check_message(
@@ -3865,7 +3958,28 @@ fn wire_account(
                         );
                     }
                 }
+                AccountEvent::SubscriptionCheckStarted => {
+                    ui.set_account_status_check_loading(true);
+                }
+                AccountEvent::SubscriptionLinkUnavailable => {
+                    if ui.get_account_access_status() == "restoring" {
+                        ui.set_account_status_check_loading(false);
+                        ui.set_account_status_check_error(true);
+                        ui.set_account_status_check_message(
+                            tr!("Подписка активна, но конфигурацию пока не удалось восстановить").into(),
+                        );
+                    }
+                }
             }
+        }
+        if ui.get_account_authenticated()
+            && !ui.get_account_status_check_loading()
+            && Instant::now() >= next_subscription_check.get()
+        {
+            // Reserve a short window before the event arrives. The atomic gate
+            // in AccountController is the final protection against duplicates.
+            next_subscription_check.set(Instant::now() + Duration::from_secs(30));
+            controller.request_subscription_check();
         }
     });
     timer
@@ -5622,6 +5736,8 @@ fn run_import(
             };
             if let Some(ui) = weak.upgrade() {
                 let current = apply_latest_snapshot(&ui, &model);
+                let restoring_access = account_import
+                    && ui.get_account_access_status() == "restoring";
                 if let Some(profile_id) = account_profile_id {
                     ui.set_account_profile_id(profile_id.into());
                 }
@@ -5636,6 +5752,38 @@ fn run_import(
                 }
                 if import_succeeded && !current.import_pending {
                     ui.set_import_success_serial(ui.get_import_success_serial().wrapping_add(1));
+                }
+                if restoring_access
+                    && matches!(queue_outcome, PendingImportOutcome::Succeeded)
+                {
+                    let restored_status = ui.get_account_access_pending_status();
+                    ui.set_account_access_status(
+                        if restored_status.is_empty() { "active".into() } else { restored_status },
+                    );
+                    ui.set_account_access_pending_status("".into());
+                    ui.set_account_access_expired(false);
+                    ui.set_account_status_check_loading(false);
+                    ui.set_account_status_check_error(false);
+                    ui.set_account_status_check_message(
+                        tr!("Подписка восстановлена. Доступ к серверам TerrieFlow снова открыт")
+                            .into(),
+                    );
+                    let clear = weak.clone();
+                    Timer::single_shot(Duration::from_secs(5), move || {
+                        if let Some(ui) = clear.upgrade() {
+                            ui.set_account_status_check_message("".into());
+                            ui.set_account_status_check_error(false);
+                        }
+                    });
+                } else if restoring_access
+                    && matches!(queue_outcome, PendingImportOutcome::Failed)
+                {
+                    ui.set_account_status_check_loading(false);
+                    ui.set_account_status_check_error(true);
+                    ui.set_account_status_check_message(
+                        tr!("Подписка активна, но конфигурацию пока не удалось восстановить")
+                            .into(),
+                    );
                 }
             }
             advance_profile_reconciliation(weak, model, profile_preferences, import_succeeded);
@@ -5935,6 +6083,9 @@ fn run_subscription_refresh(
         let _ = slint::invoke_from_event_loop(move || {
             if let Some(ui) = weak.upgrade() {
                 apply_snapshot(&ui, &current.0);
+                if current.1 {
+                    ui.invoke_account_background_refresh();
+                }
             }
             if current.1 && current.0.presentation.has_profile {
                 load_catalog(weak.clone(), model.clone());
@@ -7038,6 +7189,8 @@ mod window_tests {
         PersistenceTracker, PreferenceWriteFailure, PreferenceWriter, ProfilePreferenceReconciler,
         ReadyUpdateStep, UpdateConfirmPlan, UpdateInstallIntent, WindowObservation, WriterCommand,
         WriterResult, activation_for_launch_arguments, ambient_motion_allowed,
+        account_access_restore_requires_configuration, account_subscription_check_interval,
+        account_subscription_retry_backoff,
         begin_update_download, delete_focus_plan, drain_latest_write, initial_window_visible,
         next_maximized, parse_launch_arguments, preference_error_for_result,
         preference_failure_is_terminal, preference_save_error, ready_update_step,
@@ -7059,6 +7212,34 @@ mod window_tests {
     };
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
+
+    #[test]
+    fn account_monitor_uses_state_aware_intervals_and_bounded_backoff() {
+        assert_eq!(
+            account_subscription_check_interval("active", false),
+            Duration::from_secs(300)
+        );
+        assert_eq!(
+            account_subscription_check_interval("grace", false),
+            Duration::from_secs(60)
+        );
+        assert_eq!(
+            account_subscription_check_interval("expired", true),
+            Duration::from_secs(60)
+        );
+        assert_eq!(account_subscription_retry_backoff(1), Duration::from_secs(30));
+        assert_eq!(account_subscription_retry_backoff(2), Duration::from_secs(60));
+        assert_eq!(account_subscription_retry_backoff(3), Duration::from_secs(120));
+        assert_eq!(account_subscription_retry_backoff(9), Duration::from_secs(300));
+    }
+
+    #[test]
+    fn restored_access_stays_gated_until_configuration_is_ready() {
+        assert!(account_access_restore_requires_configuration(true, true, false));
+        assert!(!account_access_restore_requires_configuration(true, true, true));
+        assert!(!account_access_restore_requires_configuration(true, false, false));
+        assert!(!account_access_restore_requires_configuration(false, false, false));
+    }
 
     #[test]
     fn maximize_toggle_inverts_current_window_state() {
