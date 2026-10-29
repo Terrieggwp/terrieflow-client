@@ -905,6 +905,83 @@ component AccountButton inherits Rectangle {
     }
 }
 
+component RenewalCard inherits Rectangle {
+    in property <string> plan;
+    in property <string> end-date;
+    in property <bool> busy: false;
+    in property <bool> show-subscriptions-action: false;
+    callback renew();
+    callback refresh();
+    callback open-subscriptions();
+
+    height: root.show-subscriptions-action ? 230px : 196px;
+    border-radius: 18px;
+    background: @linear-gradient(135deg, #0b2943f2 0%, #081b30f4 58%, #102640f2 100%);
+    border-color: #ff64705e;
+    border-width: 1px;
+    drop-shadow-blur: 20px;
+    drop-shadow-offset-y: 7px;
+    drop-shadow-color: #081523a8;
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 10px;
+        HorizontalLayout {
+            height: 56px;
+            spacing: 14px;
+            Rectangle {
+                width: 54px;
+                height: 54px;
+                border-radius: 16px;
+                background: @radial-gradient(circle, #ff647029 0%, #18334a80 100%);
+                border-color: #ff64705e;
+                border-width: 1px;
+                Image { x: 14px; y: 14px; width: 26px; height: 26px; source: @image-url("../assets/shield-off.svg"); colorize: Theme.error; image-fit: contain; }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 3px;
+                Text { text: @tr("Срок подписки истёк"); color: Theme.text-primary; font-size: 18px; font-weight: Theme.weight-semibold; overflow: elide; }
+                Text { text: @tr("Продлите подписку TerrieFlow, чтобы восстановить доступ к серверам"); color: Theme.text-secondary; font-size: Theme.type-metadata-size; wrap: word-wrap; }
+            }
+        }
+        if root.plan != "" || root.end-date != "": Text {
+            height: 18px;
+            text: root.plan != "" && root.end-date != "" ? root.plan + " · " + @tr("до {}", root.end-date)
+                : root.plan != "" ? root.plan : @tr("Срок действия до {}", root.end-date);
+            color: Theme.text-muted;
+            font-size: Theme.type-metadata-size;
+            overflow: elide;
+        }
+        HorizontalLayout {
+            height: 44px;
+            spacing: 10px;
+            AccountButton {
+                horizontal-stretch: 1;
+                label: @tr("Продлить подписку");
+                icon: @image-url("../assets/external-link.svg");
+                primary: true;
+                activated => { root.renew(); }
+            }
+            AccountButton {
+                horizontal-stretch: 1;
+                label: root.busy ? @tr("Обновляем…") : @tr("Обновить сведения");
+                icon: @image-url("../assets/refresh.svg");
+                enabled: !root.busy;
+                activated => { root.refresh(); }
+            }
+        }
+        if root.show-subscriptions-action: HorizontalLayout {
+            alignment: center;
+            TextAction {
+                label: @tr("Открыть раздел «Подписки»");
+                activated => { root.open-subscriptions(); }
+            }
+        }
+    }
+}
+
 // Tappable row of an inset grouped card (first-run actions).
 component ActionRow inherits Rectangle {
     in property <string> label;
@@ -1946,6 +2023,17 @@ export component AppWindow inherits Window {
     in property <bool> account-authenticated: false;
     in property <bool> account-busy: false;
     in-out property <bool> account-refresh-success: false;
+    in property <bool> account-access-known: false;
+    in property <bool> account-access-expired: false;
+    in property <string> account-access-status;
+    in property <string> account-access-plan;
+    in property <string> account-access-end-date;
+    in-out property <string> account-profile-id;
+    private property <bool> account-selected-expired: root.account-authenticated
+        && root.account-access-known
+        && root.account-access-expired
+        && root.account-profile-id != ""
+        && root.active-profile-id == root.account-profile-id;
     in-out property <bool> account-email-login-open: false;
     in-out property <string> account-login-email;
     in-out property <string> account-login-password;
@@ -3299,7 +3387,9 @@ export component AppWindow inherits Window {
                                     Rectangle { horizontal-stretch: 1; background: transparent; }
                                 }
                                 if !root.toggle-detail-is-exit: Text {
-                                    text: root.supporting;
+                                    text: root.account-selected-expired
+                                        ? @tr("Продлите подписку TerrieFlow, чтобы снова использовать её маршруты")
+                                        : root.supporting;
                                     // A failed connect reads its reason in a soft red.
                                     color: root.shown-tone == "danger" ? #f0a3a3 : Theme.text-secondary;
                                     font-size: Theme.type-metadata-size;
@@ -3823,6 +3913,19 @@ export component AppWindow inherits Window {
                         background: transparent;
                         VerticalLayout {
                             // Same gap below the heading as above it (the home stack's 12px).
+                            spacing: 12px;
+                            if root.account-selected-expired: RenewalCard {
+                                plan: root.account-access-plan;
+                                end-date: root.account-access-end-date;
+                                busy: root.account-busy;
+                                show-subscriptions-action: true;
+                                renew => { root.account-open-cabinet(); }
+                                refresh => { root.account-refresh(); }
+                                open-subscriptions => { root.local-page = "subscriptions"; root.close-panel(); }
+                            }
+                            if root.account-selected-expired: Rectangle { vertical-stretch: 1; background: transparent; }
+                            if !root.account-selected-expired: VerticalLayout {
+                            vertical-stretch: 1;
                             spacing: 12px;
                             routes-header := Rectangle {
                             height: 36px;
@@ -4466,6 +4569,7 @@ export component AppWindow inherits Window {
                                         Text { text: @tr("Попробуйте другое название страны или сервера"); color: Theme.text-muted; font-size: Theme.type-metadata-size; horizontal-alignment: center; }
                                     }
                                 }
+                            }
                             }
                         }
                     }
@@ -5313,6 +5417,15 @@ export component AppWindow inherits Window {
                                     if index < root.subscription-profiles.length - 1: Rectangle { x: 52px; y: parent.height - 1px; width: parent.width - 52px; height: 1px; background: #7cc8ff18; }
                                 }
                             }
+                        }
+                        if root.account-selected-expired: RenewalCard {
+                            plan: root.account-access-plan;
+                            end-date: root.account-access-end-date;
+                            busy: root.account-busy;
+                            show-subscriptions-action: false;
+                            renew => { root.account-open-cabinet(); }
+                            refresh => { root.account-refresh(); }
+                            open-subscriptions => { }
                         }
                         HorizontalLayout {
                             padding-left: 4px;

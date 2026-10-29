@@ -3,7 +3,9 @@ mod controller;
 mod secure_store;
 mod session;
 
-pub(crate) use api::{AccountApi, AccountApiError, EmailLoginError, LoginPoll};
+pub(crate) use api::{
+    AccountApi, AccountApiError, AccountSubscriptionAccess, EmailLoginError, LoginPoll,
+};
 pub(crate) use controller::{
     AccountCommand, AccountController, AccountEvent, AccountViewState, EmailCredentials,
 };

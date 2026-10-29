@@ -1,6 +1,6 @@
 use super::{
-    AccountApi, AccountApiError, AccountUser, CredentialSessionStore, EmailLoginError, LoginPoll,
-    SessionStore, StoredSession, telegram_login_url,
+    AccountApi, AccountApiError, AccountSubscriptionAccess, AccountUser, CredentialSessionStore,
+    EmailLoginError, LoginPoll, SessionStore, StoredSession, telegram_login_url,
 };
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::thread;
@@ -40,6 +40,7 @@ pub(crate) enum AccountEvent {
     State(AccountViewState),
     OpenBrowser(String),
     ImportSubscription(String),
+    SubscriptionAccess(AccountSubscriptionAccess),
 }
 
 pub(crate) struct AccountController {
@@ -362,6 +363,9 @@ fn publish_subscription(
     events: &Sender<AccountEvent>,
     current: &StoredSession,
 ) {
+    if let Ok(Some(access)) = api.subscription_access(&current.access_token) {
+        let _ = events.send(AccountEvent::SubscriptionAccess(access));
+    }
     if let Ok(Some(url)) = api.connection_link(&current.access_token) {
         let _ = events.send(AccountEvent::ImportSubscription(url));
     }

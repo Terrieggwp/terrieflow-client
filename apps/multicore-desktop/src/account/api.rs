@@ -109,6 +109,33 @@ struct ConnectionLinkResponse {
     subscription_url: Option<String>,
 }
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub(crate) struct AccountSubscriptionAccess {
+    pub(crate) status: String,
+    pub(crate) tariff_name: String,
+    pub(crate) end_date: String,
+}
+
+impl AccountSubscriptionAccess {
+    pub(crate) fn blocks_routes(&self) -> bool {
+        matches!(self.status.as_str(), "expired" | "disabled")
+    }
+}
+
+#[derive(Deserialize)]
+struct SubscriptionResponse {
+    subscription: Option<CabinetSubscription>,
+}
+
+#[derive(Deserialize)]
+struct CabinetSubscription {
+    status: String,
+    #[serde(default)]
+    is_expired: bool,
+    tariff_name: Option<String>,
+    end_date: Option<String>,
+}
+
 impl AccountApi {
     pub(crate) fn new(base_url: &str) -> Result<Self, AccountApiError> {
         let mut base_url = reqwest::Url::parse(base_url)
@@ -245,6 +272,21 @@ impl AccountApi {
             .transpose()
     }
 
+    pub(crate) fn subscription_access(
+        &self,
+        access_token: &str,
+    ) -> Result<Option<AccountSubscriptionAccess>, AccountApiError> {
+        validate_single_token(access_token)?;
+        let response = self
+            .client
+            .get(self.endpoint("cabinet/subscription")?)
+            .bearer_auth(access_token)
+            .send()
+            .map_err(map_transport_error)?;
+        let response: SubscriptionResponse = parse_success(response)?;
+        response.subscription.map(normalize_subscription_access).transpose()
+    }
+
     pub(crate) fn refresh(
         &self,
         refresh_token: &str,
@@ -308,6 +350,39 @@ fn validate_subscription_url(value: &str) -> Result<String, AccountApiError> {
         return Err(AccountApiError::InvalidResponse);
     }
     Ok(value.to_owned())
+}
+
+fn normalize_subscription_access(
+    subscription: CabinetSubscription,
+) -> Result<AccountSubscriptionAccess, AccountApiError> {
+    let mut status = subscription.status.trim().to_ascii_lowercase();
+    if status.is_empty()
+        || status.len() > 32
+        || !status
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte == b'_')
+    {
+        return Err(AccountApiError::InvalidResponse);
+    }
+    // Cabinet exposes the definitive expiry flag separately from its broader
+    // lifecycle status. During Grace the server keeps `is_expired` false, so
+    // the client must not infer expiry from dates or traffic counters.
+    if subscription.is_expired {
+        status = "expired".to_owned();
+    }
+    fn bounded(value: Option<String>) -> Result<String, AccountApiError> {
+        let value = value.unwrap_or_default().trim().to_owned();
+        if value.len() > 256 || value.chars().any(char::is_control) {
+            Err(AccountApiError::InvalidResponse)
+        } else {
+            Ok(value)
+        }
+    }
+    Ok(AccountSubscriptionAccess {
+        status,
+        tariff_name: bounded(subscription.tariff_name)?,
+        end_date: bounded(subscription.end_date)?,
+    })
 }
 
 fn map_transport_error(_error: reqwest::Error) -> AccountApiError {
@@ -382,6 +457,62 @@ mod tests {
         assert!(validate_subscription_url("http://example.test/sub").is_err());
         assert!(validate_subscription_url("https://user:pass@example.test/sub").is_err());
         assert!(validate_subscription_url("not a url").is_err());
+    }
+
+    #[test]
+    fn only_confirmed_expired_or_disabled_access_blocks_routes() {
+        for status in ["active", "trial", "limited", "grace", "unknown"] {
+            assert!(!AccountSubscriptionAccess {
+                status: status.into(),
+                ..Default::default()
+            }
+            .blocks_routes());
+        }
+        for status in ["expired", "disabled"] {
+            assert!(AccountSubscriptionAccess {
+                status: status.into(),
+                ..Default::default()
+            }
+            .blocks_routes());
+        }
+    }
+
+    #[test]
+    fn subscription_access_is_normalized_without_inventing_grace() {
+        let access = normalize_subscription_access(CabinetSubscription {
+            status: " ACTIVE ".into(),
+            is_expired: false,
+            tariff_name: Some(" Premium Pro ".into()),
+            end_date: Some(" 2026-11-10T12:00:00Z ".into()),
+        })
+        .expect("valid subscription access");
+        assert_eq!(access.status, "active");
+        assert_eq!(access.tariff_name, "Premium Pro");
+        assert_eq!(access.end_date, "2026-11-10T12:00:00Z");
+        assert!(!access.blocks_routes());
+    }
+
+    #[test]
+    fn server_expiry_flag_wins_without_expiring_active_grace() {
+        let expired = normalize_subscription_access(CabinetSubscription {
+            status: "active".into(),
+            is_expired: true,
+            tariff_name: None,
+            end_date: None,
+        })
+        .expect("confirmed expired subscription");
+        assert_eq!(expired.status, "expired");
+        assert!(expired.blocks_routes());
+
+        let grace = normalize_subscription_access(CabinetSubscription {
+            status: "active".into(),
+            is_expired: false,
+            tariff_name: None,
+            end_date: None,
+        })
+        .expect("active grace subscription");
+        assert_eq!(grace.status, "active");
+        assert!(!grace.blocks_routes());
     }
 
 }

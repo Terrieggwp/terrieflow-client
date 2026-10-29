@@ -781,6 +781,18 @@ fn connected(ui: &AppWindow) {
     ui.set_catalog_selection_enabled(true);
 }
 
+fn expired_account(ui: &AppWindow, profile_id: &str) {
+    ui.set_account_authenticated(true);
+    ui.set_account_display_name(s("Aleksandr"));
+    ui.set_account_detail(s("Аккаунт подключён"));
+    ui.set_account_access_known(true);
+    ui.set_account_access_expired(true);
+    ui.set_account_access_status(s("expired"));
+    ui.set_account_access_plan(s("Premium Pro"));
+    ui.set_account_access_end_date(s("28.10.2026"));
+    ui.set_account_profile_id(s(profile_id));
+}
+
 /// Title chip on Fjord VPN with a quota (remaining, days, share used, tone).
 fn chip(ui: &AppWindow, remaining: &str, days: &str, used: f32, tone: &str) {
     connected(ui);
@@ -1434,6 +1446,31 @@ fn scenarios() -> Vec<Scenario> {
             ui.set_service_card_visible(true);
         }),
         ("home-ready-wide", 1600, 900, ready),
+        ("home-account-expired", 840, 720, |ui| {
+            ready(ui);
+            ui.set_subscription_title(s("TerrieFlow"));
+            ui.set_subscription_expiry(s("Срок истёк"));
+            expired_account(ui, "p1");
+        }),
+        ("home-account-expired-min", 700, 620, |ui| {
+            ready(ui);
+            ui.set_subscription_title(s("TerrieFlow"));
+            ui.set_subscription_expiry(s("Срок истёк"));
+            expired_account(ui, "p1");
+        }),
+        ("home-account-restored", 840, 720, |ui| {
+            ready(ui);
+            ui.set_account_authenticated(true);
+            ui.set_account_access_known(true);
+            ui.set_account_access_expired(false);
+            ui.set_account_access_status(s("active"));
+            ui.set_account_profile_id(s("p1"));
+        }),
+        ("home-third-party-with-expired-account", 840, 720, |ui| {
+            ready(ui);
+            expired_account(ui, "terrieflow-account");
+            ui.set_active_profile_id(s("p1"));
+        }),
         ("home-update-banner-wide", 1600, 900, |ui| {
             ready(ui);
             offer_update(ui, "0.4.0");
@@ -1494,6 +1531,8 @@ fn scenarios() -> Vec<Scenario> {
         ("subscriptions-expired-selected", 840, 620, |ui| {
             ready(ui);
             ui.set_subscription_profiles(expired_selected_profile());
+            ui.set_active_profile_id(s("terrieflow-account"));
+            expired_account(ui, "terrieflow-account");
             ui.set_local_page(s("subscriptions"));
         }),
         ("subscriptions-min", 700, 620, |ui| {

@@ -513,6 +513,27 @@ msgstr "Refresh"
 msgid "Обновлено"
 msgstr "Refreshed"
 
+msgid "Срок подписки истёк"
+msgstr "Subscription expired"
+
+msgid "Продлите подписку TerrieFlow, чтобы восстановить доступ к серверам"
+msgstr "Renew your TerrieFlow subscription to restore server access"
+
+msgid "Продлите подписку TerrieFlow, чтобы снова использовать её маршруты"
+msgstr "Renew your TerrieFlow subscription to use its routes again"
+
+msgid "Продлить подписку"
+msgstr "Renew subscription"
+
+msgid "Обновить сведения"
+msgstr "Refresh details"
+
+msgid "Открыть раздел «Подписки»"
+msgstr "Open Subscriptions"
+
+msgid "Срок действия до {}"
+msgstr "Valid until {}"
+
 msgid "Не удалось подключиться"
 msgstr "Couldn't connect"
 

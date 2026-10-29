@@ -184,6 +184,7 @@ impl PendingSubscriptionConsents {
 #[derive(Default)]
 struct PendingSubscriptionImports {
     urls: VecDeque<String>,
+    account_urls: Vec<String>,
     in_flight: bool,
     attempts: u8,
     retry_at: Option<Instant>,
@@ -209,6 +210,20 @@ impl PendingSubscriptionImports {
         true
     }
 
+    fn enqueue_account(&mut self, url: String) -> bool {
+        if !self.enqueue(url.clone()) {
+            return false;
+        }
+        if !self.account_urls.iter().any(|known| known == &url) {
+            self.account_urls.push(url);
+        }
+        true
+    }
+
+    fn is_account_url(&self, url: &str) -> bool {
+        self.account_urls.iter().any(|known| known == url)
+    }
+
     fn dispatch_next(&mut self, now: Instant, try_import: impl FnOnce(&str) -> bool) -> bool {
         if self.in_flight || self.retry_at.is_some_and(|retry_at| now < retry_at) {
             return false;
@@ -230,6 +245,7 @@ impl PendingSubscriptionImports {
         }
         if succeeded || self.attempts >= 3 {
             self.urls.pop_front();
+            self.account_urls.retain(|known| known != url);
             self.in_flight = false;
             self.attempts = 0;
             self.retry_at = None;
@@ -3731,6 +3747,13 @@ fn wire_account(
                         && state.phase != "refreshing";
                     previous_phase = state.phase.to_owned();
                     apply_account_state(&ui, &state);
+                    if !state.authenticated {
+                        ui.set_account_access_known(false);
+                        ui.set_account_access_expired(false);
+                        ui.set_account_access_status("".into());
+                        ui.set_account_access_plan("".into());
+                        ui.set_account_access_end_date("".into());
+                    }
                     if refresh_completed {
                         ui.set_account_refresh_success(true);
                         let reset = weak.clone();
@@ -3748,12 +3771,19 @@ fn wire_account(
                     if !pending
                         .lock()
                         .expect("pending subscription imports lock")
-                        .enqueue(url)
+                        .enqueue_account(url)
                     {
                         ui.set_import_error(
                             tr!("Не удалось открыть ссылку подписки. Проверьте её и повторите попытку.").into(),
                         );
                     }
+                }
+                AccountEvent::SubscriptionAccess(access) => {
+                    ui.set_account_access_known(true);
+                    ui.set_account_access_expired(access.blocks_routes());
+                    ui.set_account_access_status(access.status.into());
+                    ui.set_account_access_plan(access.tariff_name.into());
+                    ui.set_account_access_end_date(access.end_date.into());
                 }
             }
         }
@@ -5418,9 +5448,21 @@ fn run_import(
     profile_preferences: Arc<Mutex<ProfilePreferenceReconciler>>,
     pending: Arc<Mutex<PendingSubscriptionImports>>,
 ) {
+    let account_import = pending
+        .lock()
+        .expect("pending subscription imports lock")
+        .is_account_url(&url);
     thread::spawn(move || {
         let result = client.import_subscription(&url);
         let import_succeeded = result.is_ok();
+        let account_profile_id = account_import.then(|| {
+            result.as_ref().ok().and_then(|status| {
+                status
+                    .imported_profile_id
+                    .clone()
+                    .or_else(|| status.active_profile_id.clone())
+            })
+        }).flatten();
         {
             let mut model = model.lock().expect("view model lock");
             model.finish_import(mutation, result);
@@ -5434,6 +5476,9 @@ fn run_import(
             };
             if let Some(ui) = weak.upgrade() {
                 let current = apply_latest_snapshot(&ui, &model);
+                if let Some(profile_id) = account_profile_id {
+                    ui.set_account_profile_id(profile_id.into());
+                }
                 if matches!(queue_outcome, PendingImportOutcome::Failed) {
                     prefill_subscription(&ui, url);
                 }
@@ -9439,6 +9484,33 @@ mod window_tests {
         assert!(!pending.dispatch_next(now, |_| true));
         assert!(pending.dispatch_next(now + Duration::from_secs(2), |_| true));
         pending.finish_attempt(url, true, now + Duration::from_secs(2));
+        assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn account_import_is_tagged_only_until_its_final_outcome() {
+        let mut pending = PendingSubscriptionImports::default();
+        let now = Instant::now();
+        let account_url = "https://account.example/sub";
+        let local_url = "https://local.example/sub";
+
+        assert!(pending.enqueue_account(account_url.into()));
+        assert!(pending.enqueue_account(account_url.into()));
+        assert!(pending.enqueue(local_url.into()));
+        assert!(pending.is_account_url(account_url));
+        assert!(!pending.is_account_url(local_url));
+
+        assert!(pending.dispatch_next(now, |_| true));
+        assert_eq!(
+            pending.finish_attempt(account_url, true, now),
+            PendingImportOutcome::Succeeded
+        );
+        assert!(!pending.is_account_url(account_url));
+        assert!(pending.dispatch_next(now, |_| true));
+        assert_eq!(
+            pending.finish_attempt(local_url, true, now),
+            PendingImportOutcome::Succeeded
+        );
         assert!(pending.is_empty());
     }
 
