@@ -669,7 +669,7 @@ fn extract_verified_bundle_inner(
 }
 
 const REQUIRED_BUNDLE_FILES: &[&str] = &[
-    "MultiCore.exe",
+    "TerrieFlow.exe",
     "README.md",
     "THIRD_PARTY_NOTICES.md",
     "cores/mihomo.exe",
@@ -683,7 +683,7 @@ const REQUIRED_BUNDLE_FILES: &[&str] = &[
 ];
 
 const REQUIRED_PE_FILES: &[&str] = &[
-    "MultiCore.exe",
+    "TerrieFlow.exe",
     "cores/mihomo.exe",
     "cores/xray.exe",
     "runtime/multicore-core-host.exe",
@@ -897,7 +897,7 @@ fn validate_swap_paths(target: &Path, staged: &Path, backup: &Path) -> Result<()
     }
     for directory in [target, staged] {
         if !directory.is_dir()
-            || !directory.join("MultiCore.exe").is_file()
+            || !directory.join("TerrieFlow.exe").is_file()
             || !directory.join("SHA256SUMS.txt").is_file()
         {
             return Err(UpdateError::InvalidBundle(format!(

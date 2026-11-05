@@ -16,7 +16,7 @@ param(
     [string]$WorkDirectory = (Join-Path $env:SystemDrive 'skb')
 )
 
-# Builds the Skia static libraries that skia-bindings links into MultiCore.exe.
+# Builds the Skia static libraries that skia-bindings links into TerrieFlow.exe.
 #
 # rust-skia publishes prebuilt Skia binaries only for the dynamic C runtime (/MD), while the
 # release links the C runtime statically (+crt-static, see package-windows-release.ps1), and it

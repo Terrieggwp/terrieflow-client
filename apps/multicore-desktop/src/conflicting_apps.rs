@@ -233,6 +233,7 @@ mod tests {
     fn detects_nothing_when_no_processes_match() {
         let found = detect_from_stems(stems(&[
             "multicore-desktop.exe",
+            "TerrieFlow.exe",
             "multicore-daemon.exe",
             "explorer.exe",
             "chrome.exe",
@@ -303,6 +304,7 @@ mod tests {
     fn does_not_match_this_app_own_processes() {
         let found = detect_from_stems(stems(&[
             "MultiCore.exe",
+            "TerrieFlow.exe",
             "multicore-daemon.exe",
             "multicore-core-host.exe",
             "multicore-updater.exe",

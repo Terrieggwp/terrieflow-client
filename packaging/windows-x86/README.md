@@ -1,11 +1,11 @@
-# MULTICORE Windows x86 (32-bit) portable preview
+# TerrieFlow Client Windows x86 (32-bit) portable preview
 
 This file is copied into packages by `scripts/package-windows-release.ps1`.
-Keep the generated directory intact and start `MultiCore.exe`.
+Keep the generated directory intact and start `TerrieFlow.exe`.
 
 The package contains exactly:
 
-- `MultiCore.exe`;
+- `TerrieFlow.exe`;
 - `runtime/multicore-daemon.exe`, `multicore-updater.exe`, and
   `multicore-core-host.exe`;
 - pinned `cores/xray.exe` and `cores/mihomo.exe`;
@@ -24,8 +24,8 @@ written to a promised persistent log.
 
 Runtime data lives under `%LOCALAPPDATA%\MultiCore`; update downloads are under
 `%LOCALAPPDATA%\MultiCore\updates`. `TerrieFlow-Setup-x86.exe` installs this bundle
-beneath `%LOCALAPPDATA%\Programs\MultiCore\current` (without the service) or, with
-the service, beneath `Program Files\MultiCore` on 32-bit Windows (`Program Files (x86)`
+beneath `%LOCALAPPDATA%\Programs\TerrieFlow\current` (without the service) or, with
+the service, beneath `Program Files\TerrieFlow` on 32-bit Windows (`Program Files (x86)`
 on 64-bit Windows, where the x64 build is recommended and the installer says so).
 Mihomo embeds Wintun, so no separate `wintun.dll` is shipped.
 

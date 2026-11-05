@@ -25,7 +25,7 @@ $DefinitionPath = Join-Path $RepositoryRoot 'packaging\windows-x64\installer.iss
 # missing file, wrong hash, or malformed/unsafe checksum line - it only
 # stops assuming the exact dashboard filenames in advance.
 $RequiredCoreFiles = @(
-    'MultiCore.exe',
+    'TerrieFlow.exe',
     'README.md',
     'THIRD_PARTY_NOTICES.md',
     'cores/mihomo.exe',

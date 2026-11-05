@@ -1,22 +1,23 @@
-//! The product name is written TerrieFlow wherever a user sees it. Earlier installs were
-//! registered as "MultiCore" or "MULTICORE", and an in-app update replaces only the `current`
+//! The product name is written TerrieFlow Client wherever a user sees it. Earlier installs were
+//! registered as "MultiCore", "MULTICORE" or "TerrieFlow", and an in-app update replaces only the `current`
 //! folder, so the installed copy renames what its installer left behind: the Apps & Features
 //! entry and the Start menu / desktop shortcuts. Internal names (folders, the service name,
-//! the Run value, AppId) stay "MultiCore".
+//! the data directory, the Run value, protocol and AppId) stay stable for compatibility.
 //!
 //! The decisions are pure functions; the Windows side only reads and applies them, best
 //! effort and only for what belongs to this install.
 
 use std::path::Path;
 
-pub const PRODUCT_NAME: &str = "TerrieFlow";
+pub const PRODUCT_NAME: &str = "TerrieFlow Client";
+pub const PUBLISHER_NAME: &str = "TerrieFlow";
 pub const LEGACY_PRODUCT_NAME: &str = "MultiCore";
 const INTERMEDIATE_PRODUCT_NAME: &str = "MULTICORE";
+const PREVIOUS_PRODUCT_NAME: &str = "TerrieFlow";
 /// Must differ from the service name "MultiCore" by more than case: the SCM shows the service
 /// name instead of a display name that matches it case-insensitively.
 pub const SERVICE_DISPLAY_NAME: &str = "TerrieFlow Service";
-pub const SERVICE_DESCRIPTION: &str =
-    "TerrieFlow: ядра Mihomo и Xray для мгновенного подключения";
+pub const SERVICE_DESCRIPTION: &str = "TerrieFlow: ядра Mihomo и Xray для мгновенного подключения";
 const SERVICE_DESCRIPTION_EN: &str = "TerrieFlow: Mihomo and Xray cores for instant connection";
 /// The 1.1.1 description, the only one the startup migration replaces: since 1.1.4 the
 /// installer writes it in the Windows UI language, and an English one must stay English.
@@ -28,7 +29,7 @@ const INTERMEDIATE_SERVICE_DESCRIPTION_EN: &str =
     "MULTICORE: Mihomo and Xray cores for instant connection";
 /// Inno Setup's uninstall entry for AppId {D95AB954-248C-44C9-9E3A-952398802A2D}.
 pub const UNINSTALL_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\{D95AB954-248C-44C9-9E3A-952398802A2D}_is1";
-pub const SHORTCUT_FILE_NAME: &str = "TerrieFlow.lnk";
+pub const SHORTCUT_FILE_NAME: &str = "TerrieFlow Client.lnk";
 /// `HKLM\Software\Classes\multicore`, written by the service-mode installer.
 pub const PROTOCOL_KEY: &str = r"Software\Classes\multicore";
 pub const PROTOCOL_DESCRIPTION: &str = "URL:TerrieFlow Protocol";
@@ -142,10 +143,18 @@ pub fn uninstall_entry_updates(
     }
     let mut updates = Vec::new();
     if let Some(name) = entry.display_name {
-        let mut renamed = [LEGACY_PRODUCT_NAME, INTERMEDIATE_PRODUCT_NAME]
+        let mut renamed = if name.starts_with(PRODUCT_NAME) {
+            name.to_owned()
+        } else {
+            [
+                LEGACY_PRODUCT_NAME,
+                INTERMEDIATE_PRODUCT_NAME,
+                PREVIOUS_PRODUCT_NAME,
+            ]
             .into_iter()
             .find_map(|old| name.strip_prefix(old))
-            .map_or_else(|| name.to_owned(), |rest| format!("{PRODUCT_NAME}{rest}"));
+            .map_or_else(|| name.to_owned(), |rest| format!("{PRODUCT_NAME}{rest}"))
+        };
         // Inno's AppVerName ("TerrieFlow version 1.1.1") ends with the installed version.
         if let Some(installed) = entry
             .display_version
@@ -163,7 +172,7 @@ pub fn uninstall_entry_updates(
         entry.publisher,
         Some(LEGACY_PRODUCT_NAME | INTERMEDIATE_PRODUCT_NAME)
     ) {
-        updates.push(("Publisher", EntryValue::Text(PRODUCT_NAME.to_owned())));
+        updates.push(("Publisher", EntryValue::Text(PUBLISHER_NAME.to_owned())));
     }
     if entry
         .display_version
@@ -220,11 +229,11 @@ pub fn protocol_description_update(
     .then_some(PROTOCOL_DESCRIPTION)
 }
 
-/// The shortcut in a folder listing still named `MultiCore.lnk`/`MULTICORE.lnk`, if any.
+/// A shortcut from an earlier public build (`MultiCore.lnk` or `TerrieFlow.lnk`), if any.
 pub fn legacy_shortcut_name<'a>(names: impl IntoIterator<Item = &'a str>) -> Option<&'a str> {
-    names
-        .into_iter()
-        .find(|name| name.eq_ignore_ascii_case("MultiCore.lnk"))
+    names.into_iter().find(|name| {
+        name.eq_ignore_ascii_case("MultiCore.lnk") || name.eq_ignore_ascii_case("TerrieFlow.lnk")
+    })
 }
 
 /// The paths a shell link (`.lnk`, MS-SHLLINK) stores for its target.
@@ -816,7 +825,7 @@ mod tests {
         assert_eq!(
             uninstall_entry_updates(&entry, &root(), VERSION),
             vec![
-                ("DisplayName", text("TerrieFlow version 1.1.2")),
+                ("DisplayName", text("TerrieFlow Client version 1.1.2")),
                 ("Publisher", text("TerrieFlow")),
                 ("DisplayVersion", text("1.1.2")),
             ]
@@ -839,7 +848,7 @@ mod tests {
         // Renamed by an earlier start (or the 1.1.2 installer), then updated in-app again.
         let entry = UninstallEntry {
             install_location: Some(r"C:\Program Files\MultiCore\"),
-            display_name: Some("TerrieFlow версия 1.1.2"),
+            display_name: Some("TerrieFlow Client версия 1.1.2"),
             publisher: Some("TerrieFlow"),
             display_version: Some("1.1.2"),
             ..UninstallEntry::default()
@@ -847,7 +856,7 @@ mod tests {
         assert_eq!(
             uninstall_entry_updates(&entry, &root(), "1.1.3"),
             vec![
-                ("DisplayName", text("TerrieFlow версия 1.1.3")),
+                ("DisplayName", text("TerrieFlow Client версия 1.1.3")),
                 ("DisplayVersion", text("1.1.3")),
             ]
         );
@@ -855,21 +864,25 @@ mod tests {
         assert!(uninstall_entry_updates(&entry, &root(), "1.1.2").is_empty());
         // A name without the version keeps its text; only the version values move.
         let plain = UninstallEntry {
-            display_name: Some("TerrieFlow"),
+            display_name: Some("TerrieFlow Client"),
             ..entry
         };
         assert_eq!(
             uninstall_entry_updates(&plain, &root(), "1.1.3"),
             vec![("DisplayVersion", text("1.1.3"))]
         );
-        // The suffix must be a whole word: "11.1.2" does not end in " 1.1.2".
+        // The old product prefix is still branded, but the suffix must be a whole word:
+        // "11.1.2" does not end in " 1.1.2" and must not be rewritten to the new version.
         let glued = UninstallEntry {
             display_name: Some("TerrieFlow 11.1.2"),
             ..entry
         };
         assert_eq!(
             uninstall_entry_updates(&glued, &root(), "1.1.3"),
-            vec![("DisplayVersion", text("1.1.3"))]
+            vec![
+                ("DisplayName", text("TerrieFlow Client 11.1.2")),
+                ("DisplayVersion", text("1.1.3")),
+            ]
         );
     }
 
@@ -961,7 +974,14 @@ mod tests {
             legacy_shortcut_name(["MULTICORE.lnk", "x.lnk"]),
             Some("MULTICORE.lnk")
         );
-        assert_eq!(legacy_shortcut_name(["TerrieFlow.lnk", "x.lnk"]), None);
+        assert_eq!(
+            legacy_shortcut_name(["TerrieFlow.lnk", "x.lnk"]),
+            Some("TerrieFlow.lnk")
+        );
+        assert_eq!(
+            legacy_shortcut_name(["TerrieFlow Client.lnk", "x.lnk"]),
+            None
+        );
         assert_eq!(legacy_shortcut_name(["MultiCore.url", "MultiCore"]), None);
     }
 
@@ -1100,13 +1120,13 @@ mod tests {
     fn the_installer_uses_the_same_names() {
         let installer = include_str!("../../../packaging/windows-x64/installer.iss");
         assert!(installer.contains(&format!("#define AppName \"{PRODUCT_NAME}\"")));
-        assert!(installer.contains(&format!("#define AppPublisher \"{PRODUCT_NAME}\"")));
+        assert!(installer.contains(&format!("#define AppPublisher \"{PUBLISHER_NAME}\"")));
         assert!(installer.contains(&format!("DisplayName= \"{SERVICE_DISPLAY_NAME}\"")));
         assert!(installer.contains(&format!("russian.ServiceDescription={SERVICE_DESCRIPTION}")));
         assert!(installer.contains(&format!("ValueData: \"{PROTOCOL_DESCRIPTION}\"")));
         assert!(installer.contains("AppId={{D95AB954-248C-44C9-9E3A-952398802A2D}"));
         assert!(UNINSTALL_KEY.ends_with(r"\{D95AB954-248C-44C9-9E3A-952398802A2D}_is1"));
-        assert!(installer.contains(r#"Name: "{autoprograms}\TerrieFlow"; "#));
+        assert!(installer.contains(r#"Name: "{autoprograms}\TerrieFlow Client"; "#));
         assert!(SERVICE_DISPLAY_NAME.to_lowercase() != LEGACY_PRODUCT_NAME.to_lowercase());
     }
 }

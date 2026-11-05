@@ -348,7 +348,8 @@ try {
     $releaseAsset = Join-Path $TestRoot 'multicore-windows-x64.zip'
     Invoke-Package $out1 $BaseInput $manifest $Desktop $Daemon $CoreHost $releaseAsset | Out-Null
     Invoke-Package $out2 $BaseInput $manifest $Desktop $Daemon $CoreHost | Out-Null
-    [string[]]$expected = @('MultiCore.exe', 'README.md', 'SHA256SUMS.txt', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
+    [string[]]$expected = @('TerrieFlow.exe', 'README.md', 'SHA256SUMS.txt', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
+    [Array]::Sort($expected, [StringComparer]::Ordinal)
     $actualItems = @(Get-ChildItem -LiteralPath $out1 -Force -Recurse)
     foreach ($item in $actualItems) { Assert-True (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) "published inventory must not contain reparse entries: $($item.FullName)" }
     [string[]]$actual = @($actualItems | Where-Object { -not $_.PSIsContainer } | ForEach-Object { $_.FullName.Substring($out1.Length + 1).Replace('\', '/') })
@@ -358,7 +359,7 @@ try {
     [string[]]$actualDirectories = @($actualItems | Where-Object { $_.PSIsContainer } | ForEach-Object { $_.FullName.Substring($out1.Length + 1).Replace('\', '/') })
     [Array]::Sort($actualDirectories, [StringComparer]::Ordinal)
     Assert-True (($actualDirectories -join '|') -ceq ($expectedDirectories -join '|')) 'published directory inventory must reject extra empty directories'
-    Assert-True ((Get-Sha256 (Join-Path $out1 'MultiCore.exe')) -eq (Get-Sha256 $Desktop)) 'desktop executable must be renamed without modification'
+    Assert-True ((Get-Sha256 (Join-Path $out1 'TerrieFlow.exe')) -eq (Get-Sha256 $Desktop)) 'desktop executable must be branded without modifying its bytes'
     Assert-True ((Get-Sha256 (Join-Path $out1 'runtime\multicore-daemon.exe')) -eq (Get-Sha256 $Daemon)) 'daemon hash must match'
     Assert-True ((Get-Sha256 (Join-Path $out1 'runtime\multicore-updater.exe')) -eq (Get-Sha256 $Updater)) 'updater hash must match'
     Assert-True ((Get-Sha256 (Join-Path $out1 'runtime\multicore-core-host.exe')) -eq (Get-Sha256 $CoreHost)) 'core-host hash must match'
@@ -378,7 +379,8 @@ try {
         $sumPaths.Add($relative)
         Assert-True ((Get-Sha256 (Join-Path $out1 $relative)) -ceq $Matches[1]) "SHA256SUMS digest mismatch: $relative"
     }
-    [string[]]$expectedSumPaths = @('MultiCore.exe', 'README.md', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
+    [string[]]$expectedSumPaths = @('TerrieFlow.exe', 'README.md', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
+    [Array]::Sort($expectedSumPaths, [StringComparer]::Ordinal)
     Assert-True (($sumPaths -join '|') -ceq ($expectedSumPaths -join '|')) 'SHA256SUMS paths must be complete and ordered'
 
     Assert-True (Test-Path -LiteralPath $releaseAsset -PathType Leaf) 'release ZIP asset must be created when requested'
@@ -636,7 +638,7 @@ try {
     Invoke-DashboardPackage $dashboardOut1 $DashboardBaseInput $dashboardManifest | Out-Null
     Invoke-DashboardPackage $dashboardOut2 $DashboardBaseInput $dashboardManifest | Out-Null
 
-    [string[]]$expectedDashboardFiles = @('MultiCore.exe', 'README.md', 'SHA256SUMS.txt', 'THIRD_PARTY_NOTICES.md',
+    [string[]]$expectedDashboardFiles = @('TerrieFlow.exe', 'README.md', 'SHA256SUMS.txt', 'THIRD_PARTY_NOTICES.md',
         'cores/mihomo.exe', 'cores/xray.exe',
         'dashboard/assets/app.js', 'dashboard/index.html', 'dashboard/multicore-readonly.js', 'dashboard/theme-favicon.js',
         'licenses/Xray-core-MPL-2.0.txt', 'licenses/dashboard-fixture-LICENSE.txt', 'licenses/mihomo-GPL-3.0.txt',

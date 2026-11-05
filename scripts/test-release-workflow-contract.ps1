@@ -199,7 +199,7 @@ foreach ($token in @(
     'test-windows-installer-contract.ps1',
     'test-smoke-test-one-click-contract.ps1',
     'test-packaged-daemon-smoke-contract.ps1',
-    '-DesktopExecutablePath dist/release/multicore-windows-x64/MultiCore.exe',
+    '-DesktopExecutablePath dist/release/multicore-windows-x64/TerrieFlow.exe',
     '-DaemonExecutablePath dist/release/multicore-windows-x64/runtime/multicore-daemon.exe',
     '-UpdaterExecutablePath dist/release/multicore-windows-x64/runtime/multicore-updater.exe',
     '-CoreHostExecutablePath dist/release/multicore-windows-x64/runtime/multicore-core-host.exe',

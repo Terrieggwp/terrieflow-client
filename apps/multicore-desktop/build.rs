@@ -159,7 +159,7 @@ fn compile_windows_resources(
     resource_source.push_str(&windows_version_info(
         &multicore_app_version(manifest_dir),
         "TerrieFlow Client",
-        "MultiCore.exe",
+        "TerrieFlow.exe",
     ));
     std::fs::write(&resource_path, resource_source)
         .expect("failed to create MultiCore Windows resource source");

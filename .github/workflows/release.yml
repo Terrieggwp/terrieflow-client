@@ -131,7 +131,7 @@ jobs:
             -ReleaseAssetPath dist/release/multicore-windows-x64.zip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-windows-elevation-manifest.ps1 `
-            -DesktopExecutablePath dist/release/multicore-windows-x64/MultiCore.exe `
+            -DesktopExecutablePath dist/release/multicore-windows-x64/TerrieFlow.exe `
             -DaemonExecutablePath dist/release/multicore-windows-x64/runtime/multicore-daemon.exe `
             -UpdaterExecutablePath dist/release/multicore-windows-x64/runtime/multicore-updater.exe `
             -CoreHostExecutablePath dist/release/multicore-windows-x64/runtime/multicore-core-host.exe
@@ -154,7 +154,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-windows-elevation-manifest.ps1 `
             -Architecture x86 `
-            -DesktopExecutablePath dist/release/multicore-windows-x86/MultiCore.exe `
+            -DesktopExecutablePath dist/release/multicore-windows-x86/TerrieFlow.exe `
             -DaemonExecutablePath dist/release/multicore-windows-x86/runtime/multicore-daemon.exe `
             -UpdaterExecutablePath dist/release/multicore-windows-x86/runtime/multicore-updater.exe `
             -CoreHostExecutablePath dist/release/multicore-windows-x86/runtime/multicore-core-host.exe
@@ -178,7 +178,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-windows-elevation-manifest.ps1 `
             -Architecture arm64 `
-            -DesktopExecutablePath dist/release/multicore-windows-arm64/MultiCore.exe `
+            -DesktopExecutablePath dist/release/multicore-windows-arm64/TerrieFlow.exe `
             -DaemonExecutablePath dist/release/multicore-windows-arm64/runtime/multicore-daemon.exe `
             -UpdaterExecutablePath dist/release/multicore-windows-arm64/runtime/multicore-updater.exe `
             -CoreHostExecutablePath dist/release/multicore-windows-arm64/runtime/multicore-core-host.exe

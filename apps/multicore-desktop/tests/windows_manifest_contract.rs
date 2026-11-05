@@ -76,12 +76,16 @@ fn every_executable_embeds_a_version_resource_with_a_task_manager_description() 
         assert!(VERSION_INFO_SOURCE.contains(&format!("VALUE \"{field}\"")));
     }
     assert!(VERSION_INFO_SOURCE.contains("VALUE \"CompanyName\", \"TerrieFlow\""));
-    assert!(VERSION_INFO_SOURCE.contains("VALUE \"ProductName\", \"TerrieFlow\""));
+    assert!(VERSION_INFO_SOURCE.contains(
+        "let product_name = if original_filename.eq_ignore_ascii_case(\"TerrieFlow.exe\")"
+    ));
+    assert!(VERSION_INFO_SOURCE.contains("\"TerrieFlow Client\""));
+    assert!(VERSION_INFO_SOURCE.contains("VALUE \"ProductName\", \"{product_name}\""));
     for (script, description, file) in [
         (
             DESKTOP_BUILD_SCRIPT,
             "\"TerrieFlow Client\"",
-            "MultiCore.exe",
+            "TerrieFlow.exe",
         ),
         (
             DAEMON_BUILD_SCRIPT,

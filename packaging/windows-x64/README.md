@@ -1,11 +1,11 @@
-# MULTICORE Windows x64 portable preview
+# TerrieFlow Client Windows x64 portable preview
 
 This file is copied into packages by `scripts/package-windows-release.ps1`.
-Keep the generated directory intact and start `MultiCore.exe`.
+Keep the generated directory intact and start `TerrieFlow.exe`.
 
 The package contains exactly:
 
-- `MultiCore.exe`;
+- `TerrieFlow.exe`;
 - `runtime/multicore-daemon.exe`, `multicore-updater.exe`, and
   `multicore-core-host.exe`;
 - pinned `cores/xray.exe` and `cores/mihomo.exe`;
@@ -24,7 +24,7 @@ written to a promised persistent log.
 
 Runtime data lives under `%LOCALAPPDATA%\MultiCore`; update downloads are under
 `%LOCALAPPDATA%\MultiCore\updates`. The optional per-user installer installs this
-bundle beneath `%LOCALAPPDATA%\Programs\MultiCore\current`.
+bundle beneath `%LOCALAPPDATA%\Programs\TerrieFlow\current`.
 
 Build the updater asset for the official anonymous channel with:
 

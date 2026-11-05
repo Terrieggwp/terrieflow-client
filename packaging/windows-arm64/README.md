@@ -1,11 +1,11 @@
-# MULTICORE Windows ARM64 portable preview
+# TerrieFlow Client Windows ARM64 portable preview
 
 This file is copied into packages by `scripts/package-windows-release.ps1`.
-Keep the generated directory intact and start `MultiCore.exe`.
+Keep the generated directory intact and start `TerrieFlow.exe`.
 
 The package contains exactly:
 
-- `MultiCore.exe`;
+- `TerrieFlow.exe`;
 - `runtime/multicore-daemon.exe`, `multicore-updater.exe`, and
   `multicore-core-host.exe`;
 - pinned `cores/xray.exe` and `cores/mihomo.exe`;
@@ -27,8 +27,8 @@ written to a promised persistent log.
 Runtime data lives under `%LOCALAPPDATA%\MultiCore`; update downloads are under
 `%LOCALAPPDATA%\MultiCore\updates`. `TerrieFlow-Setup-arm64.exe` runs only on ARM64
 Windows (an x64 or x86 PC refuses it) and installs this bundle beneath
-`%LOCALAPPDATA%\Programs\MultiCore\current` (without the service) or, with the
-service, beneath `Program Files\MultiCore`: the same folders and uninstall entry as
+`%LOCALAPPDATA%\Programs\TerrieFlow\current` (without the service) or, with the
+service, beneath `Program Files\TerrieFlow`: the same folders and uninstall entry as
 the x64 build, so it replaces an x64 install (which Windows 11 on ARM runs emulated)
 in place, and it migrates an x86 install the way the x64 installer does. On ARM64
 Windows the x64 installer recommends this one and refuses to replace an ARM64

@@ -19,9 +19,9 @@
   #error Arch must be x64, x86 or arm64
 #endif
 
-#define AppName "TerrieFlow"
+#define AppName "TerrieFlow Client"
 #define AppPublisher "TerrieFlow"
-#define AppExeName "MultiCore.exe"
+#define AppExeName "TerrieFlow.exe"
 
 [Setup]
 AppId={{D95AB954-248C-44C9-9E3A-952398802A2D}
@@ -29,8 +29,9 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 ; Service mode (default): Program Files + the TerrieFlow service. "Без службы": per-user.
-DefaultDirName={autopf}\MultiCore
-DefaultGroupName=TerrieFlow
+DefaultDirName={autopf}\TerrieFlow
+DefaultGroupName=TerrieFlow Client
+UsePreviousAppDir=no
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=commandline dialog
@@ -64,7 +65,7 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
-CloseApplicationsFilter=MultiCore.exe,multicore-daemon.exe,multicore-updater.exe,multicore-core-host.exe,mihomo.exe,xray.exe
+CloseApplicationsFilter=TerrieFlow.exe,MultiCore.exe,multicore-daemon.exe,multicore-updater.exe,multicore-core-host.exe,mihomo.exe,xray.exe
 RestartApplications=no
 UninstallDisplayIcon={app}\TerrieFlow-Symbol.ico
 SetupIconFile={#SetupIconPath}
@@ -138,6 +139,10 @@ russian.ServiceDirOnly=Со службой TerrieFlow устанавливает
 english.ServiceDirOnly=With the service, TerrieFlow installs only to %1.
 russian.DeleteDataPrompt=Удалить подписки и настройки?
 english.DeleteDataPrompt=Erase subscriptions and settings?
+russian.LegacyMigrationFailed=Не удалось безопасно перенести прежнюю установку TerrieFlow из папки MultiCore. Старая версия и пользовательские данные сохранены. Закройте TerrieFlow и повторите установку.
+english.LegacyMigrationFailed=The previous TerrieFlow installation could not be migrated safely from the MultiCore folder. The old version and user data were preserved. Close TerrieFlow and run Setup again.
+russian.ForeignMultiCoreFound=В папке MultiCore найдена установка, которую нельзя надёжно определить как TerrieFlow. Она не будет изменена. Удалите только прежнюю тестовую сборку TerrieFlow вручную либо выберите установщик на чистой системе.
+english.ForeignMultiCoreFound=An installation in the MultiCore folder could not be reliably identified as TerrieFlow and will not be changed. Remove only the previous TerrieFlow test build manually, or use this installer on a clean system.
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:DesktopIconTask}"; GroupDescription: "{cm:ShortcutsGroup}"; Flags: unchecked
@@ -153,29 +158,33 @@ Source: "{#SetupIconPath}"; DestDir: "{app}"; DestName: "TerrieFlow-Symbol.ico";
 ; "TerrieFlow.lnk" over them would keep the old name: delete them before [Icons] recreates them.
 Type: files; Name: "{autoprograms}\MultiCore.lnk"
 Type: files; Name: "{autodesktop}\MultiCore.lnk"; Tasks: desktopicon
-; Recreate TerrieFlow shortcuts instead of updating them in place: Explorer caches icons by the
-; shortcut and icon paths, so an older square-backed icon could otherwise survive reinstalling.
 Type: files; Name: "{autoprograms}\TerrieFlow.lnk"
 Type: files; Name: "{autodesktop}\TerrieFlow.lnk"; Tasks: desktopicon
+; Recreate TerrieFlow shortcuts instead of updating them in place: Explorer caches icons by the
+; shortcut and icon paths, so an older square-backed icon could otherwise survive reinstalling.
+Type: files; Name: "{autoprograms}\TerrieFlow Client.lnk"
+Type: files; Name: "{autodesktop}\TerrieFlow Client.lnk"; Tasks: desktopicon
 Type: files; Name: "{app}\TerrieFlow.ico"
+; A transitional build used the new folder with the old executable name.
+Type: files; Name: "{app}\current\MultiCore.exe"
 
 [Icons]
-Name: "{autoprograms}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"; IconFilename: "{app}\TerrieFlow-Symbol.ico"
-Name: "{autodesktop}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"; IconFilename: "{app}\TerrieFlow-Symbol.ico"; Tasks: desktopicon
+Name: "{autoprograms}\TerrieFlow Client"; Filename: "{app}\current\{#AppExeName}"; WorkingDir: "{app}\current"; IconFilename: "{app}\TerrieFlow-Symbol.ico"
+Name: "{autodesktop}\TerrieFlow Client"; Filename: "{app}\current\{#AppExeName}"; WorkingDir: "{app}\current"; IconFilename: "{app}\TerrieFlow-Symbol.ico"; Tasks: desktopicon
 
 [Registry]
 ; Service mode: an elevated Setup may run as another account (a standard user typing an
 ; administrator's credentials), so its HKCU is not the user's. The user's launch at sign-in is
 ; written by [Code] into the signed-in user's hive; the URL handler is machine-wide (HKA = HKLM)
 ; and the app registers it again for each user that starts it.
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "MultiCore"; ValueData: """{app}\current\MultiCore.exe"" --background"; Tasks: autostart; Check: not IsAdminInstallMode
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "MultiCore"; ValueData: """{app}\current\{#AppExeName}"" --background"; Tasks: autostart; Check: not IsAdminInstallMode
 Root: HKA; Subkey: "Software\Classes\multicore"; ValueType: string; ValueName: ""; ValueData: "URL:TerrieFlow Protocol"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\multicore"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-Root: HKA; Subkey: "Software\Classes\multicore\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\current\MultiCore.exe,0"
-Root: HKA; Subkey: "Software\Classes\multicore\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\current\MultiCore.exe"" ""%1"""
+Root: HKA; Subkey: "Software\Classes\multicore\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\current\{#AppExeName},0"
+Root: HKA; Subkey: "Software\Classes\multicore\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\current\{#AppExeName}"" ""%1"""
 
 [Run]
-Filename: "{app}\current\MultiCore.exe"; Description: "{cm:LaunchApp}"; WorkingDir: "{app}\current"; Flags: postinstall shellexec skipifsilent
+Filename: "{app}\current\{#AppExeName}"; Description: "{cm:LaunchApp}"; WorkingDir: "{app}\current"; Flags: postinstall shellexec skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\.multicore-previous-*"
@@ -233,6 +242,16 @@ end;
   The x86 installer always runs in 32-bit install mode (Program Files (x86) on 64-bit Windows),
   the x64 and arm64 ones always in 64-bit mode (Program Files, also on Windows on ARM). }
 function ServiceInstallDir: String;
+begin
+  if not Is64BitInstallMode then
+  begin
+    Result := ExpandConstant('{commonpf32}\TerrieFlow');
+    exit;
+  end;
+  Result := ExpandConstant('{commonpf64}\TerrieFlow');
+end;
+
+function LegacyServiceInstallDir: String;
 begin
   if not Is64BitInstallMode then
   begin
@@ -376,6 +395,13 @@ begin
 end;
 
 function PerUserInstallDir: String;
+begin
+  Result := UserLocalAppData;
+  if Result <> '' then
+    Result := Result + '\Programs\TerrieFlow';
+end;
+
+function LegacyPerUserInstallDir: String;
 begin
   Result := UserLocalAppData;
   if Result <> '' then
@@ -541,6 +567,157 @@ begin
     Log('Per-user TerrieFlow uninstaller exited with ' + IntToStr(ResultCode));
 end;
 
+function LegacyEntryUninstaller(const Root: Integer; const Key, ExpectedDir: String;
+  const RequireTerrieFlowBrand: Boolean): String;
+var
+  Uninstaller, DisplayName, Publisher: String;
+  Branded: Boolean;
+begin
+  Result := '';
+  if not RegQueryStringValue(Root, Key, 'UninstallString', Uninstaller) then
+    exit;
+  Uninstaller := RemoveQuotes(Uninstaller);
+  if (CompareText(ExtractFilePath(Uninstaller), AddBackslash(ExpectedDir)) <> 0) or
+     not FileExists(Uninstaller) then
+    exit;
+  Branded :=
+    (RegQueryStringValue(Root, Key, 'DisplayName', DisplayName) and
+      (Pos('terrieflow', AnsiLowercase(DisplayName)) = 1)) or
+    (RegQueryStringValue(Root, Key, 'Publisher', Publisher) and
+      (CompareText(Publisher, 'TerrieFlow') = 0));
+  if (not RequireTerrieFlowBrand) or Branded then
+    Result := Uninstaller;
+end;
+
+function LegacyServiceUninstaller: String;
+begin
+  Result := '';
+  if Is64BitInstallMode then
+    Result := LegacyEntryUninstaller(HKLM64, UninstallKey,
+      ExpandConstant('{commonpf64}\MultiCore'), True)
+  else
+    Result := LegacyEntryUninstaller(HKLM32, UninstallKey,
+      ExpandConstant('{commonpf32}\MultiCore'), True);
+  { A native 64-bit installer also migrates the old x86 test build. }
+  if (Result = '') and Is64BitInstallMode then
+    Result := LegacyEntryUninstaller(HKLM32, UninstallKey,
+      ExpandConstant('{commonpf32}\MultiCore'), True);
+end;
+
+function LegacyPerUserUninstaller: String;
+begin
+  Result := '';
+  if LegacyPerUserInstallDir <> '' then
+    Result := LegacyEntryUninstaller(UserHiveRoot, UserHiveKey(UninstallKey),
+      LegacyPerUserInstallDir, True);
+end;
+
+function ForeignLegacyInstallPresent: Boolean;
+var
+  Candidate: String;
+begin
+  Result := False;
+  if Is64BitInstallMode then
+  begin
+    Candidate := LegacyEntryUninstaller(HKLM64, UninstallKey,
+      ExpandConstant('{commonpf64}\MultiCore'), False);
+    if Candidate = '' then
+      Candidate := LegacyEntryUninstaller(HKLM32, UninstallKey,
+        ExpandConstant('{commonpf32}\MultiCore'), False);
+  end
+  else
+    Candidate := LegacyEntryUninstaller(HKLM32, UninstallKey,
+      ExpandConstant('{commonpf32}\MultiCore'), False);
+  if (Candidate <> '') and (LegacyServiceUninstaller = '') then
+  begin
+    Result := True;
+    exit;
+  end;
+  if LegacyPerUserInstallDir <> '' then
+  begin
+    Candidate := LegacyEntryUninstaller(UserHiveRoot, UserHiveKey(UninstallKey),
+      LegacyPerUserInstallDir, False);
+    Result := (Candidate <> '') and (LegacyPerUserUninstaller = '');
+  end;
+end;
+
+function RemoveLegacyServiceInstall: String;
+var
+  LegacyUninstaller, InstallDir, AutostartValue: String;
+  ResultCode, Waited: Integer;
+begin
+  Result := '';
+  LegacyUninstaller := LegacyServiceUninstaller;
+  if LegacyUninstaller = '' then
+    exit;
+  InstallDir := RemoveBackslash(ExtractFilePath(LegacyUninstaller));
+  Log('Migrating the previous TerrieFlow service install from ' + InstallDir);
+  MoveAutostartFromServiceInstall :=
+    RegQueryStringValue(UserHiveRoot, UserHiveKey(RunKey), 'MultiCore', AutostartValue) and
+    (CompareText(AutostartValue,
+      '"' + InstallDir + '\current\MultiCore.exe" --background') = 0);
+  StopService;
+  if not WaitForExit(InstallDir, False) then
+  begin
+    MoveAutostartFromServiceInstall := False;
+    Result := CustomMessage('StillRunning');
+    exit;
+  end;
+  if not Exec(LegacyUninstaller, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE,
+      ewWaitUntilTerminated, ResultCode) then
+    ResultCode := -1;
+  Waited := 0;
+  while FileExists(LegacyUninstaller) and (Waited < ServiceUninstallWaitSeconds) do
+  begin
+    Sleep(1000);
+    Waited := Waited + 1;
+  end;
+  if FileExists(LegacyUninstaller) then
+  begin
+    Log('Legacy service uninstaller exited with ' + IntToStr(ResultCode));
+    MoveAutostartFromServiceInstall := False;
+    Result := CustomMessage('LegacyMigrationFailed');
+  end;
+end;
+
+function RemoveLegacyPerUserInstall: String;
+var
+  Uninstaller, InstallDir, AutostartValue: String;
+  ResultCode, Waited: Integer;
+begin
+  Result := '';
+  Uninstaller := LegacyPerUserUninstaller;
+  if Uninstaller = '' then
+    exit;
+  InstallDir := RemoveBackslash(ExtractFilePath(Uninstaller));
+  Log('Migrating the previous TerrieFlow per-user install from ' + InstallDir);
+  MoveAutostartFromServiceInstall := MoveAutostartFromServiceInstall or
+    (RegQueryStringValue(UserHiveRoot, UserHiveKey(RunKey), 'MultiCore', AutostartValue) and
+      (CompareText(AutostartValue,
+        '"' + InstallDir + '\current\MultiCore.exe" --background') = 0));
+  if not WaitForExit(InstallDir, False) then
+  begin
+    MoveAutostartFromServiceInstall := False;
+    Result := CustomMessage('StillRunning');
+    exit;
+  end;
+  if not ExecAsOriginalUser(Uninstaller, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '',
+      SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    ResultCode := -1;
+  Waited := 0;
+  while FileExists(Uninstaller) and (Waited < ServiceUninstallWaitSeconds) do
+  begin
+    Sleep(1000);
+    Waited := Waited + 1;
+  end;
+  if FileExists(Uninstaller) then
+  begin
+    Log('Legacy per-user uninstaller exited with ' + IntToStr(ResultCode));
+    MoveAutostartFromServiceInstall := False;
+    Result := CustomMessage('LegacyMigrationFailed');
+  end;
+end;
+
 { x64 or arm64 on 64-bit Windows: the uninstaller of an x86 service install (32-bit uninstall
   view, Program Files (x86)), or ''. The x86 installer reads that entry as its own, so never here. }
 function X86ServiceUninstaller: String;
@@ -554,7 +731,7 @@ begin
   begin
     X86Uninstaller := RemoveQuotes(X86Uninstaller);
     { Only the x86 service install's own uninstaller in the administrators-only folder. }
-    if (CompareText(ExtractFilePath(X86Uninstaller), ExpandConstant('{commonpf32}\MultiCore\')) = 0) and
+    if (CompareText(ExtractFilePath(X86Uninstaller), ExpandConstant('{commonpf32}\TerrieFlow\')) = 0) and
        FileExists(X86Uninstaller) then
       Result := X86Uninstaller;
   end;
@@ -575,7 +752,8 @@ begin
   if Found then
   begin
     Uninstaller := RemoveQuotes(Uninstaller);
-    if FileExists(Uninstaller) then
+    if (CompareText(ExtractFilePath(Uninstaller), AddBackslash(ServiceInstallDir)) = 0) and
+       FileExists(Uninstaller) then
       Result := Uninstaller;
   end;
   { x64/arm64 "Без службы" over an x86 service install removes it the same way. }
@@ -781,7 +959,8 @@ begin
   Result := False;
   if not IsX64SetupOnArm64 then
     exit;
-  if LoadStringFromFile(ExpandConstant('{commonpf64}\MultiCore\current\versions.json'), Manifest) and
+  if (LoadStringFromFile(ExpandConstant('{commonpf64}\TerrieFlow\current\versions.json'), Manifest) or
+      LoadStringFromFile(ExpandConstant('{commonpf64}\MultiCore\current\versions.json'), Manifest)) and
      (Pos('"platform": "windows-arm64"', Manifest) > 0) then
   begin
     Result := True;
@@ -835,6 +1014,17 @@ begin
     Result := CustomMessage('Arm64InstallPresent');
     exit;
   end;
+  if ForeignLegacyInstallPresent then
+  begin
+    Result := CustomMessage('ForeignMultiCoreFound');
+    exit;
+  end;
+  Result := RemoveLegacyServiceInstall;
+  if Result <> '' then
+    exit;
+  Result := RemoveLegacyPerUserInstall;
+  if Result <> '' then
+    exit;
   if not IsAdminInstallMode then
   begin
     Result := RemoveServiceInstall;

@@ -1,5 +1,5 @@
 <#
-Live test orchestrator for the always-ready MultiCore service on Windows 10/11.
+Live test orchestrator for the always-ready TerrieFlow service on Windows 10/11.
 
 Run ELEVATED as the same user who is logged on interactively (console, auto-logon or a kept-open
 RDP session). SSH (build host 192.168.0.148) and PowerShell Direct (Hyper-V VM) are fine for
@@ -7,7 +7,7 @@ this script; the checks that need the interactive session run in scripts/live-se
 through a one-shot scheduled task with an Interactive principal, because the service rejects a
 daemon whose token lacks the INTERACTIVE logon SID (network and service logons).
 
-DESTRUCTIVE: installs and uninstalls MultiCore, registers/deletes the MultiCore service and moves
+DESTRUCTIVE: installs and uninstalls TerrieFlow Client, registers/deletes the internal MultiCore service and moves
 %LOCALAPPDATA%\MultiCore aside for the run (restored at the end). Use a test machine or VM.
 
 ASCII only: Windows PowerShell 5.1 reads BOM-less files in the ANSI code page.
@@ -15,7 +15,7 @@ ASCII only: Windows PowerShell 5.1 reads BOM-less files in the ANSI code page.
 Modes:
   Service      /ALLUSERS install: service registered (auto, LocalSystem, restart on failure),
                Program Files layout, admin-only ProgramData, then the driver's Service checks.
-  PerUser      /CURRENTUSER install: no service, %LOCALAPPDATA%\Programs\MultiCore, then the
+  PerUser      /CURRENTUSER install: no service, %LOCALAPPDATA%\Programs\TerrieFlow, then the
                driver's PerUser checks (proxy mode without UAC, no warm cores).
   UpdateCheck  no install: verify the machine after an update through the service that was
                started from the app (Settings); see -ExpectedVersion.
@@ -24,7 +24,7 @@ Uninstall (Service/PerUser):
   Silent                 /VERYSILENT: keeps %LOCALAPPDATA%\MultiCore by design (no question).
   InteractiveKeepData    non-silent uninstall, the driver answers "No" to the data question.
   InteractiveRemoveData  non-silent uninstall, the driver answers "Yes": data is removed.
-  Skip                   leave MultiCore installed (e.g. before a manual update test).
+  Skip                   leave TerrieFlow Client installed (e.g. before a manual update test).
 
 Examples:
   .\live-service-windows.ps1 -InstallerPath C:\mc-live\TerrieFlow-Setup-x64.exe -Mode Service -Uninstall InteractiveRemoveData
@@ -43,7 +43,7 @@ param(
     [string]$TrafficUrl = 'https://www.gstatic.com/generate_204',
     # Install with the "remove old subscriptions and settings" task and check it wiped the data.
     [switch]$CleanDataTask,
-    # Service mode: the driver also starts MultiCore.exe --background and kills it.
+    # Service mode: the driver also starts TerrieFlow.exe --background and kills it.
     [switch]$WithDesktop,
     [switch]$AllowExistingInstall,
     [string]$ExpectedVersion,
@@ -58,8 +58,8 @@ $AppId = '{D95AB954-248C-44C9-9E3A-952398802A2D}_is1'
 $TaskName = 'MultiCoreLiveTest'
 # The x86 installer installs in 32-bit mode: Program Files (x86) on 64-bit Windows.
 $IsX86Installer = [bool]($InstallerPath -and (Split-Path -Leaf $InstallerPath) -like '*-x86.exe')
-$ServiceRoot = if ($IsX86Installer -and ${env:ProgramFiles(x86)}) { Join-Path ${env:ProgramFiles(x86)} 'MultiCore' } else { Join-Path $env:ProgramFiles 'MultiCore' }
-$PerUserRoot = Join-Path $env:LOCALAPPDATA 'Programs\MultiCore'
+$ServiceRoot = if ($IsX86Installer -and ${env:ProgramFiles(x86)}) { Join-Path ${env:ProgramFiles(x86)} 'TerrieFlow' } else { Join-Path $env:ProgramFiles 'TerrieFlow' }
+$PerUserRoot = Join-Path $env:LOCALAPPDATA 'Programs\TerrieFlow'
 $DataRoot = Join-Path $env:LOCALAPPDATA 'MultiCore'
 $ProgramDataRoot = Join-Path $env:ProgramData 'MultiCore'
 $results = New-Object System.Collections.Generic.List[object]
@@ -193,7 +193,7 @@ function Invoke-UpdateCheck {
         $expected
     } | Out-Null
     Check 'installed-version' {
-        $versions = foreach ($relative in 'MultiCore.exe', 'runtime\multicore-daemon.exe', 'runtime\multicore-core-host.exe') {
+        $versions = foreach ($relative in 'TerrieFlow.exe', 'runtime\multicore-daemon.exe', 'runtime\multicore-core-host.exe') {
             $item = Get-Item -LiteralPath (Join-Path $ServiceRoot "current\$relative")
             "$relative=$($item.VersionInfo.ProductVersion)"
         }
@@ -211,10 +211,10 @@ function Invoke-UpdateCheck {
     Check 'desktop-relaunched-in-user-session' {
         $session = Get-InteractiveSession $ConsoleUser
         if ($null -eq $session) { throw "$ConsoleUser has no interactive session" }
-        $desktop = @(Get-Process -Name 'MultiCore' -ErrorAction SilentlyContinue | Where-Object { $_.SessionId -eq $session })
-        if (-not $desktop.Count) { throw "MultiCore.exe is not running in session $session" }
+        $desktop = @(Get-Process -Name 'TerrieFlow' -ErrorAction SilentlyContinue | Where-Object { $_.SessionId -eq $session })
+        if (-not $desktop.Count) { throw "TerrieFlow.exe is not running in session $session" }
         $cores = @(Get-Process -Name 'mihomo' -ErrorAction SilentlyContinue | Where-Object { $_.SessionId -eq 0 }).Count
-        "MultiCore.exe pid $($desktop[0].Id) in session $session; service mihomo processes: $cores"
+        "TerrieFlow.exe pid $($desktop[0].Id) in session $session; service mihomo processes: $cores"
     } | Out-Null
 }
 
@@ -239,7 +239,7 @@ function Invoke-InstallChecks {
             "LocalSystem, --service, restart on failure"
         } | Out-Null
         Check 'install:program-files-layout' {
-            foreach ($relative in 'current\MultiCore.exe', 'current\runtime\multicore-daemon.exe', 'current\runtime\multicore-core-host.exe', 'unins000.exe') {
+            foreach ($relative in 'current\TerrieFlow.exe', 'current\runtime\multicore-daemon.exe', 'current\runtime\multicore-core-host.exe', 'unins000.exe') {
                 if (-not (Test-Path -LiteralPath (Join-Path $ServiceRoot $relative))) { throw "missing $relative" }
             }
             if (Test-Path -LiteralPath $PerUserRoot) { throw "per-user copy present at $PerUserRoot" }
@@ -255,7 +255,7 @@ function Invoke-InstallChecks {
             'absent'
         } | Out-Null
         Check 'install:per-user-layout' {
-            foreach ($relative in 'current\MultiCore.exe', 'current\runtime\multicore-daemon.exe', 'unins000.exe') {
+            foreach ($relative in 'current\TerrieFlow.exe', 'current\runtime\multicore-daemon.exe', 'unins000.exe') {
                 if (-not (Test-Path -LiteralPath (Join-Path $PerUserRoot $relative))) { throw "missing $relative" }
             }
             if (Test-Path -LiteralPath (Join-Path $ServiceRoot 'current')) { throw "Program Files copy present at $ServiceRoot" }

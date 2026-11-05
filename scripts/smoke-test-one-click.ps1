@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$PackagePath,
-    [string]$DesktopExecutableName = 'MultiCore.exe',
+    [string]$DesktopExecutableName = 'TerrieFlow.exe',
     [string]$DiagnosticErrorPath,
     [switch]$Background,
     [switch]$CrashCleanup
@@ -75,7 +75,7 @@ foreach ($file in @($desktopExe, $daemonExe, $coreHostExe, $xrayExe, $mihomoExe)
 }
 if ($Background -and $CrashCleanup) { throw 'Background and CrashCleanup modes are mutually exclusive' }
 
-$desktopNames = @('MultiCore.exe', [IO.Path]::GetFileName($desktopExe))
+$desktopNames = @('TerrieFlow.exe', 'MultiCore.exe', [IO.Path]::GetFileName($desktopExe))
 $existingSingletons = @(Get-CimInstance Win32_Process | Where-Object {
     $desktopNames -contains $_.Name
 })

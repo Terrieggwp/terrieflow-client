@@ -889,7 +889,9 @@ try {
     } elseif (-not $DesktopExecutablePath -or -not $DaemonExecutablePath -or -not $UpdaterExecutablePath -or -not $CoreHostExecutablePath) {
         throw 'Fixture packaging requires all executable paths'
     }
-    $stagedDesktop = Join-Path $stage 'MultiCore.exe'
+    # Cargo keeps its internal target name; the public Windows artifact is branded here as part
+    # of the reproducible packaging pipeline (never by a manual post-build rename).
+    $stagedDesktop = Join-Path $stage 'TerrieFlow.exe'
     $stagedDaemon = Join-Path $stage 'runtime\multicore-daemon.exe'
     $stagedUpdater = Join-Path $stage 'runtime\multicore-updater.exe'
     $stagedCoreHost = Join-Path $stage 'runtime\multicore-core-host.exe'
@@ -984,7 +986,7 @@ try {
     [Array]::Sort($expectedDirectories, [StringComparer]::Ordinal)
     if (($directories -join '|') -cne ($expectedDirectories -join '|')) { throw "Staged directory inventory is not exact: $($directories -join ', ')" }
     [string[]]$files = $inventory.Files
-    [string[]]$expected = @('MultiCore.exe', 'README.md', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
+    [string[]]$expected = @('TerrieFlow.exe', 'README.md', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
     if ($hasDashboard) { $expected = @($expected + @('licenses/' + $dashboard.licenseFile.name) + @($dashboardExpectedFiles)) }
     [Array]::Sort($expected, [StringComparer]::Ordinal)
     if (($files -join '|') -cne ($expected -join '|')) { throw "Staged file inventory is not exact: $($files -join ', ')" }

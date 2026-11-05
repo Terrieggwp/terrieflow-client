@@ -22,7 +22,7 @@ $builder = Get-Content -Raw -LiteralPath $BuilderPath
 $installedUpdateSmoke = Get-Content -Raw -LiteralPath $InstalledUpdateSmokePath
 & (Join-Path $PSScriptRoot 'test-installer-shortcut-state.ps1')
 
-Assert-True ($definition.Contains('Name: "{autoprograms}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"')) `
+Assert-True ($definition.Contains('Name: "{autoprograms}\TerrieFlow Client"; Filename: "{app}\current\{#AppExeName}"; WorkingDir: "{app}\current"')) `
     'installer must always create a searchable per-user Start menu shortcut'
 Assert-True ($installedUpdateSmoke.Contains('Restore-InstallerShortcutState $shortcutSnapshots $ownedShortcutTargets')) `
     'installed-update smoke must restore user shortcuts after disposable uninstall'
@@ -39,7 +39,8 @@ Assert-True ($installedUpdateSmoke.IndexOf('reg.exe export') -lt $installedUpdat
 Assert-True (-not $definition.Contains('Verb: "runas"')) 'installer must not elevate desktop postinstall launch'
 
 foreach ($token in @(
-    'DefaultDirName={autopf}\MultiCore',
+    'DefaultDirName={autopf}\TerrieFlow',
+    'UsePreviousAppDir=no',
     'PrivilegesRequired=admin',
     'ArchitecturesAllowed=x64compatible',
     'ArchitecturesInstallIn64BitMode=x64compatible',
@@ -61,19 +62,19 @@ foreach ($token in @(
     'SetupIconFile={#SetupIconPath}',
     'DestName: "TerrieFlow-Symbol.ico"',
     'IconFilename: "{app}\TerrieFlow-Symbol.ico"',
-    'Type: files; Name: "{autoprograms}\TerrieFlow.lnk"',
-    'Type: files; Name: "{autodesktop}\TerrieFlow.lnk"; Tasks: desktopicon',
+    'Type: files; Name: "{autoprograms}\TerrieFlow Client.lnk"',
+    'Type: files; Name: "{autodesktop}\TerrieFlow Client.lnk"; Tasks: desktopicon',
     'Type: files; Name: "{app}\TerrieFlow.ico"',
     'DestDir: "{app}\current"',
     'Name: "desktopicon"',
     'Name: "autostart"',
     'Software\Microsoft\Windows\CurrentVersion\Run',
-    '""{app}\current\MultiCore.exe"" --background',
+    '""{app}\current\{#AppExeName}"" --background',
     'Software\Classes\multicore',
     'ValueName: "URL Protocol"',
-    'ValueData: "{app}\current\MultiCore.exe,0"',
-    '""{app}\current\MultiCore.exe"" ""%1""',
-    'Filename: "{app}\current\MultiCore.exe"',
+    'ValueData: "{app}\current\{#AppExeName},0"',
+    '""{app}\current\{#AppExeName}"" ""%1""',
+    'Filename: "{app}\current\{#AppExeName}"',
     'WorkingDir: "{app}\current"',
     'Flags: postinstall shellexec skipifsilent',
     'Type: filesandordirs; Name: "{app}\.multicore-previous-*"',
@@ -123,7 +124,7 @@ try {
         New-Item -ItemType Directory -Path $directory | Out-Null
     }
     $files = @(
-        'MultiCore.exe',
+        'TerrieFlow.exe',
         'README.md',
         'THIRD_PARTY_NOTICES.md',
         'cores\mihomo.exe',

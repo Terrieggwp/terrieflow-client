@@ -1674,7 +1674,7 @@ mod tests {
         let cores = package.join("cores");
         fs::create_dir_all(&runtime).unwrap();
         fs::create_dir_all(&cores).unwrap();
-        let desktop = package.join("MultiCore.exe");
+        let desktop = package.join("TerrieFlow.exe");
         write_test_pe(&desktop, NATIVE.0, NATIVE.1, 0x0022);
         for path in [
             runtime.join("multicore-daemon.exe"),
@@ -1719,7 +1719,7 @@ mod tests {
         let package = temp.path().join("package");
         fs::create_dir_all(package.join("runtime")).unwrap();
         fs::create_dir_all(package.join("cores")).unwrap();
-        let desktop = package.join("MultiCore.exe");
+        let desktop = package.join("TerrieFlow.exe");
         write_test_pe(&desktop, NATIVE.0, NATIVE.1, 0x0022);
         let outside = temp.path().join("outside.exe");
         write_test_pe(&outside, NATIVE.0, NATIVE.1, 0x0022);

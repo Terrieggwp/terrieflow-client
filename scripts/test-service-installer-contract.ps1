@@ -11,7 +11,7 @@ function Assert-Contains([string]$Token) {
 }
 
 foreach ($token in @(
-    'DefaultDirName={autopf}\MultiCore',
+    'DefaultDirName={autopf}\TerrieFlow',
     'PrivilegesRequired=admin',
     'PrivilegesRequiredOverridesAllowed=commandline dialog',
     'russian.PrivilegesRequiredOverrideAllUsersRecommended=Со службой (рекомендуется)',
@@ -27,7 +27,7 @@ foreach ($token in @(
     "'start ' + ServiceName",
     "'delete ' + ServiceName",
     "ExpandConstant('{sys}\net.exe'), 'stop ' + ServiceName",
-    "Result := Result + '\Programs\MultiCore';",
+    "Result := Result + '\Programs\TerrieFlow';",
     "PerUserInstallDir + '\unins000.exe'",
     "SuppressibleMsgBox(CustomMessage('DeleteDataPrompt'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2, IDNO)",
     'russian.DeleteDataPrompt=Удалить подписки и настройки?',
@@ -46,9 +46,9 @@ foreach ($token in @(
     "ExecAsOriginalUser(Uninstaller, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'",
     # I2: service mode installs only to Program Files (no dir page, /DIR= refused).
     "Result := (PageID = wpSelectDir) and IsAdminInstallMode;",
-    "Result := ExpandConstant('{commonpf64}\MultiCore');",
+    "Result := ExpandConstant('{commonpf64}\TerrieFlow');",
     # x86 flavour: 32-bit install mode, so Program Files (x86) on 64-bit Windows.
-    "Result := ExpandConstant('{commonpf32}\MultiCore');",
+    "Result := ExpandConstant('{commonpf32}\TerrieFlow');",
     'if not Is64BitInstallMode then',
     "CompareText(RemoveBackslashUnlessRoot(ExpandConstant('{app}')), ServiceInstallDir) <> 0",
     # I3: a running per-user copy (desktop, daemon, core host, cores) blocks the migration.
@@ -84,14 +84,14 @@ foreach ($token in @(
     'function IsX64SetupOnArm64: Boolean;',
     "Result := ('{#Arch}' = 'x64') and IsArm64;",
     'function Arm64InstallPresent: Boolean;',
-    "LoadStringFromFile(ExpandConstant('{commonpf64}\MultiCore\current\versions.json'), Manifest)",
+    "LoadStringFromFile(ExpandConstant('{commonpf64}\TerrieFlow\current\versions.json'), Manifest)",
     'function WarnX64SetupOnArm64: Boolean;',
     'уже установлен TerrieFlow для ARM64',
     "Result := CustomMessage('Arm64InstallPresent');",
     # x64 over an x86 install on 64-bit Windows: migrate it, keeping the user's data.
     'function X86ServiceUninstaller: String;',
     "RegQueryStringValue(HKLM32, UninstallKey, 'UninstallString', X86Uninstaller)",
-    "ExpandConstant('{commonpf32}\MultiCore\')",
+    "ExpandConstant('{commonpf32}\TerrieFlow\')",
     'function RemoveX86ServiceInstall: String;',
     "Exec(X86Uninstaller, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'",
     'Result := X86ServiceUninstaller;',
@@ -113,7 +113,7 @@ foreach ($token in @(
     # A failed registration is reported, not swallowed.
     'if Registered <> 0 then',
     # The product name is TerrieFlow wherever it is seen; the service NAME stays MultiCore.
-    '#define AppName "TerrieFlow"',
+    '#define AppName "TerrieFlow Client"',
     '#define AppPublisher "TerrieFlow"',
     "ServiceName = 'MultiCore';",
     "'create ' + ServiceName + ' binPath= ""\""' + ServiceBinaryPath + '\"" --service"" start= auto obj= LocalSystem DisplayName= ""TerrieFlow Service""'",
@@ -128,12 +128,12 @@ foreach ($token in @(
     'UsePreviousLanguage=no',
     "[Languages]`r`nName: ""english""; MessagesFile: ""compiler:Default.isl""`r`nName: ""russian""; MessagesFile: ""compiler:Languages\Russian.isl""`r`n",
     # Launch at sign-in keeps its value name, so an upgrade never adds a second entry.
-    'ValueName: "MultiCore"; ValueData: """{app}\current\MultiCore.exe"" --background"',
+    'ValueName: "MultiCore"; ValueData: """{app}\current\{#AppExeName}"" --background"',
     # NTFS keeps the old casing on overwrite: 1.1.1's MultiCore.lnk shortcuts are deleted first.
     '[InstallDelete]',
     'Type: files; Name: "{autoprograms}\MultiCore.lnk"',
     'Type: files; Name: "{autodesktop}\MultiCore.lnk"; Tasks: desktopicon',
-    'Name: "{autodesktop}\TerrieFlow"; Filename: "{app}\current\MultiCore.exe"'
+    'Name: "{autodesktop}\TerrieFlow Client"; Filename: "{app}\current\{#AppExeName}"'
 )) {
     Assert-Contains $token
 }
