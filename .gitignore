@@ -4,21 +4,41 @@
 /.worktrees/
 /fjord-old-visual/
 __pycache__/
+
+# Environment files
 /.env
 /.env.*
-/*.pfx
-/*.p12
-/*.cer
-/*.key
-/*.pem
-/*.crt
-/*.token
+.env
+.env.*
+!.env.example
+
+# Secrets and certificates
+*.key
+*.pem
+*.p12
+*.pfx
+*.cer
+*.crt
+*.jks
+*.token
 /.secrets/
 /.credentials/
+
+# Logs and local state
+*.log
 state.md
 session-log.md
-*.log
+
+# IDE and OS files
 .idea/
 .vscode/
+.DS_Store
+Thumbs.db
+
+# Temporary and build output
+tmp/
+temp/
+build/
+dist/
 
 .superdesign/
