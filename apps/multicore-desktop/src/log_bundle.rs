@@ -1201,7 +1201,10 @@ thread 'main' panicked at x.rs:1:1:
             .with_ymd_and_hms(2026, 10, 2, 15, 30, 12)
             .single()
             .unwrap();
-        assert_eq!(default_file_name(now), "TerrieFlow-logs-20261002-153012.zip");
+        assert_eq!(
+            default_file_name(now),
+            "TerrieFlow-logs-20261002-153012.zip"
+        );
     }
 
     #[test]

@@ -13,7 +13,7 @@ export struct TrayMenuRow {
     label: string,
     // Groups: the selected node's label. Nodes: the latency text.
     detail: string,
-    // Nodes: latency tone ("success" | "warning" | "danger" | "neutral").
+    // Nodes: latency tone ("success" | "warning" | "high-latency" | "danger" | "neutral").
     tone: string,
     // Groups: the group shown in the popup. Nodes: the selected route.
     selected: bool,
@@ -283,10 +283,12 @@ component TrayNodeRow inherits Rectangle {
         border-radius: 12px;
         background: root.tone == "success" ? #18dfa114
             : root.tone == "warning" ? #f3c34a14
+            : root.tone == "high-latency" ? Theme.high-latency-soft
             : root.tone == "danger" ? #f0526a14
             : #159fff0d;
         border-color: root.tone == "success" ? #18dfa180
             : root.tone == "warning" ? #f3c34a80
+            : root.tone == "high-latency" ? Theme.high-latency-border
             : root.tone == "danger" ? #f0526a80
             : Theme.line-soft;
         border-width: root.latency == "" ? 0px : 1px;
@@ -297,6 +299,7 @@ component TrayNodeRow inherits Rectangle {
             text: root.latency;
             color: root.tone == "success" ? Theme.accent-green
                 : root.tone == "warning" ? Theme.warning
+                : root.tone == "high-latency" ? Theme.high-latency
                 : root.tone == "danger" ? Theme.error
                 : Theme.text-muted;
             font-size: 12px;

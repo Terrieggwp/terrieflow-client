@@ -1078,10 +1078,10 @@ mod tests {
     fn release() -> GitHubRelease {
         GitHubRelease::parse_for_arch(br#"{
             "tag_name":"v0.2.0",
-            "html_url":"https://github.com/Fatyzzz/multi-core/releases/tag/v0.2.0",
+            "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v0.2.0",
             "assets":[{
-                "name":"multicore-windows-x64.zip",
-                "browser_download_url":"https://github.com/Fatyzzz/multi-core/releases/download/v0.2.0/multicore-windows-x64.zip",
+                "name":"TerrieFlow-Client-windows-x64.zip",
+                "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.2.0/TerrieFlow-Client-windows-x64.zip",
                 "size":1234,
                 "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             }]
@@ -1298,10 +1298,10 @@ mod tests {
         let body = format!(
             r#"{{
             "tag_name":"v0.2.0",
-            "html_url":"https://github.com/Fatyzzz/multi-core/releases/tag/v0.2.0",
+            "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v0.2.0",
             "assets":[{{
-                "name":"multicore-windows-x64.zip",
-                "browser_download_url":"https://github.com/Fatyzzz/multi-core/releases/download/v0.2.0/multicore-windows-x64.zip",
+                "name":"TerrieFlow-Client-windows-x64.zip",
+                "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.2.0/TerrieFlow-Client-windows-x64.zip",
                 "size":{},
                 "digest":"sha256:{:x}"
             }}]
@@ -1712,10 +1712,10 @@ mod linux_tests {
     fn release() -> GitHubRelease {
         GitHubRelease::parse_appimage(br#"{
             "tag_name":"v0.9.0",
-            "html_url":"https://github.com/fatyzzz/multicore-releases/releases/tag/v0.9.0",
+            "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v0.9.0",
             "assets":[{
                 "name":"MultiCore-0.9.0-x86_64.AppImage",
-                "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v0.9.0/MultiCore-0.9.0-x86_64.AppImage",
+                "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.9.0/MultiCore-0.9.0-x86_64.AppImage",
                 "size":4,
                 "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             }]
@@ -1787,10 +1787,10 @@ mod english_tests {
         GitHubRelease::parse_for_arch(
             br#"{
             "tag_name":"v0.2.0",
-            "html_url":"https://github.com/Fatyzzz/multi-core/releases/tag/v0.2.0",
+            "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v0.2.0",
             "assets":[{
-                "name":"multicore-windows-x64.zip",
-                "browser_download_url":"https://github.com/Fatyzzz/multi-core/releases/download/v0.2.0/multicore-windows-x64.zip",
+                "name":"TerrieFlow-Client-windows-x64.zip",
+                "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.2.0/TerrieFlow-Client-windows-x64.zip",
                 "size":1234,
                 "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             }]

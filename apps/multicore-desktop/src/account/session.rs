@@ -64,10 +64,7 @@ impl StoredSession {
         user: AccountUser,
         now: SystemTime,
     ) -> Self {
-        let now_unix = now
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let now_unix = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
         Self {
             access_token,
             refresh_token,
@@ -77,10 +74,7 @@ impl StoredSession {
     }
 
     pub(crate) fn access_is_fresh(&self, now: SystemTime) -> bool {
-        let now_unix = now
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let now_unix = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
         now_unix.saturating_add(EXPIRY_SAFETY_MARGIN.as_secs()) < self.access_expires_at_unix
     }
 

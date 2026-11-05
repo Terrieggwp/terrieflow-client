@@ -3745,13 +3745,13 @@ pub(crate) fn local_proxy_address(port: Option<u16>) -> String {
 fn latency_display(status: &str, latency_ms: Option<u64>) -> (String, String) {
     match (status, latency_ms) {
         // Answered pings are graded: under 100 ms green, 100–249 ms amber,
-        // 250 ms and slower red (still a working node, just a slow one).
+        // 250 ms and slower orange. Red remains reserved for an unavailable node.
         ("ok", Some(value)) => (
             format!("{value} ms"),
             match value {
                 0..100 => "success",
                 100..250 => "warning",
-                _ => "danger",
+                _ => "high-latency",
             }
             .into(),
         ),
@@ -5760,16 +5760,16 @@ mod tests {
     }
 
     #[test]
-    fn answered_pings_are_graded_and_timeouts_and_errors_are_danger() {
+    fn answered_pings_are_graded_and_only_timeouts_and_errors_are_danger() {
         for (value, tone) in [
             (1, "success"),
             (99, "success"),
             (100, "warning"),
             (149, "warning"),
             (249, "warning"),
-            (250, "danger"),
-            (999, "danger"),
-            (5000, "danger"),
+            (250, "high-latency"),
+            (999, "high-latency"),
+            (5000, "high-latency"),
         ] {
             assert_eq!(
                 latency_display("ok", Some(value)),
@@ -9336,7 +9336,9 @@ mod tests {
             assert!(wave_b.contains(required), "wave B missing: {required}");
         }
         // The connection module carries state through a restrained navy gradient and hairline.
-        assert!(source.contains("? @linear-gradient(110deg, #0b2d34 0%, #0b2537 58%, #0a1b31 100%)"));
+        assert!(
+            source.contains("? @linear-gradient(110deg, #0b2d34 0%, #0b2537 58%, #0a1b31 100%)")
+        );
         assert!(components.contains(
             "background: root.selected ? Theme.raised : row-touch.has-hover && root.enabled ? #159fff0f : transparent;"
         ));

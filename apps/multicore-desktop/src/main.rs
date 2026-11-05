@@ -1,7 +1,7 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
-mod app_icon;
 mod account;
+mod app_icon;
 mod appimage_handoff;
 mod bootstrap;
 mod clipboard_text;
@@ -42,16 +42,16 @@ mod tray;
 mod troubleshoot;
 mod updater;
 mod view_model;
-mod windows_settings;
 #[cfg(windows)]
 mod windows_identity;
+mod windows_settings;
 mod windows_shell;
 
-use multicore_i18n::tr;
 use account::{
     AccountApi, AccountCommand, AccountController, AccountEvent, AccountViewState,
     CredentialSessionStore, EmailCredentials,
 };
+use multicore_i18n::tr;
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, VecDeque};
 use std::ffi::{OsStr, OsString};
@@ -3808,9 +3808,7 @@ fn wire_account(
     let weak = ui.as_weak();
     let timer = Timer::default();
     let status_message_generation = Rc::new(Cell::new(0_u64));
-    let next_subscription_check = Rc::new(Cell::new(
-        Instant::now() + Duration::from_secs(5 * 60),
-    ));
+    let next_subscription_check = Rc::new(Cell::new(Instant::now() + Duration::from_secs(5 * 60)));
     let subscription_check_failures = Rc::new(Cell::new(0_u8));
     let mut previous_phase = String::new();
     timer.start(TimerMode::Repeated, Duration::from_millis(100), move || {
@@ -3985,10 +3983,7 @@ fn wire_account(
     timer
 }
 
-fn clear_account_status_message_later(
-    weak: slint::Weak<AppWindow>,
-    generation: Rc<Cell<u64>>,
-) {
+fn clear_account_status_message_later(weak: slint::Weak<AppWindow>, generation: Rc<Cell<u64>>) {
     let expected = generation.get().wrapping_add(1);
     generation.set(expected);
     Timer::single_shot(Duration::from_secs(5), move || {
@@ -4012,8 +4007,18 @@ fn format_subscription_end_date(value: &str) -> String {
     match language::current() {
         language::Lang::Ru => {
             let months = [
-                "января", "февраля", "марта", "апреля", "мая", "июня", "июля",
-                "августа", "сентября", "октября", "ноября", "декабря",
+                "января",
+                "февраля",
+                "марта",
+                "апреля",
+                "мая",
+                "июня",
+                "июля",
+                "августа",
+                "сентября",
+                "октября",
+                "ноября",
+                "декабря",
             ];
             format!(
                 "{} {} {}",
@@ -4024,8 +4029,18 @@ fn format_subscription_end_date(value: &str) -> String {
         }
         language::Lang::En => {
             let months = [
-                "January", "February", "March", "April", "May", "June", "July", "August",
-                "September", "October", "November", "December",
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
             ];
             format!(
                 "{} {}, {}",
@@ -5715,14 +5730,16 @@ fn run_import(
             .is_account_url(&url);
         let result = client.import_subscription(&url);
         let import_succeeded = result.is_ok();
-        let account_profile_id = account_import.then(|| {
-            result.as_ref().ok().and_then(|status| {
-                status
-                    .imported_profile_id
-                    .clone()
-                    .or_else(|| status.active_profile_id.clone())
+        let account_profile_id = account_import
+            .then(|| {
+                result.as_ref().ok().and_then(|status| {
+                    status
+                        .imported_profile_id
+                        .clone()
+                        .or_else(|| status.active_profile_id.clone())
+                })
             })
-        }).flatten();
+            .flatten();
         {
             let mut model = model.lock().expect("view model lock");
             model.finish_import(mutation, result);
@@ -5736,8 +5753,8 @@ fn run_import(
             };
             if let Some(ui) = weak.upgrade() {
                 let current = apply_latest_snapshot(&ui, &model);
-                let restoring_access = account_import
-                    && ui.get_account_access_status() == "restoring";
+                let restoring_access =
+                    account_import && ui.get_account_access_status() == "restoring";
                 if let Some(profile_id) = account_profile_id {
                     ui.set_account_profile_id(profile_id.into());
                 }
@@ -5753,13 +5770,13 @@ fn run_import(
                 if import_succeeded && !current.import_pending {
                     ui.set_import_success_serial(ui.get_import_success_serial().wrapping_add(1));
                 }
-                if restoring_access
-                    && matches!(queue_outcome, PendingImportOutcome::Succeeded)
-                {
+                if restoring_access && matches!(queue_outcome, PendingImportOutcome::Succeeded) {
                     let restored_status = ui.get_account_access_pending_status();
-                    ui.set_account_access_status(
-                        if restored_status.is_empty() { "active".into() } else { restored_status },
-                    );
+                    ui.set_account_access_status(if restored_status.is_empty() {
+                        "active".into()
+                    } else {
+                        restored_status
+                    });
                     ui.set_account_access_pending_status("".into());
                     ui.set_account_access_expired(false);
                     ui.set_account_status_check_loading(false);
@@ -5775,8 +5792,7 @@ fn run_import(
                             ui.set_account_status_check_error(false);
                         }
                     });
-                } else if restoring_access
-                    && matches!(queue_outcome, PendingImportOutcome::Failed)
+                } else if restoring_access && matches!(queue_outcome, PendingImportOutcome::Failed)
                 {
                     ui.set_account_status_check_loading(false);
                     ui.set_account_status_check_error(true);
@@ -7188,16 +7204,16 @@ mod window_tests {
         PendingImportOutcome, PendingSubscriptionConsents, PendingSubscriptionImports,
         PersistenceTracker, PreferenceWriteFailure, PreferenceWriter, ProfilePreferenceReconciler,
         ReadyUpdateStep, UpdateConfirmPlan, UpdateInstallIntent, WindowObservation, WriterCommand,
-        WriterResult, activation_for_launch_arguments, ambient_motion_allowed,
-        account_access_restore_requires_configuration, account_subscription_check_interval,
-        account_subscription_retry_backoff,
-        begin_update_download, delete_focus_plan, drain_latest_write, initial_window_visible,
-        next_maximized, parse_launch_arguments, preference_error_for_result,
-        preference_failure_is_terminal, preference_save_error, ready_update_step,
-        reduced_motion_from_client_area_animation, retry_delay_after_failure, route_hints_apply_to,
-        runtime_allows_update, scale_factor_milli, shell_active_after_native_minimize_change,
-        startup_should_connect, update_check_due, update_confirm_plan, update_install_intent,
-        update_through_service, visible_page_from_name, visible_page_name,
+        WriterResult, account_access_restore_requires_configuration,
+        account_subscription_check_interval, account_subscription_retry_backoff,
+        activation_for_launch_arguments, ambient_motion_allowed, begin_update_download,
+        delete_focus_plan, drain_latest_write, initial_window_visible, next_maximized,
+        parse_launch_arguments, preference_error_for_result, preference_failure_is_terminal,
+        preference_save_error, ready_update_step, reduced_motion_from_client_area_animation,
+        retry_delay_after_failure, route_hints_apply_to, runtime_allows_update, scale_factor_milli,
+        shell_active_after_native_minimize_change, startup_should_connect, update_check_due,
+        update_confirm_plan, update_install_intent, update_through_service, visible_page_from_name,
+        visible_page_name,
     };
     use crate::daemon::test_support::MockDaemonClient;
     use crate::daemon::{
@@ -7227,18 +7243,38 @@ mod window_tests {
             account_subscription_check_interval("expired", true),
             Duration::from_secs(60)
         );
-        assert_eq!(account_subscription_retry_backoff(1), Duration::from_secs(30));
-        assert_eq!(account_subscription_retry_backoff(2), Duration::from_secs(60));
-        assert_eq!(account_subscription_retry_backoff(3), Duration::from_secs(120));
-        assert_eq!(account_subscription_retry_backoff(9), Duration::from_secs(300));
+        assert_eq!(
+            account_subscription_retry_backoff(1),
+            Duration::from_secs(30)
+        );
+        assert_eq!(
+            account_subscription_retry_backoff(2),
+            Duration::from_secs(60)
+        );
+        assert_eq!(
+            account_subscription_retry_backoff(3),
+            Duration::from_secs(120)
+        );
+        assert_eq!(
+            account_subscription_retry_backoff(9),
+            Duration::from_secs(300)
+        );
     }
 
     #[test]
     fn restored_access_stays_gated_until_configuration_is_ready() {
-        assert!(account_access_restore_requires_configuration(true, true, false));
-        assert!(!account_access_restore_requires_configuration(true, true, true));
-        assert!(!account_access_restore_requires_configuration(true, false, false));
-        assert!(!account_access_restore_requires_configuration(false, false, false));
+        assert!(account_access_restore_requires_configuration(
+            true, true, false
+        ));
+        assert!(!account_access_restore_requires_configuration(
+            true, true, true
+        ));
+        assert!(!account_access_restore_requires_configuration(
+            true, false, false
+        ));
+        assert!(!account_access_restore_requires_configuration(
+            false, false, false
+        ));
     }
 
     #[test]
@@ -8334,10 +8370,10 @@ mod window_tests {
         use multicore_release::{GitHubRelease, WindowsArch};
         let release = GitHubRelease::parse_for_arch(br#"{
             "tag_name":"v9.0.0",
-            "html_url":"https://github.com/Fatyzzz/multi-core/releases/tag/v9.0.0",
+            "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v9.0.0",
             "assets":[{
-                "name":"multicore-windows-x64.zip",
-                "browser_download_url":"https://github.com/Fatyzzz/multi-core/releases/download/v9.0.0/multicore-windows-x64.zip",
+                "name":"TerrieFlow-Client-windows-x64.zip",
+                "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v9.0.0/TerrieFlow-Client-windows-x64.zip",
                 "size":1234,
                 "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             }]
@@ -9556,7 +9592,9 @@ mod window_tests {
             .nth(1)
             .expect("conflict card");
         let card = card.chars().take(900).collect::<String>();
-        assert!(card.contains("background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);"));
+        assert!(card.contains(
+            "background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);"
+        ));
         assert!(card.contains("border-radius: 14px;"));
         assert!(card.contains(&format!(
             "animate opacity {{ duration: 240ms; easing: {ENTER}; }}"

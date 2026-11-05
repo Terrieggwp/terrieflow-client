@@ -684,10 +684,10 @@ fn preview_release(version: &str) -> multicore_release::GitHubRelease {
     let body = format!(
         r#"{{
             "tag_name":"v{version}",
-            "html_url":"https://github.com/Fatyzzz/multi-core/releases/tag/v{version}",
+            "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v{version}",
             "assets":[{{
-                "name":"multicore-windows-x64.zip",
-                "browser_download_url":"https://github.com/Fatyzzz/multi-core/releases/download/v{version}/multicore-windows-x64.zip",
+                "name":"TerrieFlow-Client-windows-x64.zip",
+                "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v{version}/TerrieFlow-Client-windows-x64.zip",
                 "size":{},
                 "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             }}]

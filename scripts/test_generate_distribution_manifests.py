@@ -11,12 +11,12 @@ import generate_distribution_manifests as manifests  # noqa: E402
 
 VERSION = "9.8.7"
 DIGESTS = {
-    "TerrieFlow-Setup-x64.exe": "a" * 64,
-    "TerrieFlow-Setup-x86.exe": "b" * 64,
-    "TerrieFlow-Setup-arm64.exe": "c" * 64,
+    "TerrieFlow-Client-Setup-x64.exe": "a" * 64,
+    "TerrieFlow-Client-Setup-x86.exe": "b" * 64,
+    "TerrieFlow-Client-Setup-arm64.exe": "c" * 64,
     f"multicore-{VERSION}-1-x86_64.pkg.tar.zst": "d" * 64,
     "multicore-x86_64.pkg.tar.zst": "d" * 64,
-    "multicore-windows-x64.zip": "e" * 64,
+    "TerrieFlow-Client-windows-x64.zip": "e" * 64,
 }
 
 
@@ -43,10 +43,10 @@ class GenerateTest(unittest.TestCase):
         winget, _ = self.generate()
         self.assertEqual(winget.parts[-4:], ("f", "fatyzzz", "MULTICORE", VERSION))
         installer = (winget / "fatyzzz.MULTICORE.installer.yaml").read_text(encoding="utf-8")
-        base = f"https://github.com/fatyzzz/multicore/releases/download/v{VERSION}"
+        base = f"https://github.com/Terrieggwp/terrieflow-client/releases/download/v{VERSION}"
         for arch, digest in [("x64", "A"), ("x86", "B"), ("arm64", "C")]:
             self.assertIn(
-                f"- Architecture: {arch}\n  InstallerUrl: {base}/TerrieFlow-Setup-{arch}.exe\n"
+                f"- Architecture: {arch}\n  InstallerUrl: {base}/TerrieFlow-Client-Setup-{arch}.exe\n"
                 f"  InstallerSha256: {digest * 64}\n",
                 installer,
             )
@@ -71,15 +71,15 @@ class GenerateTest(unittest.TestCase):
         self.assertIn(f"pkgver={VERSION}\n", pkgbuild)
         self.assertIn(f"sha256sums=('{'d' * 64}')\n", pkgbuild)
         self.assertIn(
-            'source=("${_package}::https://github.com/fatyzzz/multicore/releases/'
+            'source=("${_package}::https://github.com/Terrieggwp/terrieflow-client/releases/'
             'download/v${pkgver}/${_package}")',
             pkgbuild,
         )
         srcinfo = (aur / ".SRCINFO").read_text(encoding="utf-8")
         self.assertTrue(srcinfo.startswith("pkgbase = multicore-bin\n"))
         self.assertIn(
-            f"\tsource = multicore-{VERSION}-1-x86_64.pkg.tar.zst::https://github.com/fatyzzz/"
-            f"multicore/releases/download/v{VERSION}/"
+            f"\tsource = multicore-{VERSION}-1-x86_64.pkg.tar.zst::https://github.com/"
+            f"Terrieggwp/terrieflow-client/releases/download/v{VERSION}/"
             f"multicore-{VERSION}-1-x86_64.pkg.tar.zst\n",
             srcinfo,
         )
@@ -105,11 +105,11 @@ class GenerateTest(unittest.TestCase):
             "".join(
                 f"{digest}  {name}\n"
                 for name, digest in DIGESTS.items()
-                if name != "TerrieFlow-Setup-arm64.exe"
+                if name != "TerrieFlow-Client-Setup-arm64.exe"
             ),
             encoding="utf-8",
         )
-        with self.assertRaisesRegex(manifests.ManifestError, "TerrieFlow-Setup-arm64.exe"):
+        with self.assertRaisesRegex(manifests.ManifestError, "TerrieFlow-Client-Setup-arm64.exe"):
             self.generate()
         self.assertFalse(self.output.exists())
         with self.assertRaisesRegex(manifests.ManifestError, "release version"):

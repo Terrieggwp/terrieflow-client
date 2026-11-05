@@ -1,26 +1,28 @@
-name: Windows and Linux release
+name: Prepare Windows x64 release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Numeric release tag, for example v1.1.17
+        required: true
+        type: string
+      publish:
+        description: Publish after every verification succeeds
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: terrieflow-release-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
-  linux-packages:
-    uses: ./.github/workflows/linux-packages.yml
-    with:
-      update-repository: fatyzzz/multicore
-
-  release:
-    needs: linux-packages
+  prepare:
     runs-on: [self-hosted, Windows, X64, windowsbuild]
     timeout-minutes: 90
     env:
@@ -31,12 +33,30 @@ jobs:
       CARGO_INCREMENTAL: 0
 
     steps:
-      - name: Checkout tagged source
+      - name: Validate requested tag
+        shell: pwsh
+        run: |
+          if ('${{ inputs.tag }}' -cnotmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
+            throw 'Release tags must be numeric: vMAJOR.MINOR.PATCH'
+          }
+
+      - name: Checkout requested tag
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ inputs.tag }}
           persist-credentials: false
 
-      - name: Enforce privileged broker release gate
+      - name: Verify tag and package version
+        shell: pwsh
+        run: |
+          $manifest = Get-Content -Raw apps/multicore-desktop/Cargo.toml
+          $match = [regex]::Match($manifest, '(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"\s*$')
+          if (-not $match.Success) { throw 'Desktop package version was not found' }
+          $version = $match.Groups[1].Value
+          if ('${{ inputs.tag }}' -cne "v$version") { throw 'Tag does not match the desktop version' }
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Enforce release gate
         shell: pwsh
         run: |
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows-release.ps1 -AssertReleaseReady
@@ -49,28 +69,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           rustup default 1.98.1-x86_64-pc-windows-msvc
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          rustup target add i686-pc-windows-msvc --toolchain 1.98.1-x86_64-pc-windows-msvc
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          rustup target add aarch64-pc-windows-msvc --toolchain 1.98.1-x86_64-pc-windows-msvc
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          rustc -Vv
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo -V
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Verify tag and package version
-        shell: pwsh
-        run: |
-          $manifest = Get-Content -Raw apps/multicore-desktop/Cargo.toml
-          $match = [regex]::Match($manifest, '(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"\s*$')
-          if (-not $match.Success) { throw 'Desktop package version was not found' }
-          $expectedTag = "v$($match.Groups[1].Value)"
-          if ($env:GITHUB_REF_NAME -cne $expectedTag) {
-            throw "Release tag $env:GITHUB_REF_NAME does not match $expectedTag"
-          }
-          "APP_VERSION=$($match.Groups[1].Value)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Verify source
+      - name: Verify source and release contracts
         shell: pwsh
         run: |
           cargo fmt --all -- --check
@@ -79,115 +79,47 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo clippy --workspace --all-targets --locked -- -D warnings
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          # rust-skia has no 32-bit Windows download: link the pinned static-CRT Skia build
-          # (MULTICORE_SKIA_BINARIES_DIR on the runner, see docs/renderer.md).
-          $env:SKIA_BINARIES_URL = powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/pinned-skia-binaries-url.ps1 -Architecture x86
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $env:CARGO_TARGET_I686_PC_WINDOWS_MSVC_RUSTFLAGS = '-Ctarget-feature=+crt-static'
-          cargo test --workspace --locked --target i686-pc-windows-msvc
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo clippy --workspace --all-targets --locked --target i686-pc-windows-msvc -- -D warnings
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Remove-Item Env:SKIA_BINARIES_URL, Env:CARGO_TARGET_I686_PC_WINDOWS_MSVC_RUSTFLAGS
-          # ARM64 is cross-compiled: this x64 runner cannot run it, so its tests are built, not run.
-          # The runner needs the MSVC ARM64 build tools and LLVM clang on PATH (ring builds its ARM64
-          # code only with clang), and the pinned ARM64 Skia build (docs/renderer.md).
-          if (-not (Get-Command clang.exe -CommandType Application -ErrorAction SilentlyContinue)) { throw 'The ARM64 build needs LLVM clang.exe on PATH' }
-          $env:SKIA_BINARIES_URL = powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/pinned-skia-binaries-url.ps1 -Architecture arm64
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $env:CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_RUSTFLAGS = '-Ctarget-feature=+crt-static'
-          cargo test --workspace --locked --target aarch64-pc-windows-msvc --no-run
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo clippy --workspace --all-targets --locked --target aarch64-pc-windows-msvc -- -D warnings
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Remove-Item Env:SKIA_BINARIES_URL, Env:CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_RUSTFLAGS
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-package-windows-release.ps1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-smoke-test-one-click-contract.ps1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-packaged-daemon-smoke-contract.ps1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-windows-installer-contract.ps1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-release-workflow-contract.ps1
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($script in @(
+            'scripts/test-package-windows-release.ps1',
+            'scripts/test-smoke-test-one-click-contract.ps1',
+            'scripts/test-packaged-daemon-smoke-contract.ps1',
+            'scripts/test-windows-installer-contract.ps1',
+            'scripts/test-release-workflow-contract.ps1'
+          )) {
+            powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
-      - name: Build patched Mihomo
+      - name: Build patched Mihomo for Windows x64
         shell: pwsh
         run: |
-          # The pinned MetaCubeX source + packaging/mihomo-patches, built with the pinned Go release
-          # (Git Bash on this runner); every binary must match its SHA-256 pin or nothing ships.
-          if (-not (Test-Path -LiteralPath 'C:\Program Files\Git\bin\bash.exe' -PathType Leaf)) { throw 'Git Bash is required to build Mihomo' }
-          & 'C:\Program Files\Git\bin\bash.exe' scripts/build-mihomo.sh --output dist/mihomo --cache "$env:RUNNER_TEMP/mihomo-cache" windows-amd64 windows-386 windows-arm64
+          $bash = 'C:\Program Files\Git\bin\bash.exe'
+          if (-not (Test-Path -LiteralPath $bash -PathType Leaf)) { throw 'Git Bash is required' }
+          & $bash scripts/build-mihomo.sh --output dist/mihomo --cache "$env:RUNNER_TEMP/mihomo-cache" windows-amd64
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          "MULTICORE_MIHOMO_BINARIES_DIR=$((Resolve-Path 'dist/mihomo').Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "MULTICORE_MIHOMO_BINARIES_DIR=$((Resolve-Path 'dist/mihomo').Path)" |
+            Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Build verified portable bundle
+      - name: Build and verify Windows x64 portable bundle
         shell: pwsh
         run: |
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows-release.ps1 `
-            -DestinationPath dist/release/multicore-windows-x64 `
-            -UpdateRepository fatyzzz/multicore `
-            -ReleaseAssetPath dist/release/multicore-windows-x64.zip
+            -DestinationPath dist/release/terrieflow-windows-x64 `
+            -UpdateRepository Terrieggwp/terrieflow-client `
+            -ReleaseAssetPath dist/release/TerrieFlow-Client-windows-x64.zip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-windows-elevation-manifest.ps1 `
-            -DesktopExecutablePath dist/release/multicore-windows-x64/TerrieFlow.exe `
-            -DaemonExecutablePath dist/release/multicore-windows-x64/runtime/multicore-daemon.exe `
-            -UpdaterExecutablePath dist/release/multicore-windows-x64/runtime/multicore-updater.exe `
-            -CoreHostExecutablePath dist/release/multicore-windows-x64/runtime/multicore-core-host.exe
+            -DesktopExecutablePath dist/release/terrieflow-windows-x64/TerrieFlow.exe `
+            -DaemonExecutablePath dist/release/terrieflow-windows-x64/runtime/multicore-daemon.exe `
+            -UpdaterExecutablePath dist/release/terrieflow-windows-x64/runtime/multicore-updater.exe `
+            -CoreHostExecutablePath dist/release/terrieflow-windows-x64/runtime/multicore-core-host.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $env:MULTICORE_RELEASE_BUNDLE = (Resolve-Path 'dist/release/multicore-windows-x64.zip').Path
+          $env:MULTICORE_RELEASE_BUNDLE = (Resolve-Path 'dist/release/TerrieFlow-Client-windows-x64.zip').Path
           cargo test -p multicore-release --test archive_contract built_release_bundle_matches_updater_contract --locked -- --ignored --exact
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-test-packaged-daemon.ps1 `
-            -PackagePath dist/release/multicore-windows-x64
+            -PackagePath dist/release/terrieflow-windows-x64
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Build verified x86 portable bundle
-        shell: pwsh
-        run: |
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows-release.ps1 `
-            -Architecture x86 `
-            -DestinationPath dist/release/multicore-windows-x86 `
-            -UpdateRepository fatyzzz/multicore `
-            -ReleaseAssetPath dist/release/multicore-windows-x86.zip
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-windows-elevation-manifest.ps1 `
-            -Architecture x86 `
-            -DesktopExecutablePath dist/release/multicore-windows-x86/TerrieFlow.exe `
-            -DaemonExecutablePath dist/release/multicore-windows-x86/runtime/multicore-daemon.exe `
-            -UpdaterExecutablePath dist/release/multicore-windows-x86/runtime/multicore-updater.exe `
-            -CoreHostExecutablePath dist/release/multicore-windows-x86/runtime/multicore-core-host.exe
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $env:MULTICORE_RELEASE_BUNDLE = (Resolve-Path 'dist/release/multicore-windows-x86.zip').Path
-          $env:MULTICORE_RELEASE_BUNDLE_ARCH = 'x86'
-          cargo test -p multicore-release --test archive_contract built_release_bundle_matches_updater_contract --locked -- --ignored --exact
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-test-packaged-daemon.ps1 `
-            -PackagePath dist/release/multicore-windows-x86
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Build verified arm64 portable bundle
-        shell: pwsh
-        run: |
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows-release.ps1 `
-            -Architecture arm64 `
-            -DestinationPath dist/release/multicore-windows-arm64 `
-            -UpdateRepository fatyzzz/multicore `
-            -ReleaseAssetPath dist/release/multicore-windows-arm64.zip
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-windows-elevation-manifest.ps1 `
-            -Architecture arm64 `
-            -DesktopExecutablePath dist/release/multicore-windows-arm64/TerrieFlow.exe `
-            -DaemonExecutablePath dist/release/multicore-windows-arm64/runtime/multicore-daemon.exe `
-            -UpdaterExecutablePath dist/release/multicore-windows-arm64/runtime/multicore-updater.exe `
-            -CoreHostExecutablePath dist/release/multicore-windows-arm64/runtime/multicore-core-host.exe
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $env:MULTICORE_RELEASE_BUNDLE = (Resolve-Path 'dist/release/multicore-windows-arm64.zip').Path
-          $env:MULTICORE_RELEASE_BUNDLE_ARCH = 'arm64'
-          cargo test -p multicore-release --test archive_contract built_release_bundle_matches_updater_contract --locked -- --ignored --exact
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          # No packaged-daemon smoke test: ARM64 executables do not run on this x64 runner.
 
       - name: Install pinned Inno Setup
         shell: pwsh
@@ -197,257 +129,138 @@ jobs:
           Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $installer
           $actual = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
           $expected = '9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732'
-          if ($actual -cne $expected) { throw 'Inno Setup installer checksum mismatch' }
+          if ($actual -cne $expected) { throw 'Inno Setup checksum mismatch' }
           $process = Start-Process -FilePath $installer `
             -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER') `
             -Wait -PassThru -WindowStyle Hidden
           if ($process.ExitCode -ne 0) { throw "Inno Setup install failed: $($process.ExitCode)" }
 
-      - name: Build Windows installer
+      - name: Build and smoke-test Windows x64 installer
         shell: pwsh
         run: |
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-installer.ps1 `
-            -PackagePath dist/release/multicore-windows-x64 `
+            -PackagePath dist/release/terrieflow-windows-x64 `
             -OutputDirectory dist/release `
             -AppVersion $env:APP_VERSION
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-installer.ps1 `
-            -Architecture x86 `
-            -PackagePath dist/release/multicore-windows-x86 `
-            -OutputDirectory dist/release `
-            -AppVersion $env:APP_VERSION
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-installer.ps1 `
-            -Architecture arm64 `
-            -PackagePath dist/release/multicore-windows-arm64 `
-            -OutputDirectory dist/release `
-            -AppVersion $env:APP_VERSION
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Smoke-test installed update boundary
-        shell: pwsh
-        run: |
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-test-windows-installed-update.ps1 `
-            -InstallerPath dist/release/TerrieFlow-Setup-x64.exe `
-            -PackagePath dist/release/multicore-windows-x64
+            -InstallerPath dist/release/TerrieFlow-Client-Setup-x64.exe `
+            -PackagePath dist/release/terrieflow-windows-x64
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Preserve pinned upstream source
+      - name: Preserve corresponding source archives
         shell: pwsh
         run: |
           $manifest = Get-Content -Raw packaging/windows-x64/versions.json | ConvertFrom-Json
-          $destination = 'dist/release/Xray-core-source.zip'
-          Invoke-WebRequest -UseBasicParsing -Uri $manifest.components.xray.source.url -OutFile $destination
-          $actual = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($actual -cne [string]$manifest.components.xray.source.sha256) {
-            throw 'Pinned source checksum mismatch for Xray-core-source.zip'
-          }
-          # The GPL corresponding source of the shipped Mihomo: the patched tree it was compiled
-          # from, with the patches, the recipe and the build script (written by build-mihomo.sh).
+          $xray = 'dist/release/Xray-core-source.zip'
+          Invoke-WebRequest -UseBasicParsing -Uri $manifest.components.xray.source.url -OutFile $xray
+          $actual = (Get-FileHash -LiteralPath $xray -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -cne [string]$manifest.components.xray.source.sha256) { throw 'Xray source checksum mismatch' }
           Copy-Item -LiteralPath dist/mihomo/mihomo-source.zip -Destination dist/release/mihomo-source.zip
 
-      - name: Collect Linux packages
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          pattern: linux-packages-*
-          path: dist/release/linux
-          merge-multiple: true
-
-      - name: Add version-less Linux asset names
-        shell: pwsh
-        run: ./scripts/add-stable-linux-asset-names.ps1 -Directory dist/release/linux -Version $env:APP_VERSION
-
-      - name: Verify Linux package set
-        shell: pwsh
-        run: |
-          foreach ($asset in @(
-            "dist/release/linux/multicore_$($env:APP_VERSION)_amd64.deb",
-            "dist/release/linux/MultiCore-$($env:APP_VERSION)-x86_64.AppImage",
-            "dist/release/linux/multicore-$($env:APP_VERSION)-1-x86_64.pkg.tar.zst",
-            "dist/release/linux/multicore-$($env:APP_VERSION)-1.x86_64.rpm",
-            "dist/release/linux/MultiCore-$($env:APP_VERSION)-x86_64.AppImage.zsync",
-            'dist/release/linux/multicore_amd64.deb',
-            'dist/release/linux/MultiCore-x86_64.AppImage',
-            'dist/release/linux/multicore-x86_64.pkg.tar.zst',
-            'dist/release/linux/multicore.x86_64.rpm'
-          )) {
-            if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) { throw "Missing Linux package $asset" }
-          }
-
-      - name: Create release checksums and notes
+      - name: Create checksums and release notes
         shell: pwsh
         run: |
           $assets = @(
-            'dist/release/multicore-windows-x64.zip',
-            'dist/release/TerrieFlow-Setup-x64.exe',
-            'dist/release/multicore-windows-x86.zip',
-            'dist/release/TerrieFlow-Setup-x86.exe',
-            'dist/release/multicore-windows-arm64.zip',
-            'dist/release/TerrieFlow-Setup-arm64.exe',
-            "dist/release/linux/multicore_$($env:APP_VERSION)_amd64.deb",
-            "dist/release/linux/MultiCore-$($env:APP_VERSION)-x86_64.AppImage",
-            "dist/release/linux/multicore-$($env:APP_VERSION)-1-x86_64.pkg.tar.zst",
-            "dist/release/linux/multicore-$($env:APP_VERSION)-1.x86_64.rpm",
-            "dist/release/linux/MultiCore-$($env:APP_VERSION)-x86_64.AppImage.zsync",
-            'dist/release/linux/multicore_amd64.deb',
-            'dist/release/linux/MultiCore-x86_64.AppImage',
-            'dist/release/linux/multicore-x86_64.pkg.tar.zst',
-            'dist/release/linux/multicore.x86_64.rpm',
+            'dist/release/TerrieFlow-Client-Setup-x64.exe',
+            'dist/release/TerrieFlow-Client-windows-x64.zip',
             'dist/release/Xray-core-source.zip',
             'dist/release/mihomo-source.zip'
           )
-          $lines = foreach ($asset in $assets) {
-            $hash = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
-            "$hash  $([IO.Path]::GetFileName($asset))"
-          }
-          [IO.File]::WriteAllLines(
-            (Join-Path $PWD 'dist/release/RELEASE-SHA256SUMS.txt'),
-            $lines,
-            [Text.UTF8Encoding]::new($false)
-          )
-          @"
-          MultiCore $env:APP_VERSION for Windows x64, Windows x86 (32-bit), Windows on ARM (arm64) and Linux x86_64.
-
-          Source commit: https://github.com/fatyzzz/multicore/commit/$env:GITHUB_SHA
-
-          - `TerrieFlow-Setup-x64.exe` - per-user installer.
-          - `multicore-windows-x64.zip` - verified portable bundle and updater asset.
-          - `TerrieFlow-Setup-x86.exe` and `multicore-windows-x86.zip` - the same for 32-bit Windows; on 64-bit Windows use the x64 files.
-          - `TerrieFlow-Setup-arm64.exe` and `multicore-windows-arm64.zip` - the same for Windows on ARM (ARM64 PCs only); it replaces an x64 install there in place.
-          - `multicore_$($env:APP_VERSION)_amd64.deb` - Debian and Ubuntu 22.04+ package.
-          - `multicore-$($env:APP_VERSION)-1-x86_64.pkg.tar.zst` - Arch Linux package (`sudo pacman -U`).
-          - `multicore-$($env:APP_VERSION)-1.x86_64.rpm` - Fedora 43/44 x86_64 package (`sudo dnf install ./multicore-<version>-1.x86_64.rpm`).
-          - `MultiCore-$($env:APP_VERSION)-x86_64.AppImage` - portable Linux build; needs GTK 3 and polkit on the host. AppImageUpdate can update it through the attached `.zsync` file.
-          - `multicore_amd64.deb`, `multicore-x86_64.pkg.tar.zst`, `multicore.x86_64.rpm` and `MultiCore-x86_64.AppImage` - the same Linux packages under version-less names, for stable `releases/latest/download/` links.
-          - On Linux, Connect asks for the administrator password through polkit to start the core host.
-          - The desktop and daemon run as the current user; Connect requests UAC for the dedicated core host.
-          - Source archives are attached for the exact bundled Xray-core commit and for the bundled Mihomo (the pinned MetaCubeX commit with the REALITY patches in packaging/mihomo-patches, as compiled).
-
-          PUBLIC UNSIGNED PREVIEW: the binaries are not Authenticode-signed, and the elevated core host and cores are stored in a user-writable per-user installation. Windows SmartScreen may warn.
-          "@ | Set-Content -LiteralPath dist/release/RELEASE_NOTES.md -Encoding utf8
-
-      - name: Stage release publication
-        shell: pwsh
-        run: |
-          $stage = 'dist/release-publication'
-          New-Item -ItemType Directory -Path $stage -Force | Out-Null
-          $assets = @(
-            'dist/release/multicore-windows-x64.zip',
-            'dist/release/TerrieFlow-Setup-x64.exe',
-            'dist/release/multicore-windows-x86.zip',
-            'dist/release/TerrieFlow-Setup-x86.exe',
-            'dist/release/multicore-windows-arm64.zip',
-            'dist/release/TerrieFlow-Setup-arm64.exe',
-            "dist/release/linux/multicore_$($env:APP_VERSION)_amd64.deb",
-            "dist/release/linux/MultiCore-$($env:APP_VERSION)-x86_64.AppImage",
-            "dist/release/linux/multicore-$($env:APP_VERSION)-1-x86_64.pkg.tar.zst",
-            "dist/release/linux/multicore-$($env:APP_VERSION)-1.x86_64.rpm",
-            "dist/release/linux/MultiCore-$($env:APP_VERSION)-x86_64.AppImage.zsync",
-            'dist/release/linux/multicore_amd64.deb',
-            'dist/release/linux/MultiCore-x86_64.AppImage',
-            'dist/release/linux/multicore-x86_64.pkg.tar.zst',
-            'dist/release/linux/multicore.x86_64.rpm',
-            'dist/release/Xray-core-source.zip',
-            'dist/release/mihomo-source.zip',
-            'dist/release/RELEASE-SHA256SUMS.txt'
-          )
           foreach ($asset in $assets) {
-            Copy-Item -LiteralPath $asset -Destination $stage
+            if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) { throw "Missing release asset: $asset" }
           }
-          Copy-Item -LiteralPath dist/release/RELEASE_NOTES.md -Destination $stage
-          Copy-Item -LiteralPath scripts/publish-github-release.ps1 -Destination $stage
-          $assetNames = $assets | ForEach-Object { [IO.Path]::GetFileName($_) }
-          [IO.File]::WriteAllLines(
-            (Join-Path $stage 'RELEASE-ASSETS.txt'),
-            $assetNames,
-            [Text.UTF8Encoding]::new($false)
-          )
+          $checksums = foreach ($asset in $assets) {
+            $hash = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash *$([IO.Path]::GetFileName($asset))"
+          }
+          $checksums | Set-Content -LiteralPath dist/release/RELEASE-SHA256SUMS.txt -Encoding ascii
+          @(
+            "# TerrieFlow Client $env:APP_VERSION",
+            '',
+            'First supported beta platform: Windows 10/11 x64.',
+            'The executable is currently unsigned and Windows SmartScreen may display a warning.',
+            '',
+            'Verify downloads with RELEASE-SHA256SUMS.txt.'
+          ) | Set-Content -LiteralPath dist/release/RELEASE_NOTES.md -Encoding utf8
+          @(
+            'dist/release/TerrieFlow-Client-Setup-x64.exe',
+            'dist/release/TerrieFlow-Client-windows-x64.zip',
+            'dist/release/RELEASE-SHA256SUMS.txt',
+            'dist/release/Xray-core-source.zip',
+            'dist/release/mihomo-source.zip'
+          ) | Set-Content -LiteralPath dist/release/RELEASE-ASSETS.txt -Encoding utf8
 
-      - name: Upload verified release publication
+      - name: Upload verified release candidate
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: release-publication
-          path: dist/release-publication/*
+          name: terrieflow-windows-x64-${{ inputs.tag }}
+          path: |
+            dist/release/TerrieFlow-Client-Setup-x64.exe
+            dist/release/TerrieFlow-Client-windows-x64.zip
+            dist/release/RELEASE-SHA256SUMS.txt
+            dist/release/RELEASE_NOTES.md
+            dist/release/RELEASE-ASSETS.txt
+            dist/release/Xray-core-source.zip
+            dist/release/mihomo-source.zip
           if-no-files-found: error
           retention-days: 7
 
   publish:
-    name: publish
-    needs: release
-    # GitHub-hosted jobs are unavailable when account Actions billing is paused. Publication is
-    # lightweight and uses the already verified artifact, so reuse the trusted Windows runner.
+    if: ${{ inputs.publish }}
+    needs: prepare
     runs-on: [self-hosted, Windows, X64, windowsbuild]
-    timeout-minutes: 90
+    timeout-minutes: 45
+    environment: terrieflow-release
     permissions:
       contents: write
-    env:
-      GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+      actions: read
 
     steps:
-      - name: Require dedicated release credential
-        shell: pwsh
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
-            throw 'RELEASES_TOKEN is required to mirror the release into fatyzzz/multicore-releases'
-          }
+      - name: Checkout publication scripts
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
 
-      - name: Download verified release publication
+      - name: Download verified release candidate
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: release-publication
-          path: release-publication
+          name: terrieflow-windows-x64-${{ inputs.tag }}
+          path: dist/release
 
-      # Clients from this release on update from this repository.
-      - name: Publish release to update channel
-        shell: pwsh
-        working-directory: release-publication
-        run: |
-          $version = $env:GITHUB_REF_NAME -replace '^v', ''
-          ./publish-github-release.ps1 `
-            -Repository fatyzzz/multicore `
-            -Tag $env:GITHUB_REF_NAME `
-            -Target main `
-            -Title "MultiCore $version" `
-            -NotesPath RELEASE_NOTES.md `
-            -AssetManifest RELEASE-ASSETS.txt `
-            -Token '${{ github.token }}'
-
-      # Clients built before the move still read fatyzzz/multicore-releases, and the download
-      # links point there, so every release is mirrored into it as well.
-      - name: Mirror release to legacy update channel
-        shell: pwsh
-        working-directory: release-publication
-        run: |
-          $version = $env:GITHUB_REF_NAME -replace '^v', ''
-          ./publish-github-release.ps1 `
-            -Repository fatyzzz/multicore-releases `
-            -Tag $env:GITHUB_REF_NAME `
-            -Target main `
-            -Title "MultiCore $version" `
-            -NotesPath RELEASE_NOTES.md `
-            -AssetManifest RELEASE-ASSETS.txt
-
-      # release.txt is the updater's cheap hint; it moves only after both releases carry every asset.
-      - name: Point release.txt at this version
+      - name: Publish release to official update channel
         shell: pwsh
         env:
-          CHANNEL_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          $ErrorActionPreference = 'Stop'
-          $version = $env:GITHUB_REF_NAME -replace '^v', ''
-          $content = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("$version`n"))
-          foreach ($channel in @(
-              @{ Repository = 'fatyzzz/multicore'; Token = $env:CHANNEL_TOKEN },
-              @{ Repository = 'fatyzzz/multicore-releases'; Token = $env:GH_TOKEN }
-          )) {
-            $uri = "https://api.github.com/repos/$($channel.Repository)/contents/release.txt"
-            $headers = @{ Authorization = "Bearer $($channel.Token)"; Accept = 'application/vnd.github+json' }
-            $signature = @{ name = 'fatyzzz'; email = '82300276+fatyzzz@users.noreply.github.com' }
-            $body = @{ message = "release: $version"; content = $content; branch = 'main'; author = $signature; committer = $signature }
-            try {
-              $body.sha = (Invoke-RestMethod -Uri "$uri`?ref=main" -Headers $headers).sha
-            } catch {
-              if ($_.Exception.Response.StatusCode.value__ -ne 404) { throw }
-            }
-            Invoke-RestMethod -Method Put -Uri $uri -Headers $headers -Body ($body | ConvertTo-Json) -ContentType 'application/json' | Out-Null
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/publish-github-release.ps1 `
+            -Repository Terrieggwp/terrieflow-client `
+            -Tag '${{ inputs.tag }}' `
+            -Target main `
+            -Title "TerrieFlow Client ${{ inputs.tag }}" `
+            -NotesPath dist/release/RELEASE_NOTES.md `
+            -AssetManifest dist/release/RELEASE-ASSETS.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Point release.txt at the published version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = '${{ inputs.tag }}'.Substring(1)
+          $uri = 'https://api.github.com/repos/Terrieggwp/terrieflow-client/contents/release.txt'
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
           }
+          $current = Invoke-RestMethod -Uri "$uri`?ref=main" -Headers $headers
+          $body = @{
+            message = "release: $version"
+            content = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("$version`n"))
+            sha = $current.sha
+            branch = 'main'
+          } | ConvertTo-Json
+          Invoke-RestMethod -Method Put -Uri $uri -Headers $headers -Body $body `
+            -ContentType 'application/json; charset=utf-8' | Out-Null

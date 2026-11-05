@@ -24,6 +24,14 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+$OfficialRepository = 'Terrieggwp/terrieflow-client'
+if ($Repository -cne $OfficialRepository) {
+    throw "This publisher is restricted to the official repository: $OfficialRepository"
+}
+if ($Tag -cnotmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
+    throw 'Release tags must use the numeric vMAJOR.MINOR.PATCH format'
+}
+
 if ([string]::IsNullOrWhiteSpace($Token)) {
     throw 'A GitHub release token is required'
 }
@@ -47,7 +55,7 @@ $headers = @{
     Authorization          = "Bearer $Token"
     Accept                 = 'application/vnd.github+json'
     'X-GitHub-Api-Version' = '2022-11-28'
-    'User-Agent'           = 'multicore-release-workflow'
+    'User-Agent'           = 'terrieflow-release-workflow'
 }
 $apiRoot = "https://api.github.com/repos/$Repository"
 $escapedTag = [Uri]::EscapeDataString($Tag)

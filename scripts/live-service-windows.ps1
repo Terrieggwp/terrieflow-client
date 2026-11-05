@@ -27,8 +27,8 @@ Uninstall (Service/PerUser):
   Skip                   leave TerrieFlow Client installed (e.g. before a manual update test).
 
 Examples:
-  .\live-service-windows.ps1 -InstallerPath C:\mc-live\TerrieFlow-Setup-x64.exe -Mode Service -Uninstall InteractiveRemoveData
-  .\live-service-windows.ps1 -InstallerPath C:\mc-live\TerrieFlow-Setup-x64.exe -Mode PerUser -Uninstall InteractiveKeepData -CleanDataTask
+  .\live-service-windows.ps1 -InstallerPath C:\mc-live\TerrieFlow-Client-Setup-x64.exe -Mode Service -Uninstall InteractiveRemoveData
+  .\live-service-windows.ps1 -InstallerPath C:\mc-live\TerrieFlow-Client-Setup-x64.exe -Mode PerUser -Uninstall InteractiveKeepData -CleanDataTask
   .\live-service-windows.ps1 -Mode UpdateCheck -ExpectedVersion 1.1.1
 
 Result: <WorkDir>\live-service-result.json, one { check, ok, detail } per step; exit 1 on any failure.

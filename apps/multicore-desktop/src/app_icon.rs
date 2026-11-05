@@ -6,8 +6,7 @@ const APP_ICON_RGBA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/app-icon-
 #[cfg(test)]
 const APP_ICON_64_RGBA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/app-icon-64.rgba"));
 const TRAY_ACTIVE_RGBA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/tray-active-32.rgba"));
-const TRAY_ACTIVE_64_RGBA: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/tray-active-64.rgba"));
+const TRAY_ACTIVE_64_RGBA: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/tray-active-64.rgba"));
 const TRAY_INACTIVE_RGBA: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/tray-inactive-32.rgba"));
 const TRAY_INACTIVE_64_RGBA: &[u8] =
@@ -105,10 +104,7 @@ mod tests {
             (TRAY_ICON_SIZE - 1, TRAY_ICON_SIZE - 1),
         ] {
             let alpha = pixels[((y * TRAY_ICON_SIZE + x) * 4 + 3) as usize];
-            assert_eq!(
-                alpha, 0,
-                "app icon corner ({x}, {y}) must stay transparent"
-            );
+            assert_eq!(alpha, 0, "app icon corner ({x}, {y}) must stay transparent");
         }
     }
 

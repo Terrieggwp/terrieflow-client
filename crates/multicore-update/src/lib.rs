@@ -46,18 +46,18 @@ impl WindowsArch {
     /// Portable bundle and updater asset.
     pub const fn bundle_asset_name(self) -> &'static str {
         match self {
-            Self::X64 => "multicore-windows-x64.zip",
-            Self::X86 => "multicore-windows-x86.zip",
-            Self::Arm64 => "multicore-windows-arm64.zip",
+            Self::X64 => "TerrieFlow-Client-windows-x64.zip",
+            Self::X86 => "TerrieFlow-Client-windows-x86.zip",
+            Self::Arm64 => "TerrieFlow-Client-windows-arm64.zip",
         }
     }
 
     /// Inno Setup installer asset.
     pub const fn installer_asset_name(self) -> &'static str {
         match self {
-            Self::X64 => "TerrieFlow-Setup-x64.exe",
-            Self::X86 => "TerrieFlow-Setup-x86.exe",
-            Self::Arm64 => "TerrieFlow-Setup-arm64.exe",
+            Self::X64 => "TerrieFlow-Client-Setup-x64.exe",
+            Self::X86 => "TerrieFlow-Client-Setup-x86.exe",
+            Self::Arm64 => "TerrieFlow-Client-Setup-arm64.exe",
         }
     }
 

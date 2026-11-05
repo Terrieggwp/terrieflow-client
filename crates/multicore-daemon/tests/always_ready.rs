@@ -422,7 +422,9 @@ async fn a_notice_reaches_status_and_events() {
         .await;
     assert_eq!(
         h.backend.status().await.unwrap().message.as_deref(),
-        Some("Служба TerrieFlow недоступна — права администратора будут запрошены при подключении.")
+        Some(
+            "Служба TerrieFlow недоступна — права администратора будут запрошены при подключении."
+        )
     );
     assert!(
         h.backend
@@ -1245,7 +1247,9 @@ async fn the_unavailable_notice_is_cleared_once_the_service_is_back() {
         .await;
     assert_eq!(
         h.backend.status().await.unwrap().message.as_deref(),
-        Some("Служба TerrieFlow недоступна — права администратора будут запрошены при подключении.")
+        Some(
+            "Служба TerrieFlow недоступна — права администратора будут запрошены при подключении."
+        )
     );
     h.backend
         .clear_notice(&DaemonText::code("service.unavailable_notice"))

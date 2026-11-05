@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'feature/**'
+      - 'codex/**'
   pull_request:
 
 permissions:
@@ -122,10 +123,3 @@ jobs:
           path: artifacts/linux-shell/
           if-no-files-found: warn
           retention-days: 7
-
-  linux-packages:
-    if: github.event_name == 'push'
-    needs: linux
-    uses: ./.github/workflows/linux-packages.yml
-    with:
-      update-repository: fatyzzz/multicore

@@ -2,9 +2,9 @@ use super::{
     AccountApi, AccountApiError, AccountSubscriptionAccess, AccountUser, CredentialSessionStore,
     EmailLoginError, LoginPoll, SessionStore, StoredSession, telegram_login_url,
 };
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
-use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -176,7 +176,10 @@ fn worker(
                 login = None;
                 publish(
                     &events,
-                    session.as_ref().map(authenticated_state).unwrap_or_else(guest_state),
+                    session
+                        .as_ref()
+                        .map(authenticated_state)
+                        .unwrap_or_else(guest_state),
                 );
             }
             Ok(AccountCommand::CheckSubscription(generation)) => {
@@ -227,10 +230,14 @@ fn worker(
                                 publish(&events, expired_state());
                             }
                             Ok(LoginPoll::Authenticated(current)) => {
+                                let current = *current;
                                 login = None;
                                 last_access_blocks_routes = None;
                                 if store.save(&current).is_err() {
-                                    publish(&events, error_state("Не удалось безопасно сохранить сессию"));
+                                    publish(
+                                        &events,
+                                        error_state("Не удалось безопасно сохранить сессию"),
+                                    );
                                 } else {
                                     session = restore_loaded(
                                         &api,
@@ -243,7 +250,10 @@ fn worker(
                             }
                             Err(error) if error.is_offline() => {
                                 pending.next_poll = Instant::now() + LOGIN_POLL_INTERVAL;
-                                publish(&events, waiting_state("Нет связи с кабинетом. Повторяем…"));
+                                publish(
+                                    &events,
+                                    waiting_state("Нет связи с кабинетом. Повторяем…"),
+                                );
                             }
                             Err(_) => {
                                 login = None;
@@ -263,16 +273,15 @@ struct PendingLogin {
     next_poll: Instant,
 }
 
-fn begin_login(
-    api: &AccountApi,
-    events: &Sender<AccountEvent>,
-    login: &mut Option<PendingLogin>,
-) {
+fn begin_login(api: &AccountApi, events: &Sender<AccountEvent>, login: &mut Option<PendingLogin>) {
     publish(events, requesting_state());
     match api.request_login() {
         Ok(request) => {
             let Some(url) = telegram_login_url(&request.token) else {
-                publish(events, error_state("Кабинет вернул некорректную ссылку входа"));
+                publish(
+                    events,
+                    error_state("Кабинет вернул некорректную ссылку входа"),
+                );
                 return;
             };
             *login = Some(PendingLogin {
@@ -308,11 +317,7 @@ fn begin_email_login(
     }
 
     publish(events, email_login_state());
-    match api.email_login(
-        &credentials.email,
-        &credentials.password,
-        SystemTime::now(),
-    ) {
+    match api.email_login(&credentials.email, &credentials.password, SystemTime::now()) {
         Ok(current) => {
             if store.save(&current).is_err() {
                 publish(
@@ -321,13 +326,7 @@ fn begin_email_login(
                 );
                 return;
             }
-            *session = restore_loaded(
-                api,
-                store,
-                events,
-                current,
-                last_access_blocks_routes,
-            );
+            *session = restore_loaded(api, store, events, current, last_access_blocks_routes);
         }
         Err(EmailLoginError::InvalidCredentials) => publish(
             events,
@@ -433,7 +432,13 @@ fn restore_loaded(
                         current.user = user;
                         let _ = store.save(&current);
                         publish(events, authenticated_state(&current));
-                        publish_subscription(api, events, &current, last_access_blocks_routes, true);
+                        publish_subscription(
+                            api,
+                            events,
+                            &current,
+                            last_access_blocks_routes,
+                            true,
+                        );
                         Some(current)
                     }
                     _ => {
@@ -451,7 +456,10 @@ fn restore_loaded(
             }
         }
         Err(error) if error.is_offline() => {
-            publish(events, offline_state(Some(&current.user), "Нет связи с кабинетом"));
+            publish(
+                events,
+                offline_state(Some(&current.user), "Нет связи с кабинетом"),
+            );
             let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
             Some(current)
         }
@@ -473,8 +481,8 @@ fn publish_subscription(
     match api.subscription_access(&current.access_token) {
         Ok(Some(access)) => {
             let blocks_routes = access.blocks_routes();
-            let restored = last_access_blocks_routes.is_some_and(|previous| previous)
-                && !blocks_routes;
+            let restored =
+                last_access_blocks_routes.is_some_and(|previous| previous) && !blocks_routes;
             let first = last_access_blocks_routes.is_none();
             *last_access_blocks_routes = Some(blocks_routes);
             let _ = events.send(AccountEvent::SubscriptionAccess(access));
@@ -512,9 +520,7 @@ fn check_subscription(
     session_generation: &AtomicU64,
     expected_generation: u64,
 ) {
-    if !current.access_is_fresh(SystemTime::now())
-        && refresh_tokens(api, store, current).is_err()
-    {
+    if !current.access_is_fresh(SystemTime::now()) && refresh_tokens(api, store, current).is_err() {
         let _ = events.send(AccountEvent::SubscriptionAccessUnavailable);
         return;
     }
@@ -525,8 +531,8 @@ fn check_subscription(
     match result {
         Ok(Some(access)) => {
             let blocks_routes = access.blocks_routes();
-            let restored = last_access_blocks_routes.is_some_and(|previous| previous)
-                && !blocks_routes;
+            let restored =
+                last_access_blocks_routes.is_some_and(|previous| previous) && !blocks_routes;
             *last_access_blocks_routes = Some(blocks_routes);
             let _ = events.send(AccountEvent::SubscriptionAccess(access));
             if restored {
@@ -674,7 +680,7 @@ fn error_state(detail: &str) -> AccountViewState {
 
 #[cfg(test)]
 mod tests {
-    use super::{refreshing_state, valid_email, AccountUser};
+    use super::{AccountUser, refreshing_state, valid_email};
 
     #[test]
     fn email_validation_rejects_incomplete_or_unsafe_values() {

@@ -23,7 +23,7 @@ pub(crate) struct LoginRequest {
 
 pub(crate) enum LoginPoll {
     Pending,
-    Authenticated(StoredSession),
+    Authenticated(Box<StoredSession>),
     Expired,
     RateLimited(Duration),
 }
@@ -138,8 +138,8 @@ struct CabinetSubscription {
 
 impl AccountApi {
     pub(crate) fn new(base_url: &str) -> Result<Self, AccountApiError> {
-        let mut base_url = reqwest::Url::parse(base_url)
-            .map_err(|_| AccountApiError::InvalidConfiguration)?;
+        let mut base_url =
+            reqwest::Url::parse(base_url).map_err(|_| AccountApiError::InvalidConfiguration)?;
         if base_url.scheme() != "https" && !cfg!(test) {
             return Err(AccountApiError::InvalidConfiguration);
         }
@@ -189,13 +189,13 @@ impl AccountApi {
                     .json()
                     .map_err(|_| AccountApiError::InvalidResponse)?;
                 validate_tokens(&auth.access_token, &auth.refresh_token)?;
-                Ok(LoginPoll::Authenticated(StoredSession::new(
+                Ok(LoginPoll::Authenticated(Box::new(StoredSession::new(
                     auth.access_token,
                     auth.refresh_token,
                     Duration::from_secs(auth.expires_in),
                     auth.user,
                     now,
-                )))
+                ))))
             }
             StatusCode::ACCEPTED => Ok(LoginPoll::Pending),
             StatusCode::GONE => Ok(LoginPoll::Expired),
@@ -284,7 +284,10 @@ impl AccountApi {
             .send()
             .map_err(map_transport_error)?;
         let response: SubscriptionResponse = parse_success(response)?;
-        response.subscription.map(normalize_subscription_access).transpose()
+        response
+            .subscription
+            .map(normalize_subscription_access)
+            .transpose()
     }
 
     pub(crate) fn refresh(
@@ -462,18 +465,22 @@ mod tests {
     #[test]
     fn only_confirmed_expired_or_disabled_access_blocks_routes() {
         for status in ["active", "trial", "limited", "grace", "unknown"] {
-            assert!(!AccountSubscriptionAccess {
-                status: status.into(),
-                ..Default::default()
-            }
-            .blocks_routes());
+            assert!(
+                !AccountSubscriptionAccess {
+                    status: status.into(),
+                    ..Default::default()
+                }
+                .blocks_routes()
+            );
         }
         for status in ["expired", "disabled"] {
-            assert!(AccountSubscriptionAccess {
-                status: status.into(),
-                ..Default::default()
-            }
-            .blocks_routes());
+            assert!(
+                AccountSubscriptionAccess {
+                    status: status.into(),
+                    ..Default::default()
+                }
+                .blocks_routes()
+            );
         }
     }
 
@@ -514,5 +521,4 @@ mod tests {
         assert_eq!(grace.status, "active");
         assert!(!grace.blocks_routes());
     }
-
 }

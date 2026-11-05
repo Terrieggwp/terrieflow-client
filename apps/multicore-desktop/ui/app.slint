@@ -1572,6 +1572,7 @@ component RouteSearchRow inherits Rectangle {
         text: root.latency-text;
         color: root.latency-tone == "success" ? Theme.accent-green
             : root.latency-tone == "warning" ? Theme.warning
+            : root.latency-tone == "high-latency" ? Theme.high-latency
             : root.latency-tone == "danger" ? Theme.error : Theme.text-muted;
         font-size: Theme.type-metadata-size;
         font-weight: Theme.weight-semibold;
@@ -1956,7 +1957,7 @@ export component AppWindow inherits Window {
     private property <int> first-run-trigger-focus-serial: 0;
     private property <int> power-action-focus-serial: 0;
     in property <bool> update-available: false;
-    in property <string> update-status: "TerrieFlow 0.3.0";
+    in property <string> update-status: "TerrieFlow 1.1.17";
     in property <string> update-detail: @tr("Канал обновлений не настроен");
     in property <string> update-action-label;
     in property <bool> update-action-enabled: false;

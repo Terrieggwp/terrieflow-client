@@ -44,7 +44,7 @@ mod windows {
     use std::slice;
     use windows_sys::Win32::Foundation::{ERROR_NOT_FOUND, GetLastError};
     use windows_sys::Win32::Security::Credentials::{
-        CREDENTIALW, CRED_PERSIST_LOCAL_MACHINE, CRED_TYPE_GENERIC, CredDeleteW, CredFree,
+        CRED_PERSIST_LOCAL_MACHINE, CRED_TYPE_GENERIC, CREDENTIALW, CredDeleteW, CredFree,
         CredReadW, CredWriteW,
     };
     use zeroize::Zeroize;
@@ -73,7 +73,8 @@ mod windows {
             // SAFETY: CredReadW returned a valid CREDENTIALW allocation until CredFree is called.
             let credential = unsafe { &*raw };
             let size = credential.CredentialBlobSize as usize;
-            if size == 0 || size > MAX_CREDENTIAL_BLOB_BYTES || credential.CredentialBlob.is_null() {
+            if size == 0 || size > MAX_CREDENTIAL_BLOB_BYTES || credential.CredentialBlob.is_null()
+            {
                 // SAFETY: raw was allocated by CredReadW.
                 unsafe { CredFree(raw.cast()) };
                 return Err(SessionStoreError::InvalidData);
@@ -91,7 +92,8 @@ mod windows {
         }
 
         fn save(&self, session: &StoredSession) -> Result<(), SessionStoreError> {
-            let mut bytes = serde_json::to_vec(session).map_err(|_| SessionStoreError::InvalidData)?;
+            let mut bytes =
+                serde_json::to_vec(session).map_err(|_| SessionStoreError::InvalidData)?;
             if bytes.is_empty() || bytes.len() > MAX_CREDENTIAL_BLOB_BYTES {
                 bytes.zeroize();
                 return Err(SessionStoreError::TooLarge);

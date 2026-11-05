@@ -25,7 +25,7 @@ diagnostics are bounded, redacted, and currently retained in memory rather than
 written to a promised persistent log.
 
 Runtime data lives under `%LOCALAPPDATA%\MultiCore`; update downloads are under
-`%LOCALAPPDATA%\MultiCore\updates`. `TerrieFlow-Setup-arm64.exe` runs only on ARM64
+`%LOCALAPPDATA%\MultiCore\updates`. `TerrieFlow-Client-Setup-arm64.exe` runs only on ARM64
 Windows (an x64 or x86 PC refuses it) and installs this bundle beneath
 `%LOCALAPPDATA%\Programs\TerrieFlow\current` (without the service) or, with the
 service, beneath `Program Files\TerrieFlow`: the same folders and uninstall entry as
@@ -41,12 +41,12 @@ Build the updater asset for the official anonymous channel with:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\package-windows-release.ps1 `
   -Architecture arm64 `
   -DestinationPath dist\multicore-windows-arm64 `
-  -UpdateRepository fatyzzz/multicore `
-  -ReleaseAssetPath dist\release\multicore-windows-arm64.zip
+  -UpdateRepository Terrieggwp/terrieflow-client `
+  -ReleaseAssetPath dist\release\TerrieFlow-Client-windows-arm64.zip
 ```
 
 The updater accepts the latest public, non-draft `vX.Y.Z` GitHub Release, requires
-the asset name `multicore-windows-arm64.zip` (an ARM64 build never takes the x64
+the asset name `TerrieFlow-Client-windows-arm64.zip` (an ARM64 build never takes the x64
 bundle, which would only run emulated) and GitHub `sha256:` digest, then also
 verifies this package's internal checksums before replacing the full bundle.
 The public release-only repository contains binary releases so installed clients

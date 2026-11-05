@@ -111,7 +111,7 @@ pub(crate) fn download_installer() -> Result<PathBuf, String> {
     let directory = crate::updater::update_directory()?;
     std::fs::create_dir_all(&directory)
         .map_err(|_| tr!("Не удалось создать папку обновлений").to_owned())?;
-    let installer = directory.join(format!("TerrieFlow-Setup-{}.exe", release.version()));
+    let installer = directory.join(format!("TerrieFlow-Client-Setup-{}.exe", release.version()));
     if installer.exists() {
         std::fs::remove_file(&installer)
             .map_err(|_| tr!("Не удалось очистить прошлую загрузку").to_owned())?;

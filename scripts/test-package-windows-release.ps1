@@ -345,7 +345,7 @@ try {
     }
 
     $out1 = Join-Path $TestRoot 'package-one'; $out2 = Join-Path $TestRoot 'package-two'
-    $releaseAsset = Join-Path $TestRoot 'multicore-windows-x64.zip'
+    $releaseAsset = Join-Path $TestRoot 'TerrieFlow-Client-windows-x64.zip'
     Invoke-Package $out1 $BaseInput $manifest $Desktop $Daemon $CoreHost $releaseAsset | Out-Null
     Invoke-Package $out2 $BaseInput $manifest $Desktop $Daemon $CoreHost | Out-Null
     [string[]]$expected = @('TerrieFlow.exe', 'README.md', 'SHA256SUMS.txt', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
@@ -726,7 +726,7 @@ try {
         param($i, $m) Write-DashboardManifest $m $i $xrayHash $mihomoHash -IndexHtmlSha256 $dashboardIndexSha256 -ContentSecurityPolicy "default-src 'self'; script-src 'self' 'unsafe-inline'"
     }
 
-    # The x86 flavour: PE32 i386 executables, platform windows-x86, multicore-windows-x86.zip.
+    # The x86 flavour: PE32 i386 executables, platform windows-x86, TerrieFlow-Client-windows-x86.zip.
     $x86Root = Join-Path $TestRoot 'x86'; New-Item -ItemType Directory -Path $x86Root | Out-Null
     $x86Exes = @{}
     foreach ($name in @('desktop', 'daemon', 'core-host', 'updater', 'xray', 'mihomo')) {
@@ -740,9 +740,9 @@ try {
     $x86Manifest = Join-Path $x86Root 'versions.json'
     Write-TestManifest $x86Manifest $x86Input (Get-Sha256 $x86Exes['xray']) (Get-Sha256 $x86Exes['mihomo']) -Platform 'windows-x86'
     $x86Out = Join-Path $x86Root 'package'
-    $x86Asset = Join-Path $x86Root 'multicore-windows-x86.zip'
+    $x86Asset = Join-Path $x86Root 'TerrieFlow-Client-windows-x86.zip'
     Invoke-Package $x86Out $x86Input $x86Manifest $x86Exes['desktop'] $x86Exes['daemon'] $x86Exes['core-host'] $x86Asset 'x86' $x86Exes['updater'] | Out-Null
-    Assert-True (Test-Path -LiteralPath $x86Asset -PathType Leaf) 'x86 packaging must publish multicore-windows-x86.zip'
+    Assert-True (Test-Path -LiteralPath $x86Asset -PathType Leaf) 'x86 packaging must publish TerrieFlow-Client-windows-x86.zip'
     Assert-True ((Get-Sha256 (Join-Path $x86Out 'runtime\multicore-core-host.exe')) -eq (Get-Sha256 $x86Exes['core-host'])) 'x86 core host must be staged unmodified'
     Assert-True ((Get-Content -Raw -LiteralPath (Join-Path $x86Out 'README.md')).Contains('x86 (32-bit)')) 'x86 package must carry the x86 README'
 
@@ -750,7 +750,7 @@ try {
         # x86 packaging must refuse x64 executables, the x64 manifest and the x64 asset name.
         @{ Name = 'x86-with-x64-desktop'; Desktop = $Desktop; Manifest = $x86Manifest; Asset = $null },
         @{ Name = 'x86-with-x64-manifest'; Desktop = $x86Exes['desktop']; Manifest = $manifest; Asset = $null },
-        @{ Name = 'x86-with-x64-asset-name'; Desktop = $x86Exes['desktop']; Manifest = $x86Manifest; Asset = (Join-Path $x86Root 'wrong\multicore-windows-x64.zip') }
+        @{ Name = 'x86-with-x64-asset-name'; Desktop = $x86Exes['desktop']; Manifest = $x86Manifest; Asset = (Join-Path $x86Root 'wrong\TerrieFlow-Client-windows-x64.zip') }
     )
     foreach ($case in $x86Failures) {
         $destination = Join-Path $x86Root $case.Name
@@ -766,7 +766,7 @@ try {
     try { Invoke-Package (Join-Path $x86Root 'x64-with-x86-manifest') $x86Input $x86Manifest $Desktop $Daemon $CoreHost | Out-Null } catch { $failed = $true }
     Assert-True $failed 'x64 packaging must refuse the x86 manifest'
 
-    # The arm64 flavour: PE32+ ARM64 executables, platform windows-arm64, multicore-windows-arm64.zip.
+    # The arm64 flavour: PE32+ ARM64 executables, platform windows-arm64, TerrieFlow-Client-windows-arm64.zip.
     $arm64Root = Join-Path $TestRoot 'arm64'; New-Item -ItemType Directory -Path $arm64Root | Out-Null
     $arm64Exes = @{}
     foreach ($name in @('desktop', 'daemon', 'core-host', 'updater', 'xray', 'mihomo')) {
@@ -780,9 +780,9 @@ try {
     $arm64Manifest = Join-Path $arm64Root 'versions.json'
     Write-TestManifest $arm64Manifest $arm64Input (Get-Sha256 $arm64Exes['xray']) (Get-Sha256 $arm64Exes['mihomo']) -Platform 'windows-arm64'
     $arm64Out = Join-Path $arm64Root 'package'
-    $arm64Asset = Join-Path $arm64Root 'multicore-windows-arm64.zip'
+    $arm64Asset = Join-Path $arm64Root 'TerrieFlow-Client-windows-arm64.zip'
     Invoke-Package $arm64Out $arm64Input $arm64Manifest $arm64Exes['desktop'] $arm64Exes['daemon'] $arm64Exes['core-host'] $arm64Asset 'arm64' $arm64Exes['updater'] | Out-Null
-    Assert-True (Test-Path -LiteralPath $arm64Asset -PathType Leaf) 'arm64 packaging must publish multicore-windows-arm64.zip'
+    Assert-True (Test-Path -LiteralPath $arm64Asset -PathType Leaf) 'arm64 packaging must publish TerrieFlow-Client-windows-arm64.zip'
     Assert-True ((Get-Sha256 (Join-Path $arm64Out 'runtime\multicore-core-host.exe')) -eq (Get-Sha256 $arm64Exes['core-host'])) 'arm64 core host must be staged unmodified'
     Assert-True ((Get-Content -Raw -LiteralPath (Join-Path $arm64Out 'README.md')).Contains('Windows ARM64')) 'arm64 package must carry the arm64 README'
 
@@ -792,7 +792,7 @@ try {
         @{ Name = 'arm64-with-x64-desktop'; Desktop = $Desktop; Input = $arm64Input; Manifest = $arm64Manifest; Asset = $null },
         @{ Name = 'arm64-with-x86-cores'; Desktop = $arm64Exes['desktop']; Input = $x86Input; Manifest = $null; Asset = $null },
         @{ Name = 'arm64-with-x64-manifest'; Desktop = $arm64Exes['desktop']; Input = $arm64Input; Manifest = $manifest; Asset = $null },
-        @{ Name = 'arm64-with-x64-asset-name'; Desktop = $arm64Exes['desktop']; Input = $arm64Input; Manifest = $arm64Manifest; Asset = (Join-Path $arm64Root 'wrong\multicore-windows-x64.zip') }
+        @{ Name = 'arm64-with-x64-asset-name'; Desktop = $arm64Exes['desktop']; Input = $arm64Input; Manifest = $arm64Manifest; Asset = (Join-Path $arm64Root 'wrong\TerrieFlow-Client-windows-x64.zip') }
     )
     foreach ($case in $arm64Failures) {
         $destination = Join-Path $arm64Root $case.Name

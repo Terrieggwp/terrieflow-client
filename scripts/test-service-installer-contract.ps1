@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param()
 
 $ErrorActionPreference = 'Stop'
@@ -77,7 +77,7 @@ foreach ($token in @(
     # On Windows on ARM the 64-bit installer to recommend is the ARM64 one.
     'function Native64BitSetupName: String;',
     'if IsArm64 then',
-    "Result := 'TerrieFlow-Setup-arm64.exe'",
+    "Result := 'TerrieFlow-Client-Setup-arm64.exe'",
     '(Pos(''"platform": "windows-arm64"'', Manifest) > 0)',
     # x64 on Windows on ARM: recommend arm64 and never replace an ARM64 install (both share
     # Program Files and the 64-bit uninstall entry, so only the package manifest tells them apart).

@@ -9,6 +9,12 @@ __pycache__/
 /*.pfx
 /*.p12
 /*.cer
+/*.key
+/*.pem
+/*.crt
+/*.token
+/.secrets/
+/.credentials/
 state.md
 session-log.md
 *.log

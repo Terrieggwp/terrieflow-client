@@ -42,7 +42,7 @@ $MetadataRoot = Join-Path $RepositoryRoot "packaging\windows-$Architecture"
 $NoticesPath = Join-Path $RepositoryRoot 'packaging\windows-x64\THIRD_PARTY_NOTICES.md'
 $DefaultManifestPath = Join-Path $MetadataRoot 'versions.json'
 $Platform = "windows-$Architecture"
-$ReleaseAssetName = "multicore-$Platform.zip"
+$ReleaseAssetName = "TerrieFlow-Client-$Platform.zip"
 # x64 keeps the host target (no --target) exactly as before; x86 and arm64 cross-compile. (Not
 # named $RustTarget: PowerShell variables are case-insensitive and $rustTarget is the target
 # directory.)

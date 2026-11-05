@@ -442,10 +442,12 @@ export component RouteNodeRow inherits Rectangle {
         border-radius: 14px;
         background: root.trailing-tone == "success" ? #18dfa114
             : root.trailing-tone == "warning" ? #f3c34a14
+            : root.trailing-tone == "high-latency" ? Theme.high-latency-soft
             : root.trailing-tone == "danger" ? #f0526a14
             : #159fff0d;
         border-color: root.trailing-tone == "success" ? #18dfa180
             : root.trailing-tone == "warning" ? #f3c34a80
+            : root.trailing-tone == "high-latency" ? Theme.high-latency-border
             : root.trailing-tone == "danger" ? #f0526a80
             : Theme.line-soft;
         border-width: root.trailing-text == "" ? 0px : 1px;
@@ -458,6 +460,7 @@ export component RouteNodeRow inherits Rectangle {
                 ? Theme.accent-green
                 : root.trailing-tone == "warning"
                     ? Theme.warning
+                    : root.trailing-tone == "high-latency" ? Theme.high-latency
                     : root.trailing-tone == "danger" ? Theme.error : Theme.text-muted;
             font-family: Theme.font-family;
             font-size: Theme.type-metadata-size;
