@@ -447,6 +447,11 @@ mod tests {
         "Язык",
         // The update toast's download line without figures: "Loading…" would not say what.
         "Скачиваем…",
+        // Compact account controls: these are the shortest natural English labels.
+        "Войти",
+        "Входим…",
+        "ПАРОЛЬ",
+        "Пароль",
     ];
 
     fn chars(text: &str) -> usize {

@@ -26,9 +26,16 @@ foreach ($workflowName in @('ci.yml', 'release.yml')) {
         } else {
             $script = $run.Groups[1].Value
         }
+        # GitHub replaces expression placeholders before invoking PowerShell. Replace them
+        # with same-length placeholder text so the local parser sees the effective syntax
+        # while command offsets still map to the original workflow body.
+        $scriptForParsing = [regex]::Replace($script, '\$\{\{[^}\r\n]+\}\}', {
+            param($match)
+            'x' * $match.Length
+        })
         $tokens = $null
         $parseErrors = $null
-        $ast = [Management.Automation.Language.Parser]::ParseInput($script, [ref]$tokens, [ref]$parseErrors)
+        $ast = [Management.Automation.Language.Parser]::ParseInput($scriptForParsing, [ref]$tokens, [ref]$parseErrors)
         if ($parseErrors.Count -ne 0) { throw "FAIL: invalid PowerShell in ${workflowName}: $parseErrors" }
         $commands = $ast.FindAll({ param($node) $node -is [Management.Automation.Language.CommandAst] }, $true)
         foreach ($command in $commands) {

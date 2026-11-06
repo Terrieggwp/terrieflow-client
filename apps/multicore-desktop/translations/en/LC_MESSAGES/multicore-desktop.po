@@ -538,19 +538,19 @@ msgid "Истекла {}"
 msgstr "Expired {}"
 
 msgid "Откроется личный кабинет TerrieFlow"
-msgstr "Opens your TerrieFlow account in the browser"
+msgstr "Opens TerrieFlow account in browser"
 
 msgid "Последняя проверка: {}"
 msgstr "Last checked: {}"
 
 msgid "Статус ещё не проверялся"
-msgstr "Status has not been checked yet"
+msgstr "Status not checked"
 
 msgid "Новые данные временно недоступны. Показан последний подтверждённый статус"
 msgstr "New data is temporarily unavailable. Showing the last confirmed status"
 
 msgid "Статус проверен. Подписка пока не продлена"
-msgstr "Status checked. The subscription has not been renewed yet"
+msgstr "Status checked; not renewed"
 
 msgid "Подписка активна. Доступ восстановлен"
 msgstr "Subscription active. Access restored"
@@ -559,7 +559,7 @@ msgid "Подписка активна. Восстанавливаем конф�
 msgstr "Subscription active. Restoring configuration…"
 
 msgid "Подписка активна, но конфигурацию пока не удалось восстановить"
-msgstr "The subscription is active, but the configuration could not be restored yet"
+msgstr "Subscription active; configuration not restored"
 
 msgid "Подписка восстановлена. Доступ к серверам TerrieFlow снова открыт"
 msgstr "Subscription restored. Access to TerrieFlow servers is available again"
@@ -2176,7 +2176,7 @@ msgid "Войдите в аккаунт или добавьте VPN-подпис
 msgstr "Sign in or add a VPN subscription manually"
 
 msgid "ВХОД В TERRIEFLOW"
-msgstr "SIGN IN TO TERRIEFLOW"
+msgstr "TERRIEFLOW SIGN-IN"
 
 msgid "Войти снова через Telegram"
 msgstr "Sign in via Telegram again"
@@ -2188,7 +2188,7 @@ msgid "Войти в аккаунт TerrieFlow через Telegram"
 msgstr "Sign in to TerrieFlow via Telegram"
 
 msgid "Войти по почте и паролю"
-msgstr "Sign in with email and password"
+msgstr "Email and password"
 
 msgid "Открыть форму входа в TerrieFlow по электронной почте"
 msgstr "Open the TerrieFlow email sign-in form"
@@ -2197,22 +2197,22 @@ msgid "ИЛИ ПО ССЫЛКЕ"
 msgstr "OR WITH A LINK"
 
 msgid "Вход необязателен. Можно использовать сторонние VPN-подписки"
-msgstr "Signing in is optional. Third-party VPN subscriptions are supported."
+msgstr "Optional. Third-party VPN subscriptions are supported."
 
 msgid "Войти в TerrieFlow"
-msgstr "Sign in to TerrieFlow"
+msgstr "TerrieFlow sign-in"
 
 msgid "Выберите способ авторизации"
 msgstr "Choose a sign-in method"
 
 msgid "По почте и паролю"
-msgstr "With email and password"
+msgstr "Email and password"
 
 msgid "Вход в TerrieFlow"
 msgstr "TerrieFlow sign-in"
 
 msgid "Введите почту и пароль от кабинета"
-msgstr "Enter the email and password for your account"
+msgstr "Enter your email and password"
 
 msgid "Закрыть форму входа"
 msgstr "Close sign-in form"
@@ -2239,7 +2239,7 @@ msgid "Войти"
 msgstr "Sign in"
 
 msgid "Забыли пароль?"
-msgstr "Forgot password?"
+msgstr "Reset password"
 
 msgid "Зарегистрироваться"
 msgstr "Create account"

@@ -95,7 +95,7 @@ jobs:
         run: |
           $bash = 'C:\Program Files\Git\bin\bash.exe'
           if (-not (Test-Path -LiteralPath $bash -PathType Leaf)) { throw 'Git Bash is required' }
-          & $bash scripts/build-mihomo.sh --output dist/mihomo --cache "$env:RUNNER_TEMP/mihomo-cache" windows-amd64
+          & 'C:\Program Files\Git\bin\bash.exe' scripts/build-mihomo.sh --output dist/mihomo --cache "$env:RUNNER_TEMP/mihomo-cache" windows-amd64
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "MULTICORE_MIHOMO_BINARIES_DIR=$((Resolve-Path 'dist/mihomo').Path)" |
             Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
