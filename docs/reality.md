@@ -93,7 +93,8 @@ and `scripts/package-windows-release.ps1` carries it in its immutable pin tuple.
 | Windows arm64 | `windows/arm64` | `GOARM64=v8.0` | `mihomo-windows-arm64.exe` |
 | Linux deb/rpm/Arch/AppImage | `linux/amd64` | `GOAMD64=v1` (as `linux-amd64-compatible`) | `mihomo-linux-amd64` |
 
-Flags are MetaCubeX's release flags: `CGO_ENABLED=0 -tags with_gvisor -trimpath -ldflags
+Flags are MetaCubeX's release flags: `CGO_ENABLED=0 GOFLAGS="-mod=readonly -buildvcs=false"
+-tags with_gvisor -trimpath -ldflags
 "-extldflags --static -X constant.Version=v1.19.32 -X constant.BuildTime=<…> -w -s -buildid="`.
 Differences from the stock MetaCubeX binaries, all deliberate:
 
@@ -101,6 +102,8 @@ Differences from the stock MetaCubeX binaries, all deliberate:
   old macOS working). MULTICORE itself needs Windows 10+, so nothing is lost; `constant.Version`
   stays `v1.19.32`.
 - **BuildTime**: the upstream commit time (`Wed Sep 30 14:35:49 UTC 2026`), not the wall clock.
+- **VCS metadata**: disabled explicitly. Otherwise Go can discover an unrelated enclosing Git
+  checkout after the temporary source repository is removed and stamp that checkout into the EXE.
 - **CA bundle**: the one committed at the tag (MetaCubeX's CI replaces it with the runner's
   bundle at build time, which is not reproducible).
 
