@@ -4007,18 +4007,18 @@ fn format_subscription_end_date(value: &str) -> String {
     match language::current() {
         language::Lang::Ru => {
             let months = [
-                "января",
-                "февраля",
-                "марта",
-                "апреля",
-                "мая",
-                "июня",
-                "июля",
-                "августа",
-                "сентября",
-                "октября",
-                "ноября",
-                "декабря",
+                "января",   // i18n-ignore: selected only for the Russian date format
+                "февраля",  // i18n-ignore: selected only for the Russian date format
+                "марта",    // i18n-ignore: selected only for the Russian date format
+                "апреля",   // i18n-ignore: selected only for the Russian date format
+                "мая",      // i18n-ignore: selected only for the Russian date format
+                "июня",     // i18n-ignore: selected only for the Russian date format
+                "июля",     // i18n-ignore: selected only for the Russian date format
+                "августа",  // i18n-ignore: selected only for the Russian date format
+                "сентября", // i18n-ignore: selected only for the Russian date format
+                "октября",  // i18n-ignore: selected only for the Russian date format
+                "ноября",   // i18n-ignore: selected only for the Russian date format
+                "декабря",  // i18n-ignore: selected only for the Russian date format
             ];
             format!(
                 "{} {} {}",
@@ -8019,7 +8019,7 @@ mod window_tests {
             "profile-scroll := OverlayScroll",
             "Подписок пока нет",
             "Удалить подписку?",
-            "До 100 подписок · активна только одна",
+            "До 100 подписок · выбран только один локальный профиль · ссылки хранятся только на этом устройстве",
             "Изменить URL",
             "root.settings-section == \"updates\"",
             "profile-menu-keyboard-open",
@@ -9973,7 +9973,7 @@ mod window_tests {
         assert!(modal.contains("key-pressed(event)"));
         assert!(modal.contains("root.cancel-deep-link();"));
         assert!(ui.contains(
-            "enabled: !root.deep-link-confirm-open && !root.update-confirm-open && !root.log-range-open;"
+            "enabled: !root.deep-link-confirm-open && !root.update-confirm-open && !root.log-range-open && !root.account-email-login-open;"
         ));
 
         let rust = include_str!("main.rs");

@@ -6145,8 +6145,11 @@ mod tests {
         assert!(!app.contains("Local signal grid: structural guides"));
         // The connection module keeps a state-tinted hairline.
         assert!(app.contains("? 88px"));
-        assert!(app.contains(": root.shown-tone == \"success\" ? #3ccb7f59"));
-        assert!(include_str!("../ui/components.slint").contains("width: 76px;"));
+        assert!(app.contains(": root.shown-tone == \"success\" ? #18dfa159"));
+        assert!(
+            include_str!("../ui/components.slint")
+                .contains("width: root.trailing-text == \"\" ? 0px : 82px;")
+        );
         let route_row = include_str!("../ui/components.slint")
             .split("export component RouteNodeRow")
             .nth(1)
@@ -6159,9 +6162,9 @@ mod tests {
         // animating x (rather than just the pending inset) lags behind every
         // resize and freezes inside the Windows modal size loop.
         let trailing_label = route_row
-            .split("trailing-label := Text {")
+            .split("trailing-label := Rectangle {")
             .nth(1)
-            .and_then(|rest| rest.split("\n    }").next())
+            .and_then(|rest| rest.split("\n    if root.pending").next())
             .expect("trailing label source");
         assert!(!trailing_label.contains("animate x"));
         assert!(route_row.contains("animate trailing-inset {"));
@@ -9804,8 +9807,8 @@ mod tests {
         assert!(row.contains(
             "opacity: Math.max(0, Math.min(1, (settings-profile-row.height - 56px) / 52px));"
         ));
-        assert!(row.contains("background: profile.active ? Theme.elevated : transparent;"));
-        assert!(row.contains("text: @tr(\"АКТИВНА\");"));
+        assert!(row.contains("background: profile.active ? @linear-gradient(90deg, #123d61b8 0%, #0d2a44a8 58%, #0a2238a0 100%) : transparent;"));
+        assert!(row.contains("text: @tr(\"ВЫБРАНА\");"));
         assert!(row.contains("if settings-profile-row.editing: HorizontalLayout {"));
         assert!(row.contains("if settings-profile-row.confirming: HorizontalLayout {"));
         assert!(row.contains("label: @tr(\"Удалить\"); tone: \"danger\";"));
@@ -9860,9 +9863,10 @@ mod tests {
         }
 
         for required in [
-            "text: @tr(\"Добавьте подписку\");",
-            "text: @tr(\"Скопируйте ссылку у провайдера — мы подхватим её из буфера обмена\");",
-            "text: @tr(\"Ссылка хранится только на этом устройстве\");",
+            "text: root.account-authenticated ? @tr(\"Добавьте VPN-подписку\") : @tr(\"Добро пожаловать в TerrieFlow\");",
+            "? @tr(\"Аккаунт подключён. VPN-подписка пока не добавлена\")",
+            ": @tr(\"Войдите в аккаунт или добавьте VPN-подписку вручную\");",
+            "? @tr(\"Ссылка хранится только на этом устройстве\")",
             "onboarding-copy := VerticalLayout",
             "first-run-actions := VerticalLayout",
             "label: root.import-pending ? @tr(\"Добавляем…\") : @tr(\"Вставить из буфера\");",
@@ -10206,8 +10210,8 @@ mod tests {
         // Never squeezed below the icon and full label (the track scrolls instead).
         assert!(quiet_chip.contains("min-width: root.natural-sizing ? root.natural-width : 96px;"));
         assert!(!quiet_chip.contains("max-width: 164px;"));
-        assert!(quiet_chip.contains("border-radius: 8px;"));
-        assert!(quiet_chip.contains("background: root.selected ? Theme.elevated"));
+        assert!(quiet_chip.contains("border-radius: 10px;"));
+        assert!(quiet_chip.contains("background: root.selected ? Theme.active-surface"));
         assert!(quiet_chip.contains("chip-cursor-wash := Rectangle"));
         let route_row = components
             .split("export component RouteNodeRow")
@@ -10668,21 +10672,21 @@ mod tests {
         let build = include_str!("../build.rs");
 
         for token in [
-            "void: #0d0f12;",
-            "canvas: #0d0f12;",
-            "surface: #15181d;",
-            "elevated: #1c2026;",
-            "line: #2a3038;",
-            "accent-blue: #4c9dff;",
-            "focus: #83bdff;",
+            "void: #030914;",
+            "canvas: #06101f;",
+            "surface: #08182b;",
+            "elevated: #0c2037;",
+            "line: #1b3c59;",
+            "accent-blue: #159fff;",
+            "focus: #6ce4ff;",
             "type-metadata-size: 13px;",
             "type-label-size: 15px;",
             "type-value-size: 16px;",
             "type-title-size: 22px;",
             "radius-small: 8px;",
-            "radius-medium: 8px;",
-            "radius-large: 12px;",
-            "radius-panel: 12px;",
+            "radius-medium: 12px;",
+            "radius-large: 16px;",
+            "radius-panel: 18px;",
             "interactive-min: 44px;",
             "focus-width: 2px;",
         ] {

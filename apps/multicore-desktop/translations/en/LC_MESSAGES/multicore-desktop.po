@@ -2147,3 +2147,102 @@ msgstr "Core and system component health"
 
 msgid "Подключение, приложение и обновления"
 msgstr "Connection, application, and updates"
+
+msgid "Скрыть пароль"
+msgstr "Hide password"
+
+msgid "Показать пароль"
+msgstr "Show password"
+
+msgid "Войти в аккаунт"
+msgstr "Sign in"
+
+msgid "Через Telegram"
+msgstr "Via Telegram"
+
+msgid "Открыть меню аккаунта"
+msgstr "Open account menu"
+
+msgid "Добавьте VPN-подписку"
+msgstr "Add a VPN subscription"
+
+msgid "Добро пожаловать в TerrieFlow"
+msgstr "Welcome to TerrieFlow"
+
+msgid "Аккаунт подключён. VPN-подписка пока не добавлена"
+msgstr "Account connected. No VPN subscription added yet"
+
+msgid "Войдите в аккаунт или добавьте VPN-подписку вручную"
+msgstr "Sign in or add a VPN subscription manually"
+
+msgid "ВХОД В TERRIEFLOW"
+msgstr "SIGN IN TO TERRIEFLOW"
+
+msgid "Войти снова через Telegram"
+msgstr "Sign in via Telegram again"
+
+msgid "Войти через Telegram"
+msgstr "Sign in via Telegram"
+
+msgid "Войти в аккаунт TerrieFlow через Telegram"
+msgstr "Sign in to TerrieFlow via Telegram"
+
+msgid "Войти по почте и паролю"
+msgstr "Sign in with email and password"
+
+msgid "Открыть форму входа в TerrieFlow по электронной почте"
+msgstr "Open the TerrieFlow email sign-in form"
+
+msgid "ИЛИ ПО ССЫЛКЕ"
+msgstr "OR WITH A LINK"
+
+msgid "Вход необязателен. Можно использовать сторонние VPN-подписки"
+msgstr "Signing in is optional. Third-party VPN subscriptions are supported."
+
+msgid "Войти в TerrieFlow"
+msgstr "Sign in to TerrieFlow"
+
+msgid "Выберите способ авторизации"
+msgstr "Choose a sign-in method"
+
+msgid "По почте и паролю"
+msgstr "With email and password"
+
+msgid "Вход в TerrieFlow"
+msgstr "TerrieFlow sign-in"
+
+msgid "Введите почту и пароль от кабинета"
+msgstr "Enter the email and password for your account"
+
+msgid "Закрыть форму входа"
+msgstr "Close sign-in form"
+
+msgid "ЭЛЕКТРОННАЯ ПОЧТА"
+msgstr "EMAIL"
+
+msgid "Электронная почта"
+msgstr "Email"
+
+msgid "ПАРОЛЬ"
+msgstr "PASSWORD"
+
+msgid "Введите пароль"
+msgstr "Enter password"
+
+msgid "Пароль"
+msgstr "Password"
+
+msgid "Входим…"
+msgstr "Signing in…"
+
+msgid "Войти"
+msgstr "Sign in"
+
+msgid "Забыли пароль?"
+msgstr "Forgot password?"
+
+msgid "Зарегистрироваться"
+msgstr "Create account"
+
+msgid "Вернуться к входу через Telegram"
+msgstr "Return to Telegram sign-in"

@@ -3229,9 +3229,9 @@ fn frames_over(component: &impl ComponentHandle, ms: u64) -> u32 {
     frames
 }
 
-/// A main window at rest draws nothing: no timer or animation keeps asking for frames. The
-/// ambient waves («Живой фон») step four times a second, only on the home page, and only
-/// while the window has focus and motion is allowed.
+/// A main window at rest draws nothing unless the live ambient background is enabled. The
+/// waves then follow the display-rate animation loop on every main page, but stop while the
+/// window is inactive or reduced motion is requested.
 #[test]
 fn an_idle_window_draws_nothing_and_the_ambient_waves_stay_cheap() {
     let _ = slint::platform::set_platform(Box::new(PreviewPlatform));
@@ -3264,11 +3264,15 @@ fn an_idle_window_draws_nothing_and_the_ambient_waves_stay_cheap() {
         0,
         "home, reduced motion"
     );
-    assert_eq!(at_rest(true, true, false, "events"), 0, "status page");
+    let status_waves = at_rest(true, true, false, "events");
+    assert!(
+        (240..=260).contains(&status_waves),
+        "the status background stays fluid: {status_waves} frames in 5 s"
+    );
     let waves = at_rest(true, true, false, "routes");
     assert!(
-        (15..=21).contains(&waves),
-        "the waves step 4 times a second: {waves} frames in 5 s"
+        (240..=260).contains(&waves),
+        "the home background stays fluid: {waves} frames in 5 s"
     );
 
     let popup = new_popup();
