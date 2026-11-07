@@ -23,11 +23,15 @@ concurrency:
 
 jobs:
   prepare:
-    runs-on: [self-hosted, Windows, X64, windowsbuild]
+    runs-on: windows-2022
     timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: read
     env:
       CARGO_TERM_COLOR: always
       RUSTUP_TOOLCHAIN: 1.98.1-x86_64-pc-windows-msvc
+      CARGO_BUILD_JOBS: 1
       CARGO_PROFILE_DEV_DEBUG: 0
       CARGO_PROFILE_TEST_DEBUG: 0
       CARGO_INCREMENTAL: 0
@@ -44,11 +48,22 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.tag }}
+          fetch-depth: 0
           persist-credentials: false
 
-      - name: Verify tag and package version
+      - name: Verify tag, main ancestry, and package version
         shell: pwsh
         run: |
+          $tagCommit = (git rev-parse "refs/tags/${{ inputs.tag }}^{commit}").Trim()
+          if ($LASTEXITCODE -ne 0 -or $tagCommit -cnotmatch '^[0-9a-f]{40}$') {
+            throw 'Requested release tag does not resolve to one commit'
+          }
+          $checkedOutCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $checkedOutCommit -cne $tagCommit) {
+            throw 'Checked out commit does not match the requested release tag'
+          }
+          git merge-base --is-ancestor $tagCommit origin/main
+          if ($LASTEXITCODE -ne 0) { throw 'Release tag must point to a commit contained in main' }
           $manifest = Get-Content -Raw apps/multicore-desktop/Cargo.toml
           $match = [regex]::Match($manifest, '(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"\s*$')
           if (-not $match.Success) { throw 'Desktop package version was not found' }
@@ -100,20 +115,20 @@ jobs:
           "MULTICORE_MIHOMO_BINARIES_DIR=$((Resolve-Path 'dist/mihomo').Path)" |
             Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Verify provisioned Skia release archive
+      - name: Verify repository-pinned Skia release archive
         shell: pwsh
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:MULTICORE_SKIA_BINARIES_DIR)) {
-            throw 'Release runner must define MULTICORE_SKIA_BINARIES_DIR for the reviewed Skia archive'
-          }
           $manifest = Get-Content -Raw packaging/windows-x64/versions.json | ConvertFrom-Json
           $pin = $manifest.build.skiaBinaries
-          $archive = Join-Path $env:MULTICORE_SKIA_BINARIES_DIR "skia-binaries-$($pin.key).tar.gz"
+          $directory = (Resolve-Path 'build-support/release-dependencies/skia').Path
+          $archive = Join-Path $directory "skia-binaries-$($pin.key).tar.gz"
           if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) {
             throw "Pinned Skia archive is unavailable: $archive"
           }
           $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($actual -cne [string]$pin.sha256) { throw 'Provisioned Skia archive checksum mismatch' }
+          "MULTICORE_SKIA_BINARIES_DIR=$directory" |
+            Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build and verify Windows x64 portable bundle
         shell: pwsh
@@ -203,6 +218,21 @@ jobs:
             'dist/release/mihomo-source.zip'
           ) | Set-Content -LiteralPath dist/release/RELEASE-ASSETS.txt -Encoding utf8
 
+          $candidateAssets = @(
+            'dist/release/TerrieFlow-Client-Setup-x64.exe',
+            'dist/release/TerrieFlow-Client-windows-x64.zip',
+            'dist/release/RELEASE-SHA256SUMS.txt',
+            'dist/release/RELEASE_NOTES.md',
+            'dist/release/RELEASE-ASSETS.txt',
+            'dist/release/Xray-core-source.zip',
+            'dist/release/mihomo-source.zip'
+          )
+          $candidateChecksums = foreach ($asset in $candidateAssets) {
+            $hash = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash *$([IO.Path]::GetFileName($asset))"
+          }
+          $candidateChecksums | Set-Content -LiteralPath dist/release/CANDIDATE-SHA256SUMS.txt -Encoding ascii
+
       - name: Upload verified release candidate
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -215,13 +245,14 @@ jobs:
             dist/release/RELEASE-ASSETS.txt
             dist/release/Xray-core-source.zip
             dist/release/mihomo-source.zip
+            dist/release/CANDIDATE-SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 7
 
   publish:
     if: ${{ inputs.publish }}
     needs: prepare
-    runs-on: [self-hosted, Windows, X64, windowsbuild]
+    runs-on: windows-2022
     timeout-minutes: 45
     environment: terrieflow-release
     permissions:
@@ -240,6 +271,43 @@ jobs:
         with:
           name: terrieflow-windows-x64-${{ inputs.tag }}
           path: dist/release
+
+      - name: Verify release candidate handoff
+        shell: pwsh
+        run: |
+          $directory = (Resolve-Path 'dist/release').Path
+          $manifestPath = Join-Path $directory 'CANDIDATE-SHA256SUMS.txt'
+          if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+            throw 'Release candidate checksum manifest is missing'
+          }
+          $expectedNames = @(
+            'TerrieFlow-Client-Setup-x64.exe',
+            'TerrieFlow-Client-windows-x64.zip',
+            'RELEASE-SHA256SUMS.txt',
+            'RELEASE_NOTES.md',
+            'RELEASE-ASSETS.txt',
+            'Xray-core-source.zip',
+            'mihomo-source.zip'
+          )
+          $seen = @{}
+          foreach ($line in Get-Content -LiteralPath $manifestPath) {
+            if ($line -cnotmatch '^([0-9a-f]{64}) \*([^\\/]+)$') {
+              throw "Invalid candidate checksum line: $line"
+            }
+            $expectedHash = $Matches[1]
+            $name = $Matches[2]
+            if ($name -notin $expectedNames -or $seen.ContainsKey($name)) {
+              throw "Unexpected or duplicate candidate asset: $name"
+            }
+            $path = Join-Path $directory $name
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "Candidate asset is missing: $name"
+            }
+            $actualHash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actualHash -cne $expectedHash) { throw "Candidate checksum mismatch: $name" }
+            $seen[$name] = $true
+          }
+          if ($seen.Count -ne $expectedNames.Count) { throw 'Candidate checksum manifest is incomplete' }
 
       - name: Publish release to official update channel
         shell: pwsh

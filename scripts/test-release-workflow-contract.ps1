@@ -22,7 +22,8 @@ foreach ($token in @(
     "^v[0-9]+\.[0-9]+\.[0-9]+$",
     'permissions:',
     'contents: read',
-    'runs-on: [self-hosted, Windows, X64, windowsbuild]',
+    'runs-on: windows-2022',
+    'CARGO_BUILD_JOBS: 1',
     'ref: ${{ inputs.tag }}',
     '-UpdateRepository Terrieggwp/terrieflow-client `',
     'TerrieFlow-Client-windows-x64.zip',
@@ -32,8 +33,12 @@ foreach ($token in @(
     'Xray-core-source.zip',
     'mihomo-source.zip',
     'smoke-test-windows-installed-update.ps1',
-    'Release runner must define MULTICORE_SKIA_BINARIES_DIR',
+    'build-support/release-dependencies/skia',
     'Provisioned Skia archive checksum mismatch',
+    'git merge-base --is-ancestor $tagCommit origin/main',
+    'Release tag must point to a commit contained in main',
+    'CANDIDATE-SHA256SUMS.txt',
+    'Verify release candidate handoff',
     'environment: terrieflow-release',
     'if: ${{ inputs.publish }}',
     'contents: write',
@@ -46,6 +51,7 @@ foreach ($token in @(
 Assert-True (-not ($workflow -match '(?m)^\s*push:\s*$')) 'release must never run from a push or tag automatically'
 Assert-True (-not $workflow.Contains("- 'v*'")) 'release must not have a wildcard tag trigger'
 Assert-True (-not $workflow.Contains('pull_request_target')) 'release must not run in pull_request_target'
+Assert-True (-not $workflow.Contains('runs-on: [self-hosted')) 'release must not use a persistent self-hosted runner'
 Assert-True (-not $workflow.Contains('fatyzzz/multicore')) 'official release must not target the upstream repository'
 Assert-True (-not $workflow.Contains('multicore-releases')) 'official release must not target a legacy mirror'
 Assert-True (-not $workflow.Contains('windows-x86.zip')) 'first beta must not publish Windows x86'
@@ -55,6 +61,15 @@ Assert-True (-not $workflow.Contains('GH_TOKEN: ${{ secrets.')) 'release must no
 Assert-True (-not $workflow.Contains('MULTICORE_DAEMON_TOKEN')) 'release must not embed runtime secrets'
 Assert-True (-not $workflow.Contains('First supported beta platform: Windows 10/11 x64.')) `
     'release workflow must use reviewed versioned notes instead of an inline placeholder'
+
+$windowsManifest = Get-Content -Raw -LiteralPath (Join-Path $root 'packaging\windows-x64\versions.json') | ConvertFrom-Json
+$skiaPin = $windowsManifest.build.skiaBinaries
+$skiaArchive = Join-Path $root "build-support\release-dependencies\skia\skia-binaries-$($skiaPin.key).tar.gz"
+Assert-True (Test-Path -LiteralPath $skiaArchive -PathType Leaf) `
+    'the durable repository-pinned Windows x64 Skia archive must exist'
+$skiaHash = (Get-FileHash -LiteralPath $skiaArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+Assert-True ($skiaHash -ceq [string]$skiaPin.sha256) `
+    'the durable repository-pinned Windows x64 Skia archive must match the manifest SHA-256'
 
 $publishIndex = $workflow.IndexOf('Publish release to official update channel', [StringComparison]::Ordinal)
 $channelIndex = $workflow.IndexOf('Point release.txt at the published version', [StringComparison]::Ordinal)
@@ -79,6 +94,11 @@ Assert-True ($publisher.Contains('application/json; charset=utf-8')) `
     'release API requests must declare UTF-8 JSON'
 
 Assert-True ($ci.Contains("- 'codex/**'")) 'CI must run for Codex development branches'
+Assert-True ($ci.Contains('runs-on: windows-2022')) 'Windows CI must use the pinned GitHub-hosted image'
+Assert-True ($ci.Contains('runs-on: ubuntu-24.04')) 'Linux CI must use the pinned GitHub-hosted image'
+Assert-True ($ci.Contains('CARGO_BUILD_JOBS: 1')) 'hosted CI must limit Cargo parallelism'
+Assert-True ($ci.Contains('cancel-in-progress: true')) 'CI must cancel obsolete branch and pull-request runs'
+Assert-True (-not $ci.Contains('Recover host workspace ownership')) 'hosted CI must not mutate runner workspace ownership'
 Assert-True (-not ([regex]::IsMatch($ci, '(?m)^  linux-packages:\s*$'))) `
     'normal CI must not create unsupported Linux release artifacts'
 Assert-True ($ci.Contains('test-release-workflow-contract.ps1')) 'normal CI must verify the release contract'
