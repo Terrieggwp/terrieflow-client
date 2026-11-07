@@ -670,10 +670,12 @@ fn extract_verified_bundle_inner(
 
 const REQUIRED_BUNDLE_FILES: &[&str] = &[
     "TerrieFlow.exe",
+    "LICENSE.txt",
     "README.md",
     "THIRD_PARTY_NOTICES.md",
     "cores/mihomo.exe",
     "cores/xray.exe",
+    "licenses/Skia-BSD-3-Clause.txt",
     "licenses/Xray-core-MPL-2.0.txt",
     "licenses/mihomo-GPL-3.0.txt",
     "runtime/multicore-core-host.exe",

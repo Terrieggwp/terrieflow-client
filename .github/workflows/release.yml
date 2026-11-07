@@ -100,6 +100,21 @@ jobs:
           "MULTICORE_MIHOMO_BINARIES_DIR=$((Resolve-Path 'dist/mihomo').Path)" |
             Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Verify provisioned Skia release archive
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:MULTICORE_SKIA_BINARIES_DIR)) {
+            throw 'Release runner must define MULTICORE_SKIA_BINARIES_DIR for the reviewed Skia archive'
+          }
+          $manifest = Get-Content -Raw packaging/windows-x64/versions.json | ConvertFrom-Json
+          $pin = $manifest.build.skiaBinaries
+          $archive = Join-Path $env:MULTICORE_SKIA_BINARIES_DIR "skia-binaries-$($pin.key).tar.gz"
+          if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) {
+            throw "Pinned Skia archive is unavailable: $archive"
+          }
+          $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -cne [string]$pin.sha256) { throw 'Provisioned Skia archive checksum mismatch' }
+
       - name: Build and verify Windows x64 portable bundle
         shell: pwsh
         run: |
@@ -175,14 +190,11 @@ jobs:
             "$hash *$([IO.Path]::GetFileName($asset))"
           }
           $checksums | Set-Content -LiteralPath dist/release/RELEASE-SHA256SUMS.txt -Encoding ascii
-          @(
-            "# TerrieFlow Client $env:APP_VERSION",
-            '',
-            'First supported beta platform: Windows 10/11 x64.',
-            'The executable is currently unsigned and Windows SmartScreen may display a warning.',
-            '',
-            'Verify downloads with RELEASE-SHA256SUMS.txt.'
-          ) | Set-Content -LiteralPath dist/release/RELEASE_NOTES.md -Encoding utf8
+          $releaseNotes = "docs/release-notes-$env:APP_VERSION.md"
+          if (-not (Test-Path -LiteralPath $releaseNotes -PathType Leaf)) {
+            throw "Missing release notes: $releaseNotes"
+          }
+          Copy-Item -LiteralPath $releaseNotes -Destination dist/release/RELEASE_NOTES.md
           @(
             'dist/release/TerrieFlow-Client-Setup-x64.exe',
             'dist/release/TerrieFlow-Client-windows-x64.zip',

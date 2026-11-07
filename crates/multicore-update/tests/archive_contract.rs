@@ -44,10 +44,12 @@ fn fake_pe() -> Vec<u8> {
 fn required_files_for(arch: WindowsArch) -> BTreeMap<String, Vec<u8>> {
     BTreeMap::from([
         ("TerrieFlow.exe".into(), fake_pe_for(arch)),
+        ("LICENSE.txt".into(), b"gpl".to_vec()),
         ("README.md".into(), b"readme".to_vec()),
         ("THIRD_PARTY_NOTICES.md".into(), b"notices".to_vec()),
         ("cores/mihomo.exe".into(), fake_pe_for(arch)),
         ("cores/xray.exe".into(), fake_pe_for(arch)),
+        ("licenses/Skia-BSD-3-Clause.txt".into(), b"bsd".to_vec()),
         ("licenses/Xray-core-MPL-2.0.txt".into(), b"mpl".to_vec()),
         ("licenses/mihomo-GPL-3.0.txt".into(), b"gpl".to_vec()),
         ("runtime/multicore-core-host.exe".into(), fake_pe_for(arch)),
@@ -116,7 +118,7 @@ fn valid_bundle_extracts_and_verifies_every_file() {
 
     let destination = temp.path().join("out");
     let inventory = extract_verified_bundle(&archive, &destination).unwrap();
-    assert_eq!(inventory.files(), 12);
+    assert_eq!(inventory.files(), 14);
     assert_eq!(
         std::fs::read(destination.join("TerrieFlow.exe")).unwrap(),
         fake_pe()
@@ -139,7 +141,7 @@ fn each_flavour_accepts_only_its_own_executables() {
         let destination = temp.path().join("out");
         let result = extract_verified_bundle_for_arch(&archive, &destination, client_arch);
         if bundle_arch == client_arch {
-            assert_eq!(result.unwrap().files(), 12);
+            assert_eq!(result.unwrap().files(), 14);
         } else {
             let error = result.unwrap_err().to_string();
             assert!(

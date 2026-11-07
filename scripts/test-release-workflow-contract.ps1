@@ -28,9 +28,12 @@ foreach ($token in @(
     'TerrieFlow-Client-windows-x64.zip',
     'TerrieFlow-Client-Setup-x64.exe',
     'RELEASE-SHA256SUMS.txt',
+    'docs/release-notes-$env:APP_VERSION.md',
     'Xray-core-source.zip',
     'mihomo-source.zip',
     'smoke-test-windows-installed-update.ps1',
+    'Release runner must define MULTICORE_SKIA_BINARIES_DIR',
+    'Provisioned Skia archive checksum mismatch',
     'environment: terrieflow-release',
     'if: ${{ inputs.publish }}',
     'contents: write',
@@ -50,6 +53,8 @@ Assert-True (-not $workflow.Contains('windows-arm64.zip')) 'first beta must not 
 Assert-True (-not $workflow.Contains('AppImage')) 'first beta must not publish Linux packages'
 Assert-True (-not $workflow.Contains('GH_TOKEN: ${{ secrets.')) 'release must not require a personal access token'
 Assert-True (-not $workflow.Contains('MULTICORE_DAEMON_TOKEN')) 'release must not embed runtime secrets'
+Assert-True (-not $workflow.Contains('First supported beta platform: Windows 10/11 x64.')) `
+    'release workflow must use reviewed versioned notes instead of an inline placeholder'
 
 $publishIndex = $workflow.IndexOf('Publish release to official update channel', [StringComparison]::Ordinal)
 $channelIndex = $workflow.IndexOf('Point release.txt at the published version', [StringComparison]::Ordinal)

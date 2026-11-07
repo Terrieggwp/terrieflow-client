@@ -31,8 +31,13 @@ of this release.
 - `release.txt` remains at `1.1.15` until the 1.1.17 release is actually
   published, so unreleased clients do not advertise a nonexistent update.
 
-## Before publication
+## Verification and downloads
 
-Publication still requires a verified Windows x64 release bundle, installer and
-updater smoke test, successful GitHub checks, and the owner's separate approval
-to merge and publish the release.
+- The release candidate was installed and exercised on a second physical
+  Windows PC that had no previous MultiCore or TerrieFlow installation.
+- Installation, both sign-in methods, automatic subscription import, VPN route
+  modes, TUN, Quick Panel, tray integration, restart persistence and autostart
+  were verified there.
+- The executable is currently unsigned, so Windows SmartScreen may display a
+  warning. Download only from the official TerrieFlow repository.
+- Verify every downloaded asset with `RELEASE-SHA256SUMS.txt`.

@@ -1,4 +1,4 @@
-# TerrieFlow Client Windows x64 portable preview
+# TerrieFlow Client Windows x64 portable package
 
 This file is copied into packages by `scripts/package-windows-release.ps1`.
 Keep the generated directory intact and start `TerrieFlow.exe`.
@@ -9,8 +9,9 @@ The package contains exactly:
 - `runtime/multicore-daemon.exe`, `multicore-updater.exe`, and
   `multicore-core-host.exe`;
 - pinned `cores/xray.exe` and `cores/mihomo.exe`;
-- `versions.json`, `THIRD_PARTY_NOTICES.md`, two upstream core license texts,
-  this README, and `SHA256SUMS.txt`.
+- `versions.json`, the TerrieFlow Client GPL-3.0 license, third-party notices,
+  the Xray-core, Mihomo and Skia license texts, this README, and
+  `SHA256SUMS.txt`.
 
 `SHA256SUMS.txt` covers every package file except itself. The packaging script
 pins official upstream URLs and archive/executable hashes, validates PE32+ AMD64
@@ -41,11 +42,10 @@ verifies this package's internal checksums before replacing the full bundle.
 The public release-only repository contains binary releases so installed clients
 can update anonymously without an embedded GitHub credential.
 
-This preview is not Authenticode-signed, and its elevated binaries are stored in
+This beta is not Authenticode-signed, and its elevated binaries are stored in
 a user-writable directory. Public releases must stay clearly labeled as unsigned
 previews until the production signing boundary is complete.
 Public distribution also requires protected signing/release procedures,
-immutable corresponding-source artifacts for the bundled cores, fulfillment of
-MPL-2.0/GPL-3.0 obligations, and a complete Rust dependency/license inventory.
-`THIRD_PARTY_NOTICES.md` documents the included core artifacts and selected Rust
-libraries but explicitly does not claim that the Rust inventory is complete.
+immutable corresponding-source artifacts for the bundled cores, and fulfillment
+of MPL-2.0/GPL-3.0 obligations. `THIRD_PARTY_NOTICES.md` documents the included
+core artifacts, Skia and selected Rust libraries.

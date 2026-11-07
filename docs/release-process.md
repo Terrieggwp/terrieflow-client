@@ -5,6 +5,9 @@
 - Releases are numeric: `vMAJOR.MINOR.PATCH`.
 - The official update repository is exactly `Terrieggwp/terrieflow-client`.
 - The first beta publishes Windows x64 only.
+- The Windows release runner must expose the reviewed Skia archive directory as
+  `MULTICORE_SKIA_BINARIES_DIR`. The workflow verifies the filename and SHA-256
+  from `packaging/windows-x64/versions.json` before building.
 - Do not change `release.txt` before the complete GitHub Release exists.
 - Do not publish or change repository visibility without explicit owner approval.
 - The `terrieflow-release` GitHub environment should require a human reviewer.

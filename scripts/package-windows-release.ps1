@@ -40,6 +40,8 @@ $RepositoryRoot = Split-Path -Parent $PSScriptRoot
 $MetadataRoot = Join-Path $RepositoryRoot "packaging\windows-$Architecture"
 # All flavours ship the same notices (identical core versions and licenses).
 $NoticesPath = Join-Path $RepositoryRoot 'packaging\windows-x64\THIRD_PARTY_NOTICES.md'
+$ProjectLicensePath = Join-Path $RepositoryRoot 'LICENSE'
+$SkiaLicensePath = Join-Path $RepositoryRoot 'packaging\windows-x64\licenses\Skia-BSD-3-Clause.txt'
 $DefaultManifestPath = Join-Path $MetadataRoot 'versions.json'
 $Platform = "windows-$Architecture"
 $ReleaseAssetName = "TerrieFlow-Client-$Platform.zip"
@@ -957,7 +959,9 @@ try {
     }
 
     Copy-CreateNew (Join-Path $MetadataRoot 'README.md') (Join-Path $stage 'README.md')
+    Copy-CreateNew $ProjectLicensePath (Join-Path $stage 'LICENSE.txt')
     Copy-CreateNew $NoticesPath (Join-Path $stage 'THIRD_PARTY_NOTICES.md')
+    Copy-CreateNew $SkiaLicensePath (Join-Path $stage 'licenses\Skia-BSD-3-Clause.txt')
 
     $inputs = Get-FullPath (Join-Path $stage '.inputs')
     if ((Split-Path -Parent $inputs) -cne (Get-FullPath $stage) -or (Split-Path -Leaf $inputs) -cne '.inputs') { throw 'Refusing unsafe staging-input cleanup' }
@@ -986,7 +990,7 @@ try {
     [Array]::Sort($expectedDirectories, [StringComparer]::Ordinal)
     if (($directories -join '|') -cne ($expectedDirectories -join '|')) { throw "Staged directory inventory is not exact: $($directories -join ', ')" }
     [string[]]$files = $inventory.Files
-    [string[]]$expected = @('TerrieFlow.exe', 'README.md', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
+    [string[]]$expected = @('TerrieFlow.exe', 'LICENSE.txt', 'README.md', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Skia-BSD-3-Clause.txt', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
     if ($hasDashboard) { $expected = @($expected + @('licenses/' + $dashboard.licenseFile.name) + @($dashboardExpectedFiles)) }
     [Array]::Sort($expected, [StringComparer]::Ordinal)
     if (($files -join '|') -cne ($expected -join '|')) { throw "Staged file inventory is not exact: $($files -join ', ')" }
@@ -1016,7 +1020,7 @@ try {
         throw
     }
     $published = $true
-    Write-Output "Created local preview package: $destination"
+    Write-Output "Created TerrieFlow Client package: $destination"
 } finally {
     if (-not $published -and (Test-Path -LiteralPath $stage)) {
         $stageFull = Get-FullPath $stage

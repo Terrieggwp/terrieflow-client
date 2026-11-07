@@ -268,7 +268,7 @@ foreach ($flavour in @(@('windows-x64', 'windows-amd64'), @('windows-x86', 'wind
     }
 }
 Assert-True (-not $PackagerSource.Contains('mihomo-windows-amd64-compatible')) 'packager must not keep the stock Mihomo download pin'
-foreach ($required in @('README.md', 'THIRD_PARTY_NOTICES.md', 'licenses\Xray-core-MPL-2.0.txt', 'licenses\mihomo-GPL-3.0.txt')) {
+foreach ($required in @('README.md', 'THIRD_PARTY_NOTICES.md', 'licenses\Skia-BSD-3-Clause.txt', 'licenses\Xray-core-MPL-2.0.txt', 'licenses\mihomo-GPL-3.0.txt')) {
     Assert-True (Test-Path -LiteralPath (Join-Path $MetadataRoot $required)) "metadata file $required must exist"
 }
 
@@ -348,7 +348,7 @@ try {
     $releaseAsset = Join-Path $TestRoot 'TerrieFlow-Client-windows-x64.zip'
     Invoke-Package $out1 $BaseInput $manifest $Desktop $Daemon $CoreHost $releaseAsset | Out-Null
     Invoke-Package $out2 $BaseInput $manifest $Desktop $Daemon $CoreHost | Out-Null
-    [string[]]$expected = @('TerrieFlow.exe', 'README.md', 'SHA256SUMS.txt', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
+    [string[]]$expected = @('TerrieFlow.exe', 'LICENSE.txt', 'README.md', 'SHA256SUMS.txt', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Skia-BSD-3-Clause.txt', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
     [Array]::Sort($expected, [StringComparer]::Ordinal)
     $actualItems = @(Get-ChildItem -LiteralPath $out1 -Force -Recurse)
     foreach ($item in $actualItems) { Assert-True (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) "published inventory must not contain reparse entries: $($item.FullName)" }
@@ -370,7 +370,7 @@ try {
     }
     $sumLines = Get-Content -LiteralPath (Join-Path $out1 'SHA256SUMS.txt')
     Assert-True (-not ($sumLines -match 'SHA256SUMS.txt')) 'SHA256SUMS must exclude itself'
-    Assert-True ($sumLines.Count -eq 11) 'SHA256SUMS must cover every other file'
+    Assert-True ($sumLines.Count -eq 13) 'SHA256SUMS must cover every other file'
     Assert-True (-not ($sumLines -match [regex]::Escape($TestRoot))) 'SHA256SUMS must not contain host paths'
     $sumPaths = New-Object System.Collections.Generic.List[string]
     foreach ($line in $sumLines) {
@@ -379,7 +379,7 @@ try {
         $sumPaths.Add($relative)
         Assert-True ((Get-Sha256 (Join-Path $out1 $relative)) -ceq $Matches[1]) "SHA256SUMS digest mismatch: $relative"
     }
-    [string[]]$expectedSumPaths = @('TerrieFlow.exe', 'README.md', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
+    [string[]]$expectedSumPaths = @('TerrieFlow.exe', 'LICENSE.txt', 'README.md', 'THIRD_PARTY_NOTICES.md', 'cores/mihomo.exe', 'cores/xray.exe', 'licenses/Skia-BSD-3-Clause.txt', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/mihomo-GPL-3.0.txt', 'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
     [Array]::Sort($expectedSumPaths, [StringComparer]::Ordinal)
     Assert-True (($sumPaths -join '|') -ceq ($expectedSumPaths -join '|')) 'SHA256SUMS paths must be complete and ordered'
 
@@ -638,10 +638,10 @@ try {
     Invoke-DashboardPackage $dashboardOut1 $DashboardBaseInput $dashboardManifest | Out-Null
     Invoke-DashboardPackage $dashboardOut2 $DashboardBaseInput $dashboardManifest | Out-Null
 
-    [string[]]$expectedDashboardFiles = @('TerrieFlow.exe', 'README.md', 'SHA256SUMS.txt', 'THIRD_PARTY_NOTICES.md',
+    [string[]]$expectedDashboardFiles = @('TerrieFlow.exe', 'LICENSE.txt', 'README.md', 'SHA256SUMS.txt', 'THIRD_PARTY_NOTICES.md',
         'cores/mihomo.exe', 'cores/xray.exe',
         'dashboard/assets/app.js', 'dashboard/index.html', 'dashboard/multicore-readonly.js', 'dashboard/theme-favicon.js',
-        'licenses/Xray-core-MPL-2.0.txt', 'licenses/dashboard-fixture-LICENSE.txt', 'licenses/mihomo-GPL-3.0.txt',
+        'licenses/Skia-BSD-3-Clause.txt', 'licenses/Xray-core-MPL-2.0.txt', 'licenses/dashboard-fixture-LICENSE.txt', 'licenses/mihomo-GPL-3.0.txt',
         'runtime/multicore-core-host.exe', 'runtime/multicore-daemon.exe', 'runtime/multicore-updater.exe', 'versions.json')
     [Array]::Sort($expectedDashboardFiles, [StringComparer]::Ordinal)
     $dashboardActualItems = @(Get-ChildItem -LiteralPath $dashboardOut1 -Force -Recurse)
@@ -670,7 +670,7 @@ try {
     Assert-True ((Get-Sha256 (Join-Path $dashboardOut1 'licenses\dashboard-fixture-LICENSE.txt')) -eq (Get-Sha256 (Join-Path $DashboardBaseInput 'dashboard-fixture-LICENSE.txt'))) 'dashboard license must be staged unmodified'
 
     $sumLines = Get-Content -LiteralPath (Join-Path $dashboardOut1 'SHA256SUMS.txt')
-    Assert-True ($sumLines.Count -eq 16) 'SHA256SUMS must cover every staged file when the dashboard is enabled'
+    Assert-True ($sumLines.Count -eq 18) 'SHA256SUMS must cover every staged file when the dashboard is enabled'
     Assert-True (($sumLines -match [regex]::Escape('dashboard/index.html')).Count -eq 1) 'SHA256SUMS must record the patched dashboard index.html'
 
     # Negative: archive checksum mismatch.
