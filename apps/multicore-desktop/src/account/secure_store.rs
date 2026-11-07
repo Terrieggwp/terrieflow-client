@@ -16,8 +16,11 @@ pub(crate) struct CredentialSessionStore;
 pub(crate) enum SessionStoreError {
     #[cfg(not(windows))]
     Unavailable,
+    #[cfg(windows)]
     InvalidData,
+    #[cfg(windows)]
     TooLarge,
+    #[cfg(windows)]
     Platform(u32),
 }
 
@@ -26,8 +29,11 @@ impl fmt::Display for SessionStoreError {
         formatter.write_str(match self {
             #[cfg(not(windows))]
             Self::Unavailable => "secure credential storage is unavailable",
+            #[cfg(windows)]
             Self::InvalidData => "stored account session is invalid",
+            #[cfg(windows)]
             Self::TooLarge => "account session exceeds the secure storage limit",
+            #[cfg(windows)]
             Self::Platform(code) => {
                 return write!(formatter, "secure credential storage failed ({code})");
             }
