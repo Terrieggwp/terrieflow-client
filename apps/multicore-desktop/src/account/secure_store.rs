@@ -1,6 +1,7 @@
 use super::StoredSession;
 use std::fmt;
 
+#[cfg(any(windows, test))]
 const CREDENTIAL_TARGET: &str = "TerrieFlow.Client.CabinetSession.v1";
 
 pub(crate) trait SessionStore: Send + Sync {
