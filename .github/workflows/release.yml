@@ -54,16 +54,21 @@ jobs:
       - name: Verify tag, main ancestry, and package version
         shell: pwsh
         run: |
-          $tagCommit = (git rev-parse "refs/tags/${{ inputs.tag }}^{commit}").Trim()
-          if ($LASTEXITCODE -ne 0 -or $tagCommit -cnotmatch '^[0-9a-f]{40}$') {
+          $tagCommit = git rev-parse "refs/tags/${{ inputs.tag }}^{commit}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $tagCommit = "$tagCommit".Trim()
+          if ($tagCommit -cnotmatch '^[0-9a-f]{40}$') {
             throw 'Requested release tag does not resolve to one commit'
           }
-          $checkedOutCommit = (git rev-parse HEAD).Trim()
-          if ($LASTEXITCODE -ne 0 -or $checkedOutCommit -cne $tagCommit) {
+          $checkedOutCommit = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $checkedOutCommit = "$checkedOutCommit".Trim()
+          if ($checkedOutCommit -cne $tagCommit) {
             throw 'Checked out commit does not match the requested release tag'
           }
+          # Release tag must point to a commit contained in main.
           git merge-base --is-ancestor $tagCommit origin/main
-          if ($LASTEXITCODE -ne 0) { throw 'Release tag must point to a commit contained in main' }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $manifest = Get-Content -Raw apps/multicore-desktop/Cargo.toml
           $match = [regex]::Match($manifest, '(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"\s*$')
           if (-not $match.Success) { throw 'Desktop package version was not found' }

@@ -33,11 +33,11 @@ of this release.
 
 ## Verification and downloads
 
-- The release candidate was installed and exercised on a second physical
-  Windows PC that had no previous MultiCore or TerrieFlow installation.
-- Installation, both sign-in methods, automatic subscription import, VPN route
-  modes, TUN, Quick Panel, tray integration, restart persistence and autostart
-  were verified there.
+- The `rc5-infra` release candidate was installed over RC4 and exercised on a
+  second physical Windows PC.
+- Installation and startup, preservation of authorization, subscriptions and
+  settings, Quick Panel, tray integration, VPN, TUN, routing, connections and
+  autostart were verified there.
 - The executable is currently unsigned, so Windows SmartScreen may display a
   warning. Download only from the official TerrieFlow repository.
 - Verify every downloaded asset with `RELEASE-SHA256SUMS.txt`.

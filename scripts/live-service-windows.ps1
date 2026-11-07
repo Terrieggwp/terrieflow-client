@@ -2,7 +2,7 @@
 Live test orchestrator for the always-ready TerrieFlow service on Windows 10/11.
 
 Run ELEVATED as the same user who is logged on interactively (console, auto-logon or a kept-open
-RDP session). SSH (build host 192.168.0.148) and PowerShell Direct (Hyper-V VM) are fine for
+RDP session). SSH to a private build host and PowerShell Direct (Hyper-V VM) are fine for
 this script; the checks that need the interactive session run in scripts/live-service-driver.ps1
 through a one-shot scheduled task with an Interactive principal, because the service rejects a
 daemon whose token lacks the INTERACTIVE logon SID (network and service logons).
