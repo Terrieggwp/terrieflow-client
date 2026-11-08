@@ -1,4 +1,4 @@
-//! The user's MULTICORE data directory (`%LOCALAPPDATA%\MultiCore`, `~/.local/share/multicore`)
+//! The user's TerrieFlow data directory (`%LOCALAPPDATA%\MultiCore`, `~/.local/share/multicore`)
 //! for every path of the desktop app: logs, preferences, updates, markers, the data reset.
 //!
 //! Unit tests replay failing daemon exchanges, panics and crashes through the very code that
@@ -11,11 +11,7 @@ use std::path::PathBuf;
 
 #[cfg(not(test))]
 pub(crate) fn user_data_root() -> io::Result<PathBuf> {
-    if let Some(root) = crate::preview_mode::data_root() {
-        Ok(root)
-    } else {
-        multicore_platform::dirs::user_data_root()
-    }
+    multicore_platform::dirs::user_data_root()
 }
 
 #[cfg(test)]

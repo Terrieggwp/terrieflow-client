@@ -700,12 +700,12 @@ fn conflicting_apps_message(apps: &[&'static str], close_note: &[&'static str]) 
     let names = apps.join(", ");
     let mut message = if apps.len() > 1 {
         tr!(
-            "Обнаружены другие VPN-приложения ({}): они могут конфликтовать с MULTICORE. Закройте их перед подключением.",
+            "Обнаружены другие VPN-приложения ({}): они могут конфликтовать с TerrieFlow. Закройте их перед подключением.",
             names
         )
     } else {
         tr!(
-            "Обнаружено другое VPN-приложение ({}): оно может конфликтовать с MULTICORE. Закройте его перед подключением.",
+            "Обнаружено другое VPN-приложение ({}): оно может конфликтовать с TerrieFlow. Закройте его перед подключением.",
             names
         )
     };
@@ -3745,13 +3745,13 @@ pub(crate) fn local_proxy_address(port: Option<u16>) -> String {
 fn latency_display(status: &str, latency_ms: Option<u64>) -> (String, String) {
     match (status, latency_ms) {
         // Answered pings are graded: under 100 ms green, 100–249 ms amber,
-        // 250 ms and slower red (still a working node, just a slow one).
+        // 250 ms and slower orange. Red remains reserved for an unavailable node.
         ("ok", Some(value)) => (
             format!("{value} ms"),
             match value {
                 0..100 => "success",
                 100..250 => "warning",
-                _ => "danger",
+                _ => "high-latency",
             }
             .into(),
         ),
@@ -5760,16 +5760,16 @@ mod tests {
     }
 
     #[test]
-    fn answered_pings_are_graded_and_timeouts_and_errors_are_danger() {
+    fn answered_pings_are_graded_and_only_timeouts_and_errors_are_danger() {
         for (value, tone) in [
             (1, "success"),
             (99, "success"),
             (100, "warning"),
             (149, "warning"),
             (249, "warning"),
-            (250, "danger"),
-            (999, "danger"),
-            (5000, "danger"),
+            (250, "high-latency"),
+            (999, "high-latency"),
+            (5000, "high-latency"),
         ] {
             assert_eq!(
                 latency_display("ok", Some(value)),
@@ -6145,8 +6145,11 @@ mod tests {
         assert!(!app.contains("Local signal grid: structural guides"));
         // The connection module keeps a state-tinted hairline.
         assert!(app.contains("? 88px"));
-        assert!(app.contains(": root.shown-tone == \"success\" ? #3ccb7f59"));
-        assert!(include_str!("../ui/components.slint").contains("width: 76px;"));
+        assert!(app.contains(": root.shown-tone == \"success\" ? #18dfa159"));
+        assert!(
+            include_str!("../ui/components.slint")
+                .contains("width: root.trailing-text == \"\" ? 0px : 82px;")
+        );
         let route_row = include_str!("../ui/components.slint")
             .split("export component RouteNodeRow")
             .nth(1)
@@ -6159,9 +6162,9 @@ mod tests {
         // animating x (rather than just the pending inset) lags behind every
         // resize and freezes inside the Windows modal size loop.
         let trailing_label = route_row
-            .split("trailing-label := Text {")
+            .split("trailing-label := Rectangle {")
             .nth(1)
-            .and_then(|rest| rest.split("\n    }").next())
+            .and_then(|rest| rest.split("\n    if root.pending").next())
             .expect("trailing label source");
         assert!(!trailing_label.contains("animate x"));
         assert!(route_row.contains("animate trailing-inset {"));
@@ -9258,10 +9261,10 @@ mod tests {
     }
 
     #[test]
-    fn home_background_is_bounded_pausable_and_non_interactive() {
+    fn ambient_background_is_smooth_bounded_pausable_and_non_interactive() {
         let source = &include_str!("../ui/app.slint").replace("\r\n", "\n");
         let components = include_str!("../ui/components.slint");
-        // No per-frame property animation drives the waves (that redrew at 60 fps).
+        // One gated 60 fps clock drives every ambient wave; hidden windows do no work.
         assert!(!source.contains("ambient-wave-phase"));
 
         for required in [
@@ -9269,10 +9272,10 @@ mod tests {
             "in-out property <bool> shell-active",
             "in property <bool> reduced-motion",
             "wave-step-timer := Timer",
-            "interval: 250ms;\n        running: root.ambient-motion-active;",
-            "root.ambient-wave-step = Math.mod(root.ambient-wave-step + 1, 96);",
-            "private property <float> ambient-wave-t: (1 - Math.cos(root.ambient-wave-step / 96 * 360deg)) / 2;",
-            "private property <bool> ambient-motion-active: root.ambient-background-enabled && root.shell-active && root.window-active && !root.reduced-motion && !root.minimized && root.visible-page == \"home\"",
+            "interval: 16ms;\n        running: root.ambient-motion-active;",
+            "root.ambient-wave-step = Math.mod(root.ambient-wave-step + 1, 1500);",
+            "private property <float> ambient-wave-t: (1 - Math.cos(root.ambient-wave-step / 1500 * 360deg)) / 2;",
+            "private property <bool> ambient-motion-active: root.ambient-background-enabled && root.shell-active && root.window-active && !root.reduced-motion && !root.minimized;",
         ] {
             assert!(
                 source.contains(required),
@@ -9335,10 +9338,12 @@ mod tests {
         ] {
             assert!(wave_b.contains(required), "wave B missing: {required}");
         }
-        // The connection module is a flat surface; state lives in its hairline and badge.
-        assert!(source.contains("background: root.has-profile ? Theme.surface : #101721;"));
+        // The connection module carries state through a restrained navy gradient and hairline.
+        assert!(
+            source.contains("? @linear-gradient(110deg, #0b2d34 0%, #0b2537 58%, #0a1b31 100%)")
+        );
         assert!(components.contains(
-            "background: root.selected ? Theme.elevated : row-touch.has-hover && root.enabled ? #ffffff06 : transparent;"
+            "background: root.selected ? Theme.raised : row-touch.has-hover && root.enabled ? #159fff0f : transparent;"
         ));
         assert!(!components.contains("#172433"));
         assert!(home_layer.contains("ambient-pointer-glow := Rectangle"));
@@ -9802,8 +9807,8 @@ mod tests {
         assert!(row.contains(
             "opacity: Math.max(0, Math.min(1, (settings-profile-row.height - 56px) / 52px));"
         ));
-        assert!(row.contains("background: profile.active ? Theme.elevated : transparent;"));
-        assert!(row.contains("text: @tr(\"АКТИВНА\");"));
+        assert!(row.contains("background: profile.active ? @linear-gradient(90deg, #123d61b8 0%, #0d2a44a8 58%, #0a2238a0 100%) : transparent;"));
+        assert!(row.contains("text: @tr(\"ВЫБРАНА\");"));
         assert!(row.contains("if settings-profile-row.editing: HorizontalLayout {"));
         assert!(row.contains("if settings-profile-row.confirming: HorizontalLayout {"));
         assert!(row.contains("label: @tr(\"Удалить\"); tone: \"danger\";"));
@@ -9858,9 +9863,10 @@ mod tests {
         }
 
         for required in [
-            "text: @tr(\"Добавьте подписку\");",
-            "text: @tr(\"Скопируйте ссылку у провайдера — мы подхватим её из буфера обмена\");",
-            "text: @tr(\"Ссылка хранится только на этом устройстве\");",
+            "text: root.account-authenticated ? @tr(\"Добавьте VPN-подписку\") : @tr(\"Добро пожаловать в TerrieFlow\");",
+            "? @tr(\"Аккаунт подключён. VPN-подписка пока не добавлена\")",
+            ": @tr(\"Войдите в аккаунт или добавьте VPN-подписку вручную\");",
+            "? @tr(\"Ссылка хранится только на этом устройстве\")",
             "onboarding-copy := VerticalLayout",
             "first-run-actions := VerticalLayout",
             "label: root.import-pending ? @tr(\"Добавляем…\") : @tr(\"Вставить из буфера\");",
@@ -10204,8 +10210,8 @@ mod tests {
         // Never squeezed below the icon and full label (the track scrolls instead).
         assert!(quiet_chip.contains("min-width: root.natural-sizing ? root.natural-width : 96px;"));
         assert!(!quiet_chip.contains("max-width: 164px;"));
-        assert!(quiet_chip.contains("border-radius: 8px;"));
-        assert!(quiet_chip.contains("background: root.selected ? Theme.elevated"));
+        assert!(quiet_chip.contains("border-radius: 10px;"));
+        assert!(quiet_chip.contains("background: root.selected ? Theme.active-surface"));
         assert!(quiet_chip.contains("chip-cursor-wash := Rectangle"));
         let route_row = components
             .split("export component RouteNodeRow")
@@ -10422,7 +10428,7 @@ mod tests {
         assert!(!presentation.is_connected);
         assert_eq!(
             presentation.supporting,
-            "Служба MULTICORE потеряла ядра — переподключаемся…"
+            "Служба TerrieFlow потеряла ядра — переподключаемся…"
         );
         assert_eq!(view_model.catalog_revision, None, "the catalog is reloaded");
         // The daemon reconnects by itself: the watch keeps following it meanwhile.
@@ -10666,21 +10672,21 @@ mod tests {
         let build = include_str!("../build.rs");
 
         for token in [
-            "void: #0d0f12;",
-            "canvas: #0d0f12;",
-            "surface: #15181d;",
-            "elevated: #1c2026;",
-            "line: #2a3038;",
-            "accent-blue: #4c9dff;",
-            "focus: #83bdff;",
+            "void: #030914;",
+            "canvas: #06101f;",
+            "surface: #08182b;",
+            "elevated: #0c2037;",
+            "line: #1b3c59;",
+            "accent-blue: #159fff;",
+            "focus: #6ce4ff;",
             "type-metadata-size: 13px;",
             "type-label-size: 15px;",
             "type-value-size: 16px;",
             "type-title-size: 22px;",
             "radius-small: 8px;",
-            "radius-medium: 8px;",
-            "radius-large: 12px;",
-            "radius-panel: 12px;",
+            "radius-medium: 12px;",
+            "radius-large: 16px;",
+            "radius-panel: 18px;",
             "interactive-min: 44px;",
             "focus-width: 2px;",
         ] {
@@ -11842,7 +11848,7 @@ mod tests {
             "event.component",
             "Диагностика Xray",
             "Диагностика Mihomo",
-            "Диагностика TUN MULTICORE",
+            "Диагностика TUN TerrieFlow",
         ] {
             assert!(source.contains(required), "missing {required}");
         }
@@ -12203,7 +12209,7 @@ mod tests {
         model.set_conflicting_apps(vec!["FlClash"]);
         assert_eq!(
             model.conflicting_apps_presentation().message,
-            "Another VPN app found (FlClash): it may conflict with MULTICORE. Close it before connecting."
+            "Another VPN app found (FlClash): it may conflict with TerrieFlow. Close it before connecting."
         );
         model.set_conflicting_apps(vec!["Incy", "FlClash"]);
         let message = model.conflicting_apps_presentation().message;

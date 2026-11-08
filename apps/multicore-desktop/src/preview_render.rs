@@ -410,10 +410,10 @@ const FIXTURE_ENGLISH: &[(&str, &str)] = &[
     ("Активен", "Ready"),
     ("Обновить", "Update"),
     ("Не удалось обновить подписку", "Update failed"),
-    ("MULTICORE 0.4.0 доступна", "MULTICORE 0.4.0 available"),
+    ("TerrieFlow 0.4.0 доступна", "TerrieFlow 0.4.0 available"),
     (
-        "MULTICORE 0.3.4 · установится после отключения",
-        "MULTICORE 0.3.4 · installs after you disconnect",
+        "TerrieFlow 0.3.4 · установится после отключения",
+        "TerrieFlow 0.3.4 · installs after you disconnect",
     ),
     (
         "Загрузим подписанный пакет и перезапустим клиент. Активный туннель будет корректно остановлен.",
@@ -436,8 +436,8 @@ const FIXTURE_ENGLISH: &[(&str, &str)] = &[
         "Background service timed out",
     ),
     (
-        "Служба MULTICORE не отвечает — перезапускаем…",
-        "MULTICORE service not responding — restarting…",
+        "Служба TerrieFlow не отвечает — перезапускаем…",
+        "TerrieFlow service not responding — restarting…",
     ),
     ("Сервер не ответил за 15 с", "Server didn't answer in 15 s"),
     (
@@ -457,16 +457,16 @@ const FIXTURE_ENGLISH: &[(&str, &str)] = &[
         "Couldn't load routes. The list is outdated — refresh the subscription to get current servers.",
     ),
     (
-        "Запущен Happ — он перехватывает туннель. Закройте его, чтобы MULTICORE мог подключиться.",
-        "Happ is running and takes over the tunnel. Close it so MULTICORE can connect.",
+        "Запущен Happ — он перехватывает туннель. Закройте его, чтобы TerrieFlow мог подключиться.",
+        "Happ is running and takes over the tunnel. Close it so TerrieFlow can connect.",
     ),
     (
-        "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с MULTICORE. Закройте его перед подключением.",
-        "Another VPN app found (FlClash): it may conflict with MULTICORE. Close it before connecting.",
+        "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с TerrieFlow. Закройте его перед подключением.",
+        "Another VPN app found (FlClash): it may conflict with TerrieFlow. Close it before connecting.",
     ),
     (
-        "Обнаружены другие VPN-приложения (FlClash, Happ): они могут конфликтовать с MULTICORE. Закройте их перед подключением. Закрыть удалось не всё: FlClash запускает свой движок как службу Windows, которую наша кнопка не трогает без повышения прав. Отключитесь в самом приложении перед закрытием или остановите его службу в «Службах Windows».",
-        "Other VPN apps found (FlClash, Happ): they may conflict with MULTICORE. Close them before connecting. Not everything closed: FlClash runs its engine as a Windows service, which this button can't stop without admin rights. Disconnect in that app before closing it, or stop its service in Windows Services.",
+        "Обнаружены другие VPN-приложения (FlClash, Happ): они могут конфликтовать с TerrieFlow. Закройте их перед подключением. Закрыть удалось не всё: FlClash запускает свой движок как службу Windows, которую наша кнопка не трогает без повышения прав. Отключитесь в самом приложении перед закрытием или остановите его службу в «Службах Windows».",
+        "Other VPN apps found (FlClash, Happ): they may conflict with TerrieFlow. Close them before connecting. Not everything closed: FlClash runs its engine as a Windows service, which this button can't stop without admin rights. Disconnect in that app before closing it, or stop its service in Windows Services.",
     ),
     // Log lines (the daemon's own lines arrive with codes; these stand for core output).
     (
@@ -474,8 +474,8 @@ const FIXTURE_ENGLISH: &[(&str, &str)] = &[
         "Local SOCKS bridges ready.",
     ),
     (
-        "Контроллер и TUN MULTICORE готовы.",
-        "MULTICORE controller and TUN ready.",
+        "Контроллер и TUN TerrieFlow готовы.",
+        "TerrieFlow controller and TUN ready.",
     ),
     (
         "Не удалось применить локальную настройку маршрута для группы «Игры». Сервис вернул ошибку проверки конфигурации, повторите попытку позже или обновите подписку.",
@@ -632,6 +632,28 @@ fn profiles(count: usize) -> ModelRc<UiSubscriptionProfile> {
     ModelRc::new(VecModel::from(rows))
 }
 
+fn expired_selected_profile() -> ModelRc<UiSubscriptionProfile> {
+    ModelRc::new(VecModel::from(vec![UiSubscriptionProfile {
+        id: s("terrieflow-account"),
+        title: s("TerrieFlow"),
+        usage: s("0.4 GB"),
+        expiry: s("Срок истёк"),
+        active: true,
+        available: true,
+        has_logo: false,
+        logo: Default::default(),
+        logo_small: Default::default(),
+        fallback: s("T"),
+        remaining: s("0 GB"),
+        days: s("Срок истёк"),
+        used_fraction: 1.0,
+        unlimited: false,
+        quota_tone: s("danger"),
+        expired: true,
+        quota_tooltip: s("Срок подписки истёк"),
+    }]))
+}
+
 /// The «Сохранить лог» popup open over the status page with `range` chosen, with the hints
 /// `session_logs::range_hints` writes.
 fn log_range_open(ui: &AppWindow, range: &str) {
@@ -662,10 +684,10 @@ fn preview_release(version: &str) -> multicore_release::GitHubRelease {
     let body = format!(
         r#"{{
             "tag_name":"v{version}",
-            "html_url":"https://github.com/Fatyzzz/multi-core/releases/tag/v{version}",
+            "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v{version}",
             "assets":[{{
-                "name":"multicore-windows-x64.zip",
-                "browser_download_url":"https://github.com/Fatyzzz/multi-core/releases/download/v{version}/multicore-windows-x64.zip",
+                "name":"TerrieFlow-Client-windows-x64.zip",
+                "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v{version}/TerrieFlow-Client-windows-x64.zip",
                 "size":{},
                 "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             }}]
@@ -759,6 +781,20 @@ fn connected(ui: &AppWindow) {
     ui.set_catalog_selection_enabled(true);
 }
 
+fn expired_account(ui: &AppWindow, profile_id: &str) {
+    ui.set_account_authenticated(true);
+    ui.set_account_display_name(s("Aleksandr"));
+    ui.set_account_detail(s("Аккаунт подключён"));
+    ui.set_account_access_known(true);
+    ui.set_account_access_expired(true);
+    ui.set_account_access_status(s("expired"));
+    ui.set_account_access_plan(s("Premium Pro"));
+    ui.set_account_access_end_date(s("2026-10-23T21:00:00.000Z"));
+    ui.set_account_access_end_date_display(s("24 октября 2026"));
+    ui.set_account_access_last_checked(s("14:32"));
+    ui.set_account_profile_id(s(profile_id));
+}
+
 /// Title chip on Fjord VPN with a quota (remaining, days, share used, tone).
 fn chip(ui: &AppWindow, remaining: &str, days: &str, used: f32, tone: &str) {
     connected(ui);
@@ -785,7 +821,7 @@ fn chip_normal(ui: &AppWindow) {
 fn events() -> ModelRc<UiEvent> {
     let rows = [
         ("21:04:11", "info", "Локальные SOCKS-мосты готовы."),
-        ("21:04:12", "info", "Контроллер и TUN MULTICORE готовы."),
+        ("21:04:12", "info", "Контроллер и TUN TerrieFlow готовы."),
         (
             "21:05:40",
             "error",
@@ -1289,12 +1325,12 @@ fn scenarios() -> Vec<Scenario> {
             ui.set_subscription_expiry(s("Бессрочно"));
             ui.set_status_tone(s("warning"));
             ui.set_toggle_title(s("Нет связи с сервисом"));
-            ui.set_supporting(s("Служба MULTICORE не отвечает — перезапускаем…"));
+            ui.set_supporting(s("Служба TerrieFlow не отвечает — перезапускаем…"));
             ui.set_toggle_detail_is_exit(false);
             ui.set_primary_enabled(false);
             ui.set_conflicting_apps_banner_visible(true);
             ui.set_conflicting_apps_message(s(
-                "Запущен Happ — он перехватывает туннель. Закройте его, чтобы MULTICORE мог подключиться.",
+                "Запущен Happ — он перехватывает туннель. Закройте его, чтобы TerrieFlow мог подключиться.",
             ));
         }),
         ("home-state-connecting", 840, 720, |ui| {
@@ -1343,14 +1379,14 @@ fn scenarios() -> Vec<Scenario> {
             ready(ui);
             ui.set_conflicting_apps_banner_visible(true);
             ui.set_conflicting_apps_message(s(
-                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с MULTICORE. Закройте его перед подключением.",
+                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с TerrieFlow. Закройте его перед подключением.",
             ));
         }),
         ("home-conflicting-banner", 840, 720, |ui| {
             ready(ui);
             ui.set_conflicting_apps_banner_visible(true);
             ui.set_conflicting_apps_message(s(
-                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с MULTICORE. Закройте его перед подключением.",
+                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с TerrieFlow. Закройте его перед подключением.",
             ));
         }),
         // Realistic worst case: two conflicting apps plus the appended
@@ -1359,14 +1395,14 @@ fn scenarios() -> Vec<Scenario> {
             ready(ui);
             ui.set_conflicting_apps_banner_visible(true);
             ui.set_conflicting_apps_message(s(
-                "Обнаружены другие VPN-приложения (FlClash, Happ): они могут конфликтовать с MULTICORE. Закройте их перед подключением. Закрыть удалось не всё: FlClash запускает свой движок как службу Windows, которую наша кнопка не трогает без повышения прав. Отключитесь в самом приложении перед закрытием или остановите его службу в «Службах Windows».",
+                "Обнаружены другие VPN-приложения (FlClash, Happ): они могут конфликтовать с TerrieFlow. Закройте их перед подключением. Закрыть удалось не всё: FlClash запускает свой движок как службу Windows, которую наша кнопка не трогает без повышения прав. Отключитесь в самом приложении перед закрытием или остановите его службу в «Службах Windows».",
             ));
         }),
         ("home-conflicting-banner-menu-min", 700, 620, |ui| {
             ready(ui);
             ui.set_conflicting_apps_banner_visible(true);
             ui.set_conflicting_apps_message(s(
-                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с MULTICORE. Закройте его перед подключением.",
+                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с TerrieFlow. Закройте его перед подключением.",
             ));
             ui.set_active_panel(s("subscription"));
         }),
@@ -1375,7 +1411,7 @@ fn scenarios() -> Vec<Scenario> {
             offer_update(ui, "0.4.0");
             ui.set_conflicting_apps_banner_visible(true);
             ui.set_conflicting_apps_message(s(
-                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с MULTICORE. Закройте его перед подключением.",
+                "Обнаружено другое VPN-приложение (FlClash): оно может конфликтовать с TerrieFlow. Закройте его перед подключением.",
             ));
         }),
         ("home-handoff-toast", 840, 720, |ui| {
@@ -1412,6 +1448,49 @@ fn scenarios() -> Vec<Scenario> {
             ui.set_service_card_visible(true);
         }),
         ("home-ready-wide", 1600, 900, ready),
+        ("home-account-expired", 840, 720, |ui| {
+            ready(ui);
+            ui.set_subscription_title(s("TerrieFlow"));
+            ui.set_subscription_expiry(s("Срок истёк"));
+            expired_account(ui, "p1");
+        }),
+        ("home-account-expired-min", 700, 620, |ui| {
+            ready(ui);
+            ui.set_subscription_title(s("TerrieFlow"));
+            ui.set_subscription_expiry(s("Срок истёк"));
+            expired_account(ui, "p1");
+        }),
+        ("home-account-expired-connect-notice", 840, 720, |ui| {
+            ready(ui);
+            ui.set_subscription_title(s("TerrieFlow"));
+            expired_account(ui, "p1");
+            ui.set_expired_connect_notice(true);
+        }),
+        ("home-account-expired-checking", 840, 720, |ui| {
+            ready(ui);
+            ui.set_subscription_title(s("TerrieFlow"));
+            expired_account(ui, "p1");
+            ui.set_account_status_check_loading(true);
+        }),
+        ("home-account-expired-api-unavailable", 840, 720, |ui| {
+            ready(ui);
+            ui.set_subscription_title(s("TerrieFlow"));
+            expired_account(ui, "p1");
+            ui.set_account_access_stale(true);
+        }),
+        ("home-account-restored", 840, 720, |ui| {
+            ready(ui);
+            ui.set_account_authenticated(true);
+            ui.set_account_access_known(true);
+            ui.set_account_access_expired(false);
+            ui.set_account_access_status(s("active"));
+            ui.set_account_profile_id(s("p1"));
+        }),
+        ("home-third-party-with-expired-account", 840, 720, |ui| {
+            ready(ui);
+            expired_account(ui, "terrieflow-account");
+            ui.set_active_profile_id(s("p1"));
+        }),
         ("home-update-banner-wide", 1600, 900, |ui| {
             ready(ui);
             offer_update(ui, "0.4.0");
@@ -1467,6 +1546,13 @@ fn scenarios() -> Vec<Scenario> {
         ("subscriptions-many", 840, 720, |ui| {
             ready(ui);
             ui.set_subscription_profiles(profiles(5));
+            ui.set_local_page(s("subscriptions"));
+        }),
+        ("subscriptions-expired-selected", 840, 620, |ui| {
+            ready(ui);
+            ui.set_subscription_profiles(expired_selected_profile());
+            ui.set_active_profile_id(s("terrieflow-account"));
+            expired_account(ui, "terrieflow-account");
             ui.set_local_page(s("subscriptions"));
         }),
         ("subscriptions-min", 700, 620, |ui| {
@@ -1650,7 +1736,7 @@ fn scenarios() -> Vec<Scenario> {
             ready(ui);
             ui.set_local_page(s("settings"));
             ui.set_settings_section(s("updates"));
-            ui.set_update_status(s("MULTICORE 0.4.0 доступна"));
+            ui.set_update_status(s("TerrieFlow 0.4.0 доступна"));
             ui.set_update_detail(s("Загрузим подписанный пакет и перезапустим клиент. Активный туннель будет корректно остановлен."));
             ui.set_update_action_label(s("Обновить"));
             ui.set_update_action_enabled(true);
@@ -1877,6 +1963,42 @@ fn render_ui_previews() {
         capture(&ui, name, width, height);
     }
 
+    if wanted("account-menu-guest") {
+        let ui = new_app();
+        ready(&ui);
+        ui.set_account_menu_open(true);
+        capture(&ui, "account-menu-guest", 840, 720);
+    }
+
+    if wanted("account-menu-authenticated") {
+        let ui = new_app();
+        ready(&ui);
+        ui.set_account_authenticated(true);
+        ui.set_account_display_name(s("Aleksandr TerrieFlow Long Name"));
+        ui.set_account_username(s("@terr1e"));
+        ui.set_account_detail(s("Аккаунт подключён"));
+        ui.set_account_menu_open(true);
+        capture(&ui, "account-menu-authenticated", 840, 720);
+    }
+
+    if wanted("account-sidebar-authenticated") {
+        let ui = new_app();
+        ready(&ui);
+        ui.set_navigation_collapsed(false);
+        ui.set_account_authenticated(true);
+        ui.set_account_display_name(s("Aleksandr TerrieFlow Long Name"));
+        ui.set_account_username(s("@terr1e"));
+        ui.set_account_detail(s("Аккаунт подключён"));
+        capture(&ui, "account-sidebar-authenticated", 1016, 720);
+    }
+
+    if wanted("account-email-login") {
+        let ui = new_app();
+        ready(&ui);
+        ui.set_account_email_login_open(true);
+        capture(&ui, "account-email-login", 840, 720);
+    }
+
     // Motion frame 2: the provider logo right after it popped in (before the
     // 350 ms phase timer hands over to the hold).
     let ui = new_app();
@@ -1956,6 +2078,21 @@ fn render_ui_previews() {
     let popup = new_popup();
     tray_connected(&popup);
     capture(&popup, "tray-connected", 304, 460);
+
+    let popup = new_popup();
+    tray_connected(&popup);
+    popup.set_subscription_title(s("TerrieFlow"));
+    popup.set_subscription_remaining(s("0.4 GiB"));
+    popup.set_subscription_days(s("Срок истёк"));
+    popup.set_subscription_quota_tone(s("danger"));
+    popup.set_toggle_title(s("Защита выключена"));
+    popup.set_toggle_on(false);
+    popup.set_status_tone(s("neutral"));
+    popup.set_session_uptime(s(""));
+    popup.set_account_selected_expired(true);
+    popup.set_account_access_plan(s("Premium Pro"));
+    popup.set_account_access_end_date(s("24 октября 2026"));
+    capture(&popup, "tray-account-expired", 304, 460);
 
     // Dragged larger by its top-left corner: only the accent edges light up (no size readout).
     let popup = new_popup();
@@ -2122,7 +2259,7 @@ fn tall_settings(ui: &AppWindow) {
     ui.set_preference_error(s(
         "Не удалось сохранить настройки. Изменения применятся только до перезапуска.",
     ));
-    ui.set_update_status(s("MULTICORE 0.4.0 доступна"));
+    ui.set_update_status(s("TerrieFlow 0.4.0 доступна"));
     ui.set_update_detail(s(
         "Загрузим подписанный пакет и перезапустим клиент. Активный туннель будет корректно остановлен.",
     ));
@@ -3092,9 +3229,9 @@ fn frames_over(component: &impl ComponentHandle, ms: u64) -> u32 {
     frames
 }
 
-/// A main window at rest draws nothing: no timer or animation keeps asking for frames. The
-/// ambient waves («Живой фон») step four times a second, only on the home page, and only
-/// while the window has focus and motion is allowed.
+/// A main window at rest draws nothing unless the live ambient background is enabled. The
+/// waves then follow the display-rate animation loop on every main page, but stop while the
+/// window is inactive or reduced motion is requested.
 #[test]
 fn an_idle_window_draws_nothing_and_the_ambient_waves_stay_cheap() {
     let _ = slint::platform::set_platform(Box::new(PreviewPlatform));
@@ -3127,11 +3264,15 @@ fn an_idle_window_draws_nothing_and_the_ambient_waves_stay_cheap() {
         0,
         "home, reduced motion"
     );
-    assert_eq!(at_rest(true, true, false, "events"), 0, "status page");
+    let status_waves = at_rest(true, true, false, "events");
+    assert!(
+        (240..=260).contains(&status_waves),
+        "the status background stays fluid: {status_waves} frames in 5 s"
+    );
     let waves = at_rest(true, true, false, "routes");
     assert!(
-        (15..=21).contains(&waves),
-        "the waves step 4 times a second: {waves} frames in 5 s"
+        (240..=260).contains(&waves),
+        "the home background stays fluid: {waves} frames in 5 s"
     );
 
     let popup = new_popup();

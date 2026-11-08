@@ -1,66 +1,31 @@
-# Privacy
+# Privacy notice
 
-MultiCore is a native Windows client. The project does not operate a MultiCore
-account, analytics, telemetry, crash-reporting, or hosted subscription service.
+TerrieFlow Client is a native Windows application. This notice describes the data handled by the client; the TerrieFlow website and account service may publish additional terms.
 
-## Data on this device
+## Account and subscription data
 
-Application data is stored under `%LOCALAPPDATA%\MultiCore`. It can contain
-subscription URLs, downloaded Mihomo/Xray snapshots, the stable local device
-identifier, profile metadata, per-profile selector choices, generated runtime
-configuration, UI preferences, and updater downloads/results. The per-user
-installer places program files under `%LOCALAPPDATA%\Programs\MultiCore\current`.
+When you sign in through Telegram or with email and password, the client communicates with the TerrieFlow account API to authenticate, retrieve basic profile information, and discover the VPN subscription available to that account. The client can then import and periodically refresh that subscription. Account API operators can observe normal request metadata such as IP address, time, client version, and device information included by the service contract.
 
-Core stdout/stderr is bounded and redacted before it is returned by the
-authenticated diagnostics endpoint or shown in the UI. In the current elevated
-core-host architecture, that feed is kept in memory; MultiCore does not promise
-a persistent `logs\latest-core.log`. Redaction is defense in depth, so review any
-diagnostic text before sharing it.
+Session credentials are stored on Windows using Credential Manager (`CredWriteW`/`CredReadW`) and are scoped to the current user. Passwords are used for sign-in and are not deliberately persisted by the client. Signing out removes the saved session credential.
 
-These files are not claimed to be encrypted. Access is controlled by the current
-Windows account and filesystem permissions. Uninstalling the program does not
-promise to remove `%LOCALAPPDATA%\MultiCore`; delete that directory after exiting
-MultiCore if you also want to remove profiles and local state. The updater uses
-`%LOCALAPPDATA%\MultiCore\updates` and temporary sibling staging/rollback
-directories beside the installed or portable package while applying an update.
+## Data stored on this device
 
-## Network requests
+For compatibility with earlier versions, application state is stored under `%LOCALAPPDATA%\MultiCore`. It can include subscription URLs, profile metadata, downloaded Xray/Mihomo configurations, selected routes, UI preferences, updater results, and a stable local device identifier. Subscription URLs can contain credentials and should be treated as secrets.
 
-Importing or refreshing a profile sends requests to the URL supplied by the
-user. Configuration requests use `multicore-json-massive`, `multicore-mihomo`,
-or `multicore-xray` and include these identity headers:
+The stable device identifier and its lock file are protected for the current Windows user. Other application files are not claimed to be encrypted. Uninstalling may preserve local state so a later version can reuse it; use the application's “delete all data” action or remove the directory after fully exiting TerrieFlow if you want to remove it.
 
-- `x-hwid`: stable installation identifier;
-- `x-device-os`: `windows`;
-- `x-ver-os`: bounded Windows version;
-- `x-device-model`: bounded device model.
+Diagnostics are bounded and redacted before display, but users should still review any log before sharing it.
 
-An optional provider logo request uses `multicore-service-logo` and deliberately
-omits all four identity headers. The provider can still observe normal HTTP
-information such as the source IP, timing, requested URL, and User-Agent.
-Provider privacy practices are outside MultiCore's control.
+## Subscription provider requests
 
-The desktop and daemon communicate only through authenticated loopback HTTP. A
-separate authenticated, local-only named pipe connects the daemon to the elevated
-core host after the user chooses Connect. These are local application channels,
-not project-operated network services.
+Refreshing a subscription sends a request to its URL. Current provider requests may include `x-hwid`, `x-device-os`, `x-ver-os`, and `x-device-model`. Providers can also observe standard network metadata. A manually imported third-party provider has its own privacy practices, which TerrieFlow does not control.
 
-If an update repository is compiled into the client, update checks request the
-latest stable release metadata and selected asset from GitHub. Official updater
-builds use the public `fatyzzz/multicore` repository and require anonymous access;
-no GitHub access token is embedded in the client. GitHub's privacy terms apply.
+## Updates
 
-## Elevation and preview security
+Official builds check `Terrieggwp/terrieflow-client` on GitHub for numeric stable releases and download the matching Windows x64 assets. No GitHub personal access token is embedded in the client. GitHub receives normal request metadata and its privacy terms apply.
 
-Normal desktop and daemon processes run as the current user. Connect can invoke
-Windows UAC for `multicore-core-host.exe`, which owns Xray and Mihomo and their
-cleanup. The host does not expose a remote MultiCore service.
+## Local privileged components
 
-Current preview binaries are unsigned, so SmartScreen may warn. The elevated host
-and core executables are also stored in a user-writable portable/per-user
-installation. Treat this as preview-grade rather than a hardened privilege
-boundary; production distribution requires signed binaries and a hardened
-installation/update policy.
+The desktop and daemon use authenticated local channels. Enabling protection may invoke Windows UAC for the core host, which starts and stops Xray or Mihomo. These channels are not hosted TerrieFlow network services.
 
-This notice describes the current feature branch. Recheck the notice and release
-documentation for the exact version you install.
+Current beta binaries are unsigned. This is a security and distribution limitation, not an additional data collection mechanism.

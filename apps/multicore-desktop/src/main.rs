@@ -1,5 +1,6 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
+mod account;
 mod app_icon;
 mod appimage_handoff;
 mod bootstrap;
@@ -23,7 +24,6 @@ mod logo_cache;
 #[cfg(windows)]
 mod native_crash;
 mod preferences;
-mod preview_mode;
 #[cfg(test)]
 mod preview_render;
 mod renderer_fallback;
@@ -42,9 +42,15 @@ mod tray;
 mod troubleshoot;
 mod updater;
 mod view_model;
+#[cfg(windows)]
+mod windows_identity;
 mod windows_settings;
 mod windows_shell;
 
+use account::{
+    AccountApi, AccountCommand, AccountController, AccountEvent, AccountViewState,
+    CredentialSessionStore, EmailCredentials,
+};
 use multicore_i18n::tr;
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, VecDeque};
@@ -178,6 +184,7 @@ impl PendingSubscriptionConsents {
 #[derive(Default)]
 struct PendingSubscriptionImports {
     urls: VecDeque<String>,
+    account_urls: Vec<String>,
     in_flight: bool,
     attempts: u8,
     retry_at: Option<Instant>,
@@ -193,11 +200,28 @@ enum PendingImportOutcome {
 
 impl PendingSubscriptionImports {
     fn enqueue(&mut self, url: String) -> bool {
+        if self.urls.iter().any(|queued| queued == &url) {
+            return true;
+        }
         if self.urls.len() >= MAX_PENDING_SUBSCRIPTION_IMPORTS {
             return false;
         }
         self.urls.push_back(url);
         true
+    }
+
+    fn enqueue_account(&mut self, url: String) -> bool {
+        if !self.enqueue(url.clone()) {
+            return false;
+        }
+        if !self.account_urls.iter().any(|known| known == &url) {
+            self.account_urls.push(url);
+        }
+        true
+    }
+
+    fn is_account_url(&self, url: &str) -> bool {
+        self.account_urls.iter().any(|known| known == url)
     }
 
     fn dispatch_next(&mut self, now: Instant, try_import: impl FnOnce(&str) -> bool) -> bool {
@@ -221,6 +245,7 @@ impl PendingSubscriptionImports {
         }
         if succeeded || self.attempts >= 3 {
             self.urls.pop_front();
+            self.account_urls.retain(|known| known != url);
             self.in_flight = false;
             self.attempts = 0;
             self.retry_at = None;
@@ -820,6 +845,8 @@ fn main() -> Result<(), slint::PlatformError> {
     // First of all: a panic anywhere below is written to logs/crash.log instead of only
     // closing the app.
     crash_log::install();
+    #[cfg(windows)]
+    windows_identity::set_process_app_id();
     // Before the single-instance guard: the resetting process waits for the old instance to
     // exit, deletes the data directory and starts a clean app itself.
     if data_reset::run_pending_reset(&std::env::args_os().skip(1).collect::<Vec<_>>()) {
@@ -847,7 +874,6 @@ fn main() -> Result<(), slint::PlatformError> {
 }
 
 fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
-    let isolated_preview = preview_mode::enabled();
     log_bundle::note_app_start();
     multicore_core::ensure_crypto_provider_installed();
     #[cfg(target_os = "linux")]
@@ -858,7 +884,7 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
             LaunchArguments::foreground()
         });
     #[cfg(windows)]
-    if !isolated_preview && let Err(error) = windows_settings::ensure_url_protocol_registration() {
+    if let Err(error) = windows_settings::ensure_url_protocol_registration() {
         eprintln!("URL protocol registration could not be repaired: {error}");
     }
     let activation = activation_for_launch_arguments(&launch_arguments);
@@ -887,18 +913,14 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
     };
     // An in-app update from 1.1.1 kept the installer's "MultiCore" entry and shortcuts.
     #[cfg(windows)]
-    if !isolated_preview {
-        windows_settings::migrate_legacy_brand();
-    }
+    windows_settings::migrate_legacy_brand();
     // The updater relaunches the new version from a `\\?\` path; an autostart value written
     // in that (or any older) spelling of this app is put back in the plain form, kept on.
     #[cfg(windows)]
-    if !isolated_preview {
-        match windows_settings::repair_launch_at_sign_in() {
-            Ok(true) => eprintln!("autostart command repaired for this executable"),
-            Ok(false) => {}
-            Err(error) => eprintln!("autostart command could not be repaired: {error}"),
-        }
+    match windows_settings::repair_launch_at_sign_in() {
+        Ok(true) => eprintln!("autostart command repaired for this executable"),
+        Ok(false) => {}
+        Err(error) => eprintln!("autostart command could not be repaired: {error}"),
     }
     #[cfg(target_os = "linux")]
     if let Some(appimage) = appimage_handoff::handed_off_from() {
@@ -917,19 +939,12 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
         language::detect_system_language(),
     );
     let (client, _bootstrap_guard): (Arc<dyn DaemonClient>, Option<bootstrap::Bootstrap>) =
-        if isolated_preview {
-            let error = DaemonError::new(
-                "Предпросмотр интерфейса: сетевые функции отключены".to_owned(),
-            );
-            (Arc::new(UnavailableDaemonClient::new(error)), None)
-        } else {
-            match bootstrap::start() {
-                Ok(bootstrap) => (bootstrap.client(), Some(bootstrap)),
-                Err(error) => {
-                    eprintln!("bootstrap failed: {error:?}");
-                    let error = DaemonError::new(error.user_message());
-                    (Arc::new(UnavailableDaemonClient::new(error)), None)
-                }
+        match bootstrap::start() {
+            Ok(bootstrap) => (bootstrap.client(), Some(bootstrap)),
+            Err(error) => {
+                eprintln!("bootstrap failed: {error:?}");
+                let error = DaemonError::new(error.user_message());
+                (Arc::new(UnavailableDaemonClient::new(error)), None)
             }
         };
 
@@ -960,6 +975,17 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
     // created; the app's own language (Russian unless chosen or set by the provider) wins.
     select_slint_language(language::current());
     sync_language(&ui);
+    let pending_subscription_imports = Arc::new(Mutex::new(PendingSubscriptionImports::default()));
+    let account_controller = Rc::new(AccountController::start(
+        AccountApi::new(account::CABINET_API_BASE_URL).expect("valid TerrieFlow cabinet API URL"),
+        CredentialSessionStore,
+    ));
+    let _account_timer = wire_account(
+        &ui,
+        account_controller.clone(),
+        pending_subscription_imports.clone(),
+    );
+    account_controller.send(AccountCommand::Restore);
     // Ambient motion only while the window has focus; winit reports it once shown.
     ui.set_window_active(false);
     let focus_ui = ui.as_weak();
@@ -980,25 +1006,11 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
         ui.set_preference_error(preference_save_error().into());
     }
     apply_snapshot(&ui, &snapshot(&model.lock().expect("view model lock")));
-    if isolated_preview {
-        ui.set_status_eyebrow("Безопасный предпросмотр".into());
-        ui.set_headline("TerrieFlow Client".into());
-        ui.set_supporting(
-            "Сетевые функции, служба, TUN и системный прокси отключены.".into(),
-        );
-        ui.set_primary_enabled(false);
-        ui.set_auto_connect_on_startup(false);
-        ui.set_service_card_visible(false);
-    }
     ui.set_local_page(visible_page_name(&loaded_preferences.visible_page).into());
     ui.set_runtime_versions(env!("MULTICORE_RUNTIME_VERSIONS").into());
     ui.set_ambient_background_enabled(loaded_preferences.ambient_background);
-    ui.set_navigation_collapsed(if isolated_preview {
-        false
-    } else {
-        loaded_preferences.navigation_collapsed
-    });
-    ui.set_tun_enabled(!isolated_preview && loaded_preferences.tun_enabled);
+    ui.set_navigation_collapsed(loaded_preferences.navigation_collapsed);
+    ui.set_tun_enabled(loaded_preferences.tun_enabled);
     // The TUN-off (system proxy) mode exists on Windows only.
     ui.set_tun_toggle_available(cfg!(windows));
     // A connection that outlived the previous run was made in the saved mode.
@@ -1031,7 +1043,7 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
     if let Some(appimage) = appimage_handoff::handed_off_from() {
         ui.set_handoff_notice_for(appimage.to_string_lossy().as_ref().into());
     }
-    ui.set_auto_connect_on_startup(!isolated_preview && loaded_preferences.auto_connect_on_startup);
+    ui.set_auto_connect_on_startup(loaded_preferences.auto_connect_on_startup);
     ui.set_reduced_motion(reduced_motion_from_client_area_animation(
         client_area_animation_enabled(),
     ));
@@ -1045,93 +1057,62 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
     if let Some(version) = updater::take_update_confirmation() {
         ui.set_update_done_version(version.into());
     }
-    if isolated_preview {
-        ui.set_launch_at_sign_in_enabled(false);
-        ui.set_launch_at_sign_in_stale(false);
-        ui.set_launch_at_sign_in_error("Недоступно в режиме предпросмотра".into());
-    } else {
-        apply_launch_at_sign_in(&ui, windows_settings::query_launch_at_sign_in());
-    }
+    apply_launch_at_sign_in(&ui, windows_settings::query_launch_at_sign_in());
     apply_saved_placement(&ui, &loaded_preferences);
-    let pending_subscription_imports = Arc::new(Mutex::new(PendingSubscriptionImports::default()));
     let pending_subscription_consents =
         Arc::new(Mutex::new(PendingSubscriptionConsents::default()));
-    if !isolated_preview {
-        wire_import(
-            &ui,
-            model.clone(),
-            profile_preferences.clone(),
-            pending_subscription_imports.clone(),
-        );
-        wire_deep_link_consent(
-            &ui,
-            pending_subscription_consents.clone(),
-            pending_subscription_imports.clone(),
-        );
-        wire_clipboard_import(&ui, model.clone());
-    }
-    let _pending_import_timer = (!isolated_preview).then(|| {
-        wire_pending_subscription_imports(
-            &ui,
-            model.clone(),
-            pending_subscription_imports.clone(),
-        )
-    });
+    wire_import(
+        &ui,
+        model.clone(),
+        profile_preferences.clone(),
+        pending_subscription_imports.clone(),
+    );
+    wire_deep_link_consent(
+        &ui,
+        pending_subscription_consents.clone(),
+        pending_subscription_imports.clone(),
+    );
+    let _pending_import_timer =
+        wire_pending_subscription_imports(&ui, model.clone(), pending_subscription_imports.clone());
+    wire_clipboard_import(&ui, model.clone());
     wire_local_proxy(&ui);
-    if !isolated_preview {
-        wire_subscription_refresh(&ui, model.clone(), profile_preferences.clone());
-        wire_profile_switcher(&ui, model.clone(), profile_preferences.clone());
-    }
-    let _subscription_refresh_timer = (!isolated_preview).then(|| {
-        wire_automatic_subscription_refresh(&ui, model.clone(), profile_preferences.clone())
-    });
+    wire_subscription_refresh(&ui, model.clone(), profile_preferences.clone());
+    let _subscription_refresh_timer =
+        wire_automatic_subscription_refresh(&ui, model.clone(), profile_preferences.clone());
+    wire_profile_switcher(&ui, model.clone(), profile_preferences.clone());
     let startup_connect_pending = Rc::new(Cell::new(true));
-    if !isolated_preview {
-        wire_primary_action(
-            &ui,
-            model.clone(),
-            profile_preferences.clone(),
-            startup_connect_pending.clone(),
-        );
-        wire_dashboard_action(&ui, model.clone());
-        wire_service_install(&ui);
-    }
-    let _troubleshoot_clock =
-        (!isolated_preview).then(|| wire_troubleshoot(&ui, model.clone()));
+    wire_primary_action(
+        &ui,
+        model.clone(),
+        profile_preferences.clone(),
+        startup_connect_pending.clone(),
+    );
+    wire_dashboard_action(&ui, model.clone());
+    wire_service_install(&ui);
+    let _troubleshoot_clock = wire_troubleshoot(&ui, model.clone());
     wire_data_reset(&ui);
     wire_panels(&ui, model.clone());
+    wire_event_filter(&ui, model.clone());
     wire_log_range(&ui);
-    if !isolated_preview {
-        wire_event_filter(&ui, model.clone());
-        wire_save_diagnostics(&ui, model.clone());
-        wire_catalog_group(&ui, model.clone());
-        wire_catalog_node(&ui, model.clone());
-        wire_route_search(&ui, model.clone());
-        wire_manual_latency(&ui, model.clone());
-        wire_conflicting_apps_banner(&ui, model.clone());
-    }
-    let _latency_timer =
-        (!isolated_preview).then(|| wire_automatic_latency(&ui, model.clone()));
-    let _session_stats_timer =
-        (!isolated_preview).then(|| wire_session_stats(&ui, model.clone()));
-    let _cores_ready_timer =
-        (!isolated_preview).then(|| wire_cores_ready_watch(&ui, model.clone()));
-    let _connection_watch_timer =
-        (!isolated_preview).then(|| wire_connection_watch(&ui, model.clone()));
-    let _conflicting_apps_timer =
-        (!isolated_preview).then(|| wire_conflicting_apps_scan(&ui, model.clone()));
-    if !isolated_preview {
-        wire_windows_settings(&ui);
-    }
-    if !isolated_preview {
-        wire_external_activations(
-            &ui,
-            activations,
-            model.clone(),
-            pending_subscription_consents.clone(),
-            pending_subscription_imports.clone(),
-        );
-    }
+    wire_save_diagnostics(&ui, model.clone());
+    wire_catalog_group(&ui, model.clone());
+    wire_catalog_node(&ui, model.clone());
+    wire_route_search(&ui, model.clone());
+    let _latency_timer = wire_automatic_latency(&ui, model.clone());
+    wire_manual_latency(&ui, model.clone());
+    let _session_stats_timer = wire_session_stats(&ui, model.clone());
+    let _cores_ready_timer = wire_cores_ready_watch(&ui, model.clone());
+    let _connection_watch_timer = wire_connection_watch(&ui, model.clone());
+    wire_conflicting_apps_banner(&ui, model.clone());
+    let _conflicting_apps_timer = wire_conflicting_apps_scan(&ui, model.clone());
+    wire_windows_settings(&ui);
+    wire_external_activations(
+        &ui,
+        activations,
+        model.clone(),
+        pending_subscription_consents.clone(),
+        pending_subscription_imports.clone(),
+    );
     let tray_popup_open = Rc::new(Cell::new(false));
     let tray_popup_geometry = Rc::new(TrayPopupGeometry::new(loaded_preferences.tray_popup_size));
     let tray_popup_slot = {
@@ -1217,23 +1198,19 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
         preference_writer.clone(),
         preference_tracker.clone(),
     );
-    if !isolated_preview {
-        wire_updater(
-            &ui,
-            model.clone(),
-            update_state.clone(),
-            update_check_started_at.clone(),
-        );
-    }
-    let _update_check_timer = (!isolated_preview).then(|| {
-        wire_periodic_update_check(
-            &ui,
-            model.clone(),
-            update_state.clone(),
-            update_check_started_at.clone(),
-        )
-    });
-    if !isolated_preview && updater::configured_repository().ok().flatten().is_some() {
+    wire_updater(
+        &ui,
+        model.clone(),
+        update_state.clone(),
+        update_check_started_at.clone(),
+    );
+    let _update_check_timer = wire_periodic_update_check(
+        &ui,
+        model.clone(),
+        update_state.clone(),
+        update_check_started_at.clone(),
+    );
+    if updater::configured_repository().ok().flatten().is_some() {
         run_update_check(
             ui.as_weak(),
             model.clone(),
@@ -1242,12 +1219,8 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
             false,
         );
     }
-    if isolated_preview {
-        preview_mode::apply_demo(&ui);
-    } else {
-        run_refresh(ui.as_weak(), model.clone(), profile_preferences);
-    }
-    if !isolated_preview && let Some(subscription_url) = launch_arguments.subscription_url {
+    run_refresh(ui.as_weak(), model.clone(), profile_preferences);
+    if let Some(subscription_url) = launch_arguments.subscription_url {
         queue_subscription_import(
             &ui,
             &pending_subscription_consents,
@@ -1255,15 +1228,13 @@ fn run_desktop(software_renderer: bool) -> Result<(), slint::PlatformError> {
             subscription_url,
         );
     }
-    let _startup_connect_timer = (!isolated_preview).then(|| {
-        wire_startup_auto_connect(
-            &ui,
-            model.clone(),
-            launch_mode,
-            loaded_preferences.auto_connect_on_startup,
-            startup_connect_pending,
-        )
-    });
+    let _startup_connect_timer = wire_startup_auto_connect(
+        &ui,
+        model.clone(),
+        launch_mode,
+        loaded_preferences.auto_connect_on_startup,
+        startup_connect_pending,
+    );
     let starts_visible = initial_window_visible(launch_mode, tray_runtime.is_some());
     ui.set_shell_active(starts_visible);
     if starts_visible {
@@ -2996,6 +2967,21 @@ fn sync_tray_live_state(popup: &TrayPopup, main: &AppWindow) {
         set_subscription_failed,
         !main.get_subscription_refresh_error().is_empty()
     );
+    mirror!(
+        get_account_selected_expired,
+        set_account_selected_expired,
+        main.get_account_selected_expired()
+    );
+    mirror!(
+        get_account_access_plan,
+        set_account_access_plan,
+        main.get_account_access_plan()
+    );
+    mirror!(
+        get_account_access_end_date,
+        set_account_access_end_date,
+        main.get_account_access_end_date_display()
+    );
     mirror!(get_toggle_title, set_toggle_title, main.get_toggle_title());
     mirror!(get_toggle_on, set_toggle_on, main.get_toggle_on());
     mirror!(get_toggle_busy, set_toggle_busy, main.get_toggle_busy());
@@ -3453,6 +3439,12 @@ fn wire_tray_popup_actions(
     popup.on_open_main(wire_command(TrayCommand::ShowWindow));
     // Without a profile the main window opens on the inline onboarding.
     popup.on_add_subscription(wire_command(TrayCommand::ShowWindow));
+    let renew_ui = ui.clone();
+    popup.on_renew_subscription(move || {
+        if let Some(ui) = renew_ui.upgrade() {
+            ui.invoke_account_open_cabinet();
+        }
+    });
     popup.on_exit_app(wire_command(TrayCommand::Exit));
 
     let wire_in_place = |command_for: fn(String, String) -> TrayCommand| {
@@ -3729,8 +3721,359 @@ fn saved_local_proxy_address() -> String {
     )
 }
 
+fn account_subscription_check_interval(status: &str, expired: bool) -> Duration {
+    if expired || status.eq_ignore_ascii_case("grace") {
+        Duration::from_secs(60)
+    } else {
+        Duration::from_secs(5 * 60)
+    }
+}
+
+fn account_subscription_retry_backoff(failures: u8) -> Duration {
+    Duration::from_secs(match failures {
+        0 | 1 => 30,
+        2 => 60,
+        3 => 120,
+        _ => 5 * 60,
+    })
+}
+
+fn account_access_restore_requires_configuration(
+    was_known: bool,
+    was_expired: bool,
+    now_expired: bool,
+) -> bool {
+    was_known && was_expired && !now_expired
+}
+
 /// «Локальный прокси: 127.0.0.1:PORT» in Settings and its copy action. The daemon saves the
 /// port at start and changes it only when another app took it, which a connect reveals.
+fn wire_account(
+    ui: &AppWindow,
+    controller: Rc<AccountController>,
+    pending: Arc<Mutex<PendingSubscriptionImports>>,
+) -> Timer {
+    let login = controller.clone();
+    ui.on_account_login(move || login.send(AccountCommand::Login));
+    let email_login = controller.clone();
+    ui.on_account_email_login(move |email, password| {
+        email_login.send(AccountCommand::EmailLogin(EmailCredentials {
+            email: email.to_string(),
+            password: password.to_string(),
+        }));
+    });
+    let cancel = controller.clone();
+    ui.on_account_cancel_login(move || cancel.send(AccountCommand::CancelLogin));
+    let status_check_requested = Rc::new(Cell::new(false));
+    let refresh = controller.clone();
+    let refresh_requested = status_check_requested.clone();
+    let refresh_weak = ui.as_weak();
+    ui.on_account_refresh(move || {
+        if refresh_requested.replace(true) {
+            return;
+        }
+        if let Some(ui) = refresh_weak.upgrade() {
+            ui.set_account_status_check_loading(true);
+            ui.set_account_status_check_message("".into());
+            ui.set_account_status_check_error(false);
+        }
+        // False means a background request is already in flight. The manual
+        // request joins it and consumes the same eventual result.
+        refresh.request_subscription_check();
+    });
+    let background_refresh = controller.clone();
+    ui.on_account_background_refresh(move || {
+        background_refresh.request_subscription_check();
+    });
+    let logout = controller.clone();
+    let logout_requested = status_check_requested.clone();
+    let logout_weak = ui.as_weak();
+    ui.on_account_logout(move || {
+        logout_requested.set(false);
+        if let Some(ui) = logout_weak.upgrade() {
+            ui.set_account_status_check_loading(false);
+        }
+        logout.send(AccountCommand::Logout);
+    });
+    ui.on_account_open_cabinet(move || {
+        let _ = webbrowser::open(account::CABINET_URL);
+    });
+    ui.on_account_open_password_recovery(move || {
+        let _ = webbrowser::open(account::CABINET_LOGIN_URL);
+    });
+    ui.on_account_open_registration(move || {
+        let _ = webbrowser::open(account::CABINET_LOGIN_URL);
+    });
+
+    let weak = ui.as_weak();
+    let timer = Timer::default();
+    let status_message_generation = Rc::new(Cell::new(0_u64));
+    let next_subscription_check = Rc::new(Cell::new(Instant::now() + Duration::from_secs(5 * 60)));
+    let subscription_check_failures = Rc::new(Cell::new(0_u8));
+    let mut previous_phase = String::new();
+    timer.start(TimerMode::Repeated, Duration::from_millis(100), move || {
+        let Some(ui) = weak.upgrade() else {
+            return;
+        };
+        while let Some(event) = controller.try_event() {
+            match event {
+                AccountEvent::State(state) => {
+                    let refresh_completed = previous_phase == "refreshing"
+                        && state.authenticated
+                        && state.phase != "refreshing";
+                    previous_phase = state.phase.to_owned();
+                    apply_account_state(&ui, &state);
+                    if !state.authenticated {
+                        ui.set_account_access_known(false);
+                        ui.set_account_access_expired(false);
+                        ui.set_account_access_status("".into());
+                        ui.set_account_access_pending_status("".into());
+                        ui.set_account_access_plan("".into());
+                        ui.set_account_access_end_date("".into());
+                        ui.set_account_access_end_date_display("".into());
+                        ui.set_account_access_last_checked("".into());
+                        ui.set_account_access_stale(false);
+                        ui.set_account_status_check_message("".into());
+                        ui.set_account_status_check_error(false);
+                        ui.set_account_status_check_loading(false);
+                        status_check_requested.set(false);
+                    }
+                    if refresh_completed {
+                        ui.set_account_refresh_success(true);
+                        let reset = weak.clone();
+                        Timer::single_shot(Duration::from_millis(1_200), move || {
+                            if let Some(ui) = reset.upgrade() {
+                                ui.set_account_refresh_success(false);
+                            }
+                        });
+                    }
+                }
+                AccountEvent::OpenBrowser(url) => {
+                    let _ = webbrowser::open(&url);
+                }
+                AccountEvent::ImportSubscription(url) => {
+                    if !pending
+                        .lock()
+                        .expect("pending subscription imports lock")
+                        .enqueue_account(url)
+                    {
+                        ui.set_import_error(
+                            tr!("Не удалось открыть ссылку подписки. Проверьте её и повторите попытку.").into(),
+                        );
+                        if ui.get_account_access_status() == "restoring" {
+                            ui.set_account_status_check_loading(false);
+                            ui.set_account_status_check_error(true);
+                            ui.set_account_status_check_message(
+                                tr!("Подписка активна, но конфигурацию пока не удалось восстановить")
+                                    .into(),
+                            );
+                        }
+                    }
+                }
+                AccountEvent::SubscriptionAccess(access) => {
+                    let expired = access.blocks_routes();
+                    let was_known = ui.get_account_access_known();
+                    let was_expired = was_known && ui.get_account_access_expired();
+                    let restoring_access = account_access_restore_requires_configuration(
+                        was_known,
+                        was_expired,
+                        expired,
+                    );
+                    ui.set_account_access_known(true);
+                    if !restoring_access {
+                        ui.set_account_access_expired(expired);
+                    }
+                    ui.set_account_access_status(
+                        if restoring_access { "restoring" } else { access.status.as_str() }.into(),
+                    );
+                    ui.set_account_access_pending_status(
+                        if restoring_access { access.status.as_str() } else { "" }.into(),
+                    );
+                    ui.set_account_access_plan(access.tariff_name.into());
+                    ui.set_account_access_end_date(access.end_date.clone().into());
+                    ui.set_account_access_end_date_display(
+                        format_subscription_end_date(&access.end_date).into(),
+                    );
+                    ui.set_account_access_last_checked(
+                        chrono::Local::now().format("%H:%M").to_string().into(),
+                    );
+                    ui.set_account_access_stale(false);
+                    subscription_check_failures.set(0);
+                    next_subscription_check.set(
+                        Instant::now()
+                            + account_subscription_check_interval(&access.status, expired),
+                    );
+                    if restoring_access {
+                        status_check_requested.set(false);
+                        ui.set_account_status_check_loading(true);
+                        ui.set_account_status_check_error(false);
+                        ui.set_account_status_check_message(
+                            tr!("Подписка активна. Восстанавливаем конфигурацию…").into(),
+                        );
+                    } else {
+                        ui.set_account_status_check_loading(false);
+                    }
+                    if !restoring_access && status_check_requested.replace(false) {
+                        ui.set_account_status_check_error(false);
+                        ui.set_account_status_check_message(
+                            if expired {
+                                tr!("Статус проверен. Подписка пока не продлена")
+                            } else {
+                                tr!("Подписка активна. Доступ восстановлен")
+                            }
+                            .into(),
+                        );
+                        clear_account_status_message_later(
+                            weak.clone(),
+                            status_message_generation.clone(),
+                        );
+                        ui.set_account_refresh_success(true);
+                        let reset = weak.clone();
+                        Timer::single_shot(Duration::from_millis(1_200), move || {
+                            if let Some(ui) = reset.upgrade() {
+                                ui.set_account_refresh_success(false);
+                            }
+                        });
+                    }
+                }
+                AccountEvent::SubscriptionAccessUnavailable => {
+                    ui.set_account_access_stale(true);
+                    ui.set_account_status_check_loading(false);
+                    let failures = subscription_check_failures.get().saturating_add(1).min(5);
+                    subscription_check_failures.set(failures);
+                    next_subscription_check.set(
+                        Instant::now()
+                            + account_subscription_retry_backoff(failures),
+                    );
+                    if status_check_requested.replace(false) {
+                        ui.set_account_status_check_error(true);
+                        ui.set_account_status_check_message(
+                            tr!("Не удалось проверить статус. Попробуйте позже").into(),
+                        );
+                        clear_account_status_message_later(
+                            weak.clone(),
+                            status_message_generation.clone(),
+                        );
+                    }
+                }
+                AccountEvent::SubscriptionCheckStarted => {
+                    ui.set_account_status_check_loading(true);
+                }
+                AccountEvent::SubscriptionLinkUnavailable => {
+                    if ui.get_account_access_status() == "restoring" {
+                        ui.set_account_status_check_loading(false);
+                        ui.set_account_status_check_error(true);
+                        ui.set_account_status_check_message(
+                            tr!("Подписка активна, но конфигурацию пока не удалось восстановить").into(),
+                        );
+                    }
+                }
+            }
+        }
+        if ui.get_account_authenticated()
+            && !ui.get_account_status_check_loading()
+            && Instant::now() >= next_subscription_check.get()
+        {
+            // Reserve a short window before the event arrives. The atomic gate
+            // in AccountController is the final protection against duplicates.
+            next_subscription_check.set(Instant::now() + Duration::from_secs(30));
+            controller.request_subscription_check();
+        }
+    });
+    timer
+}
+
+fn clear_account_status_message_later(weak: slint::Weak<AppWindow>, generation: Rc<Cell<u64>>) {
+    let expected = generation.get().wrapping_add(1);
+    generation.set(expected);
+    Timer::single_shot(Duration::from_secs(5), move || {
+        if generation.get() != expected {
+            return;
+        }
+        if let Some(ui) = weak.upgrade() {
+            ui.set_account_status_check_message("".into());
+            ui.set_account_status_check_error(false);
+        }
+    });
+}
+
+fn format_subscription_end_date(value: &str) -> String {
+    use chrono::Datelike as _;
+
+    let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(value.trim()) else {
+        return String::new();
+    };
+    let local = parsed.with_timezone(&chrono::Local);
+    match language::current() {
+        language::Lang::Ru => {
+            let months = [
+                "января",   // i18n-ignore: selected only for the Russian date format
+                "февраля",  // i18n-ignore: selected only for the Russian date format
+                "марта",    // i18n-ignore: selected only for the Russian date format
+                "апреля",   // i18n-ignore: selected only for the Russian date format
+                "мая",      // i18n-ignore: selected only for the Russian date format
+                "июня",     // i18n-ignore: selected only for the Russian date format
+                "июля",     // i18n-ignore: selected only for the Russian date format
+                "августа",  // i18n-ignore: selected only for the Russian date format
+                "сентября", // i18n-ignore: selected only for the Russian date format
+                "октября",  // i18n-ignore: selected only for the Russian date format
+                "ноября",   // i18n-ignore: selected only for the Russian date format
+                "декабря",  // i18n-ignore: selected only for the Russian date format
+            ];
+            format!(
+                "{} {} {}",
+                local.day(),
+                months[local.month0() as usize],
+                local.year()
+            )
+        }
+        language::Lang::En => {
+            let months = [
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+            ];
+            format!(
+                "{} {}, {}",
+                months[local.month0() as usize],
+                local.day(),
+                local.year()
+            )
+        }
+    }
+}
+
+fn apply_account_state(ui: &AppWindow, state: &AccountViewState) {
+    ui.set_account_phase(state.phase.into());
+    ui.set_account_display_name(state.display_name.as_str().into());
+    ui.set_account_username(state.username.as_str().into());
+    ui.set_account_email(state.email.as_str().into());
+    ui.set_account_detail(state.detail.as_str().into());
+    ui.set_account_authenticated(state.authenticated);
+    ui.set_account_busy(state.busy);
+    ui.set_account_email_error(
+        if state.phase == "email-error" {
+            state.detail.as_str()
+        } else {
+            ""
+        }
+        .into(),
+    );
+    if state.authenticated {
+        ui.set_account_email_login_open(false);
+        ui.set_account_login_password("".into());
+    }
+}
+
 fn wire_local_proxy(ui: &AppWindow) {
     ui.set_local_proxy_address(saved_local_proxy_address().into());
     let weak = ui.as_weak();
@@ -4173,6 +4516,17 @@ fn wire_primary_action(
     let weak = ui.as_weak();
     let queued_press = Rc::new(Timer::default());
     ui.on_primary_action(move || {
+        if let Some(ui) = weak.upgrade()
+            && ui.get_account_authenticated()
+            && ui.get_account_access_known()
+            && ui.get_account_access_expired()
+            && !ui.get_toggle_on()
+            && !ui.get_account_profile_id().is_empty()
+            && ui.get_account_profile_id() == ui.get_active_profile_id()
+        {
+            ui.set_expired_connect_notice(true);
+            return;
+        }
         startup_connect_pending.set(false);
         let (action, client, queued, current, waiting) = {
             let mut model = model.lock().expect("view model lock");
@@ -5367,8 +5721,25 @@ fn run_import(
     pending: Arc<Mutex<PendingSubscriptionImports>>,
 ) {
     thread::spawn(move || {
+        // Automatic imports are dispatched while the UI timer briefly owns
+        // the pending queue. Resolve the account tag on this worker only
+        // after the timer callback returned and released that lock.
+        let account_import = pending
+            .lock()
+            .expect("pending subscription imports lock")
+            .is_account_url(&url);
         let result = client.import_subscription(&url);
         let import_succeeded = result.is_ok();
+        let account_profile_id = account_import
+            .then(|| {
+                result.as_ref().ok().and_then(|status| {
+                    status
+                        .imported_profile_id
+                        .clone()
+                        .or_else(|| status.active_profile_id.clone())
+                })
+            })
+            .flatten();
         {
             let mut model = model.lock().expect("view model lock");
             model.finish_import(mutation, result);
@@ -5382,6 +5753,11 @@ fn run_import(
             };
             if let Some(ui) = weak.upgrade() {
                 let current = apply_latest_snapshot(&ui, &model);
+                let restoring_access =
+                    account_import && ui.get_account_access_status() == "restoring";
+                if let Some(profile_id) = account_profile_id {
+                    ui.set_account_profile_id(profile_id.into());
+                }
                 if matches!(queue_outcome, PendingImportOutcome::Failed) {
                     prefill_subscription(&ui, url);
                 }
@@ -5393,6 +5769,37 @@ fn run_import(
                 }
                 if import_succeeded && !current.import_pending {
                     ui.set_import_success_serial(ui.get_import_success_serial().wrapping_add(1));
+                }
+                if restoring_access && matches!(queue_outcome, PendingImportOutcome::Succeeded) {
+                    let restored_status = ui.get_account_access_pending_status();
+                    ui.set_account_access_status(if restored_status.is_empty() {
+                        "active".into()
+                    } else {
+                        restored_status
+                    });
+                    ui.set_account_access_pending_status("".into());
+                    ui.set_account_access_expired(false);
+                    ui.set_account_status_check_loading(false);
+                    ui.set_account_status_check_error(false);
+                    ui.set_account_status_check_message(
+                        tr!("Подписка восстановлена. Доступ к серверам TerrieFlow снова открыт")
+                            .into(),
+                    );
+                    let clear = weak.clone();
+                    Timer::single_shot(Duration::from_secs(5), move || {
+                        if let Some(ui) = clear.upgrade() {
+                            ui.set_account_status_check_message("".into());
+                            ui.set_account_status_check_error(false);
+                        }
+                    });
+                } else if restoring_access && matches!(queue_outcome, PendingImportOutcome::Failed)
+                {
+                    ui.set_account_status_check_loading(false);
+                    ui.set_account_status_check_error(true);
+                    ui.set_account_status_check_message(
+                        tr!("Подписка активна, но конфигурацию пока не удалось восстановить")
+                            .into(),
+                    );
                 }
             }
             advance_profile_reconciliation(weak, model, profile_preferences, import_succeeded);
@@ -5692,6 +6099,9 @@ fn run_subscription_refresh(
         let _ = slint::invoke_from_event_loop(move || {
             if let Some(ui) = weak.upgrade() {
                 apply_snapshot(&ui, &current.0);
+                if current.1 {
+                    ui.invoke_account_background_refresh();
+                }
             }
             if current.1 && current.0.presentation.has_profile {
                 load_catalog(weak.clone(), model.clone());
@@ -6794,14 +7204,16 @@ mod window_tests {
         PendingImportOutcome, PendingSubscriptionConsents, PendingSubscriptionImports,
         PersistenceTracker, PreferenceWriteFailure, PreferenceWriter, ProfilePreferenceReconciler,
         ReadyUpdateStep, UpdateConfirmPlan, UpdateInstallIntent, WindowObservation, WriterCommand,
-        WriterResult, activation_for_launch_arguments, ambient_motion_allowed,
-        begin_update_download, delete_focus_plan, drain_latest_write, initial_window_visible,
-        next_maximized, parse_launch_arguments, preference_error_for_result,
-        preference_failure_is_terminal, preference_save_error, ready_update_step,
-        reduced_motion_from_client_area_animation, retry_delay_after_failure, route_hints_apply_to,
-        runtime_allows_update, scale_factor_milli, shell_active_after_native_minimize_change,
-        startup_should_connect, update_check_due, update_confirm_plan, update_install_intent,
-        update_through_service, visible_page_from_name, visible_page_name,
+        WriterResult, account_access_restore_requires_configuration,
+        account_subscription_check_interval, account_subscription_retry_backoff,
+        activation_for_launch_arguments, ambient_motion_allowed, begin_update_download,
+        delete_focus_plan, drain_latest_write, initial_window_visible, next_maximized,
+        parse_launch_arguments, preference_error_for_result, preference_failure_is_terminal,
+        preference_save_error, ready_update_step, reduced_motion_from_client_area_animation,
+        retry_delay_after_failure, route_hints_apply_to, runtime_allows_update, scale_factor_milli,
+        shell_active_after_native_minimize_change, startup_should_connect, update_check_due,
+        update_confirm_plan, update_install_intent, update_through_service, visible_page_from_name,
+        visible_page_name,
     };
     use crate::daemon::test_support::MockDaemonClient;
     use crate::daemon::{
@@ -6816,6 +7228,54 @@ mod window_tests {
     };
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
+
+    #[test]
+    fn account_monitor_uses_state_aware_intervals_and_bounded_backoff() {
+        assert_eq!(
+            account_subscription_check_interval("active", false),
+            Duration::from_secs(300)
+        );
+        assert_eq!(
+            account_subscription_check_interval("grace", false),
+            Duration::from_secs(60)
+        );
+        assert_eq!(
+            account_subscription_check_interval("expired", true),
+            Duration::from_secs(60)
+        );
+        assert_eq!(
+            account_subscription_retry_backoff(1),
+            Duration::from_secs(30)
+        );
+        assert_eq!(
+            account_subscription_retry_backoff(2),
+            Duration::from_secs(60)
+        );
+        assert_eq!(
+            account_subscription_retry_backoff(3),
+            Duration::from_secs(120)
+        );
+        assert_eq!(
+            account_subscription_retry_backoff(9),
+            Duration::from_secs(300)
+        );
+    }
+
+    #[test]
+    fn restored_access_stays_gated_until_configuration_is_ready() {
+        assert!(account_access_restore_requires_configuration(
+            true, true, false
+        ));
+        assert!(!account_access_restore_requires_configuration(
+            true, true, true
+        ));
+        assert!(!account_access_restore_requires_configuration(
+            true, false, false
+        ));
+        assert!(!account_access_restore_requires_configuration(
+            false, false, false
+        ));
+    }
 
     #[test]
     fn maximize_toggle_inverts_current_window_state() {
@@ -6911,7 +7371,7 @@ mod window_tests {
         assert!(row.contains("root.tone == \"success\" ? Theme.accent-green"));
         assert!(row.contains("root.tone == \"warning\" ? Theme.warning"));
         assert!(row.contains("root.tone == \"danger\" ? Theme.error"));
-        assert!(row.contains("background: root.selected ? Theme.elevated"));
+        assert!(row.contains("background: root.selected ? Theme.raised"));
         assert!(row.contains("if root.show-separator: Rectangle {"));
     }
 
@@ -7205,7 +7665,7 @@ mod window_tests {
         assert!(speedtest.contains("accessible-label: @tr(\"Проверить пинг\");"));
         assert!(speedtest.contains("../assets/gauge.svg"));
         assert!(speedtest.contains("if root.latency-check-loading: latency-check-ring := Path"));
-        assert!(speedtest.contains("stroke: #4c9dff;"));
+        assert!(speedtest.contains("stroke: #159fff;"));
         assert!(speedtest.contains("root.check-latency()"));
         assert!(speedtest.contains("!root.reduced-motion"));
         assert!(rust.contains("ui.on_check_latency("));
@@ -7559,7 +8019,7 @@ mod window_tests {
             "profile-scroll := OverlayScroll",
             "Подписок пока нет",
             "Удалить подписку?",
-            "До 100 подписок · активна только одна",
+            "До 100 подписок · выбран только один локальный профиль · ссылки хранятся только на этом устройстве",
             "Изменить URL",
             "root.settings-section == \"updates\"",
             "profile-menu-keyboard-open",
@@ -7910,10 +8370,10 @@ mod window_tests {
         use multicore_release::{GitHubRelease, WindowsArch};
         let release = GitHubRelease::parse_for_arch(br#"{
             "tag_name":"v9.0.0",
-            "html_url":"https://github.com/Fatyzzz/multi-core/releases/tag/v9.0.0",
+            "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v9.0.0",
             "assets":[{
-                "name":"multicore-windows-x64.zip",
-                "browser_download_url":"https://github.com/Fatyzzz/multi-core/releases/download/v9.0.0/multicore-windows-x64.zip",
+                "name":"TerrieFlow-Client-windows-x64.zip",
+                "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v9.0.0/TerrieFlow-Client-windows-x64.zip",
                 "size":1234,
                 "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             }]
@@ -9132,7 +9592,9 @@ mod window_tests {
             .nth(1)
             .expect("conflict card");
         let card = card.chars().take(900).collect::<String>();
-        assert!(card.contains("background: Theme.surface;"));
+        assert!(card.contains(
+            "background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);"
+        ));
         assert!(card.contains("border-radius: 14px;"));
         assert!(card.contains(&format!(
             "animate opacity {{ duration: 240ms; easing: {ENTER}; }}"
@@ -9187,7 +9649,7 @@ mod window_tests {
         assert!(ui.contains("visible: root.catalog-error == \"\";"));
         assert!(rust.contains("ui.on_retry_catalog(move || {"));
         // Connection module tones: busy is blue, a failed connect reads its reason in red.
-        assert!(ui.contains(": root.shown-busy ? #4c9dff59\n                            : root.shown-tone == \"success\" ? #3ccb7f59"));
+        assert!(ui.contains(": root.shown-busy ? #159fff59\n                            : root.shown-tone == \"success\" ? #18dfa159"));
         assert!(ui.contains("source: root.shown-busy ? @image-url(\"../assets/shield.svg\")"));
         assert!(
             ui.contains("color: root.shown-tone == \"danger\" ? #f0a3a3 : Theme.text-secondary;")
@@ -9350,6 +9812,7 @@ mod window_tests {
         let mut pending = PendingSubscriptionImports::default();
         let now = Instant::now();
         assert!(pending.enqueue("https://example.com/first".into()));
+        assert!(pending.enqueue("https://example.com/first".into()));
         assert!(pending.enqueue("https://example.com/second".into()));
         assert!(!pending.dispatch_next(now, |_| false));
         assert_eq!(pending.len(), 2);
@@ -9387,6 +9850,51 @@ mod window_tests {
         assert!(pending.dispatch_next(now + Duration::from_secs(2), |_| true));
         pending.finish_attempt(url, true, now + Duration::from_secs(2));
         assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn account_import_is_tagged_only_until_its_final_outcome() {
+        let mut pending = PendingSubscriptionImports::default();
+        let now = Instant::now();
+        let account_url = "https://account.example/sub";
+        let local_url = "https://local.example/sub";
+
+        assert!(pending.enqueue_account(account_url.into()));
+        assert!(pending.enqueue_account(account_url.into()));
+        assert!(pending.enqueue(local_url.into()));
+        assert!(pending.is_account_url(account_url));
+        assert!(!pending.is_account_url(local_url));
+
+        assert!(pending.dispatch_next(now, |_| true));
+        assert_eq!(
+            pending.finish_attempt(account_url, true, now),
+            PendingImportOutcome::Succeeded
+        );
+        assert!(!pending.is_account_url(account_url));
+        assert!(pending.dispatch_next(now, |_| true));
+        assert_eq!(
+            pending.finish_attempt(local_url, true, now),
+            PendingImportOutcome::Succeeded
+        );
+        assert!(pending.is_empty());
+    }
+
+    #[test]
+    fn automatic_import_does_not_relock_the_pending_queue_on_the_ui_thread() {
+        let source = include_str!("main.rs");
+        let run_import = source
+            .split("fn run_import(")
+            .nth(1)
+            .and_then(|source| source.split("fn connect_uses_tun(").next())
+            .expect("run_import source");
+        let worker = run_import.find("thread::spawn").expect("import worker");
+        let account_tag = run_import
+            .find(".is_account_url(&url)")
+            .expect("account import tag lookup");
+        assert!(
+            worker < account_tag,
+            "the pending queue must only be re-locked after the UI dispatcher returned"
+        );
     }
 
     #[test]
@@ -9465,7 +9973,7 @@ mod window_tests {
         assert!(modal.contains("key-pressed(event)"));
         assert!(modal.contains("root.cancel-deep-link();"));
         assert!(ui.contains(
-            "enabled: !root.deep-link-confirm-open && !root.update-confirm-open && !root.log-range-open;"
+            "enabled: !root.deep-link-confirm-open && !root.update-confirm-open && !root.log-range-open && !root.account-email-login-open;"
         ));
 
         let rust = include_str!("main.rs");
@@ -9635,6 +10143,32 @@ mod window_tests {
                 "missing clipboard wiring: {required}"
             );
         }
+    }
+
+    #[test]
+    fn subscription_expiry_is_presented_as_a_local_human_date() {
+        let rendered = super::format_subscription_end_date("2026-10-23T12:34:56.789Z");
+        assert_eq!(rendered, "23 октября 2026");
+        assert!(!rendered.contains('T'));
+        assert!(!rendered.contains('Z'));
+        assert_eq!(super::format_subscription_end_date("not-a-date"), "");
+    }
+
+    #[test]
+    fn expired_account_connection_is_blocked_before_the_daemon_action() {
+        let source = include_str!("main.rs");
+        let wiring = source
+            .split("fn wire_primary_action(")
+            .nth(1)
+            .and_then(|source| source.split("fn run_queued_primary_action(").next())
+            .expect("primary action wiring");
+        assert!(wiring.contains("ui.get_account_access_expired()"));
+        assert!(wiring.contains("!ui.get_toggle_on()"));
+        assert!(wiring.contains("ui.set_expired_connect_notice(true)"));
+        assert!(
+            wiring.find("ui.set_expired_connect_notice(true)").unwrap()
+                < wiring.find("model.begin_primary_action()").unwrap()
+        );
     }
 }
 

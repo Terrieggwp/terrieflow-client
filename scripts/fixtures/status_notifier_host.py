@@ -100,7 +100,7 @@ def main():
             phase = marker.read_text()
             if phase and phase not in sent:
                 try:
-                    menu_event("Выйти" if phase == "exit" else "Открыть MULTICORE")
+                    menu_event("Выйти" if phase == "exit" else "Открыть TerrieFlow")
                     sent.add(phase)
                 except Exception as error:
                     failures.append(str(error))

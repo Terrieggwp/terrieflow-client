@@ -28,6 +28,13 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/test-build-mihomo.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 PASSED=0
 
+grep -qF 'GOFLAGS="-mod=readonly -buildvcs=false"' "$ROOT/scripts/build-mihomo.sh" || {
+    echo "FAIL: build-mihomo.sh must disable VCS stamping for reproducible binaries" >&2
+    exit 1
+}
+PASSED=$((PASSED + 1))
+echo "ok: VCS stamping disabled"
+
 # fresh_root: a copy of just what build-mihomo.sh reads.
 fresh_root() {
     local root="$WORK/root-$1"

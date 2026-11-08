@@ -11,13 +11,13 @@ Set-StrictMode -Version Latest
 
 # This smoke installs per user ("No service"). Over a service-mode install Setup must remove that
 # install first, which needs elevation, so it ends with exit code 7. A runner that also carries a
-# service-mode MULTICORE cannot run it; it needs a machine without one.
+# service-mode TerrieFlow cannot run it; it needs a machine without one.
 $serviceInstallKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{D95AB954-248C-44C9-9E3A-952398802A2D}_is1'
 if (Test-Path -LiteralPath $serviceInstallKey) {
     $installed = (Get-ItemProperty -LiteralPath $serviceInstallKey).DisplayName
     Write-Warning "SKIPPED: this machine has a service-mode install ($installed); the installed-update smoke needs a machine without one"
     if ($env:GITHUB_STEP_SUMMARY) {
-        "> [!WARNING]`n> Installed-update smoke skipped: the runner has a service-mode MULTICORE install ($installed)." |
+        "> [!WARNING]`n> Installed-update smoke skipped: the runner has a service-mode TerrieFlow install ($installed)." |
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
     }
     exit 0
@@ -222,12 +222,12 @@ $localAppDataSiblingCanary = Join-Path $testRoot 'local-app-data-sibling-canary.
 $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 $protocolKey = 'HKCU:\Software\Classes\multicore'
 . (Join-Path $PSScriptRoot 'installer-shortcut-state.ps1')
-$startMenuShortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'MULTICORE.lnk'
-$desktopShortcut = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'MULTICORE.lnk'
+$startMenuShortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'TerrieFlow Client.lnk'
+$desktopShortcut = Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'TerrieFlow Client.lnk'
 $shortcutSnapshots = @(Save-InstallerShortcutState @($startMenuShortcut, $desktopShortcut))
 $ownedShortcutTargets = @(
-    (Join-Path $installRoot 'current\MultiCore.exe'),
-    (Join-Path $foreignInstallRoot 'current\MultiCore.exe')
+    (Join-Path $installRoot 'current\TerrieFlow.exe'),
+    (Join-Path $foreignInstallRoot 'current\TerrieFlow.exe')
 )
 $foreignAutostart = '"C:\Foreign Tool\agent.exe" --background'
 $protocolBackup = Join-Path $temporaryBase ('multicore-protocol-backup-' + [Guid]::NewGuid().ToString('N') + '.reg')
@@ -254,11 +254,11 @@ try {
     Assert-True (Test-Path -LiteralPath $startMenuShortcut -PathType Leaf) 'installer must create a Start menu shortcut without an optional task'
     $shortcutShell = New-Object -ComObject WScript.Shell
     $installedShortcut = $shortcutShell.CreateShortcut($startMenuShortcut)
-    Assert-True ($installedShortcut.TargetPath -ieq (Join-Path $current 'MultiCore.exe')) 'Start menu shortcut must target the installed current payload'
+    Assert-True ($installedShortcut.TargetPath -ieq (Join-Path $current 'TerrieFlow.exe')) 'Start menu shortcut must target the installed current payload'
     Assert-True ($installedShortcut.WorkingDirectory -ieq $current) 'Start menu shortcut must use the installed working directory'
     $uninstaller = Join-Path $installRoot 'unins000.exe'
     $uninstallerData = Join-Path $installRoot 'unins000.dat'
-    Assert-True (Test-Path -LiteralPath (Join-Path $current 'MultiCore.exe') -PathType Leaf) 'installed app must live under current'
+    Assert-True (Test-Path -LiteralPath (Join-Path $current 'TerrieFlow.exe') -PathType Leaf) 'installed app must live under current'
     Assert-True (Test-Path -LiteralPath $uninstaller -PathType Leaf) 'uninstaller executable must remain at install root'
     Assert-True (Test-Path -LiteralPath $uninstallerData -PathType Leaf) 'uninstaller metadata must remain at install root'
     $uninstallerHash = (Get-FileHash -LiteralPath $uninstaller -Algorithm SHA256).Hash
@@ -266,7 +266,7 @@ try {
 
     $helper = Join-Path $testRoot 'multicore-apply.exe'
     Copy-Item -LiteralPath (Join-Path $current 'runtime\multicore-updater.exe') -Destination $helper
-    # The real desktop would start packaged sidecars, so MultiCore.exe is replaced by an inert
+    # The real desktop would start packaged sidecars, so TerrieFlow.exe is replaced by an inert
     # x64 client. The updater keeps the previous version unless the client it launches confirms
     # its start (as the real desktop does via updates\started-ok), so the stand-in writes that
     # confirmation when the smoke asks for it and stays alive briefly; otherwise it just exits.
@@ -299,10 +299,10 @@ public static class MultiCoreSmokeClient
     Assert-True (Test-Path -LiteralPath $csc -PathType Leaf) 'the .NET Framework C# compiler is required'
     & $csc /nologo /platform:x64 /target:winexe "/out:$fakeClient" $fakeClientSource | Out-Null
     Assert-True ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $fakeClient -PathType Leaf)) 'inert smoke client was not compiled'
-    Copy-Item -LiteralPath $fakeClient -Destination (Join-Path $current 'MultiCore.exe') -Force
+    Copy-Item -LiteralPath $fakeClient -Destination (Join-Path $current 'TerrieFlow.exe') -Force
     $updatePayload = Join-Path $testRoot 'update-payload'
     Copy-Item -LiteralPath $package -Destination $updatePayload -Recurse
-    Copy-Item -LiteralPath $fakeClient -Destination (Join-Path $updatePayload 'MultiCore.exe') -Force
+    Copy-Item -LiteralPath $fakeClient -Destination (Join-Path $updatePayload 'TerrieFlow.exe') -Force
     $sumPath = Join-Path $updatePayload 'SHA256SUMS.txt'
     $sumLines = Get-ChildItem -LiteralPath $updatePayload -File -Recurse |
         Where-Object { $_.FullName -cne $sumPath } |
@@ -460,8 +460,8 @@ public static class MultiCoreSmokeClient
     Assert-True ($apply.ExitCode -eq 0) "packaged updater exited with $($apply.ExitCode)"
     # The confirmed stand-in client lingers briefly from the install directory; let it exit
     # before later steps (uninstall) need that directory free.
-    $installedClient = [IO.Path]::GetFullPath((Join-Path $current 'MultiCore.exe'))
-    @(Get-Process -Name 'MultiCore' -ErrorAction SilentlyContinue |
+    $installedClient = [IO.Path]::GetFullPath((Join-Path $current 'TerrieFlow.exe'))
+    @(Get-Process -Name 'TerrieFlow' -ErrorAction SilentlyContinue |
         Where-Object { $_.Path -and [IO.Path]::GetFullPath($_.Path) -ieq $installedClient }) |
         Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
 
@@ -666,15 +666,15 @@ $signalTemporary = $SignalPath + '.tmp'
         $stateReaderStdout,
         $stateReaderStderr) + $productionDiagnostics)
 
-    Assert-True (Test-Path -LiteralPath (Join-Path $current 'MultiCore.exe') -PathType Leaf) 'updated payload must be published back to current'
+    Assert-True (Test-Path -LiteralPath (Join-Path $current 'TerrieFlow.exe') -PathType Leaf) 'updated payload must be published back to current'
     Assert-True ((Get-FileHash -LiteralPath $uninstaller -Algorithm SHA256).Hash -ceq $uninstallerHash) 'app update must preserve the uninstaller executable'
     Assert-True ((Get-FileHash -LiteralPath $uninstallerData -Algorithm SHA256).Hash -ceq $uninstallerDataHash) 'app update must preserve uninstaller metadata'
     Assert-True (@(Get-ChildItem -LiteralPath $installRoot -Directory -Filter '.multicore-*').Count -eq 0) 'successful updater must clean staging and previous-version directories'
 
     $protocolCommand = (Get-ItemPropertyValue -LiteralPath (Join-Path $protocolKey 'shell\open\command') -Name '(default)')
-    Assert-True ($protocolCommand -ceq ('"' + (Join-Path $current 'MultiCore.exe') + '" "%1"')) 'URL protocol must target current payload'
+    Assert-True ($protocolCommand -ceq ('"' + (Join-Path $current 'TerrieFlow.exe') + '" "%1"')) 'URL protocol must target current payload'
 
-    $expectedAutostart = '"' + (Join-Path $current 'MultiCore.exe') + '" --background'
+    $expectedAutostart = '"' + (Join-Path $current 'TerrieFlow.exe') + '" --background'
     New-Item -Path $runKey -Force | Out-Null
     New-ItemProperty -LiteralPath $runKey -Name 'MultiCore' -PropertyType String -Value $expectedAutostart -Force | Out-Null
     $abandonedStage = Join-Path $installRoot '.multicore-stage-smoke'

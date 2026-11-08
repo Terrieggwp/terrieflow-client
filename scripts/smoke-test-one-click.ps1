@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$PackagePath,
-    [string]$DesktopExecutableName = 'MultiCore.exe',
+    [string]$DesktopExecutableName = 'TerrieFlow.exe',
     [string]$DiagnosticErrorPath,
     [switch]$Background,
     [switch]$CrashCleanup
@@ -53,7 +53,7 @@ function Get-MultiCoreWindow {
         if ($owner -eq $ProcessId -and [MultiCoreSmokeNative]::IsWindowVisible($window)) {
             $title = New-Object Text.StringBuilder 256
             [void][MultiCoreSmokeNative]::GetWindowText($window, $title, $title.Capacity)
-            if ($title.ToString() -ceq 'MULTICORE') { $matches.Add($window) }
+            if ($title.ToString() -ceq 'TerrieFlow') { $matches.Add($window) }
         }
         return $true
     }
@@ -75,7 +75,7 @@ foreach ($file in @($desktopExe, $daemonExe, $coreHostExe, $xrayExe, $mihomoExe)
 }
 if ($Background -and $CrashCleanup) { throw 'Background and CrashCleanup modes are mutually exclusive' }
 
-$desktopNames = @('MultiCore.exe', [IO.Path]::GetFileName($desktopExe))
+$desktopNames = @('TerrieFlow.exe', 'MultiCore.exe', [IO.Path]::GetFileName($desktopExe))
 $existingSingletons = @(Get-CimInstance Win32_Process | Where-Object {
     $desktopNames -contains $_.Name
 })

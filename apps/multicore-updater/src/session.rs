@@ -184,7 +184,7 @@ pub(crate) fn stop_service(timeout: Duration) -> io::Result<()> {
             if waited >= timeout {
                 break Err(io::Error::new(
                     io::ErrorKind::TimedOut,
-                    "MultiCore service did not stop in time",
+                    "TerrieFlow service did not stop in time",
                 ));
             }
             std::thread::sleep(poll);

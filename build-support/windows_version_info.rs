@@ -1,8 +1,8 @@
-// Shared by the four TerrieFlow build scripts via `include!`. Builds the Windows
+// Shared by the four MultiCore build scripts via `include!`. Builds the Windows
 // VERSIONINFO resource so Task Manager shows a readable name per process.
 
 /// Reads `version` from the desktop crate's `[package]` table (the app version
-/// that every TerrieFlow executable shares).
+/// that every MultiCore executable shares).
 #[allow(dead_code)]
 fn multicore_app_version(manifest_dir: &std::path::Path) -> String {
     let desktop_manifest = manifest_dir.join("../../apps/multicore-desktop/Cargo.toml");
@@ -37,8 +37,16 @@ fn windows_version_info(version: &str, description: &str, original_filename: &st
         numbers.next().unwrap_or(0),
         0,
     ];
-    let comma = format!("{},{},{},{}", numeric[0], numeric[1], numeric[2], numeric[3]);
+    let comma = format!(
+        "{},{},{},{}",
+        numeric[0], numeric[1], numeric[2], numeric[3]
+    );
     let internal_name = original_filename.trim_end_matches(".exe");
+    let product_name = if original_filename.eq_ignore_ascii_case("TerrieFlow.exe") {
+        "TerrieFlow Client"
+    } else {
+        "TerrieFlow"
+    };
     format!(
         r#"#pragma code_page(65001)
 1 VERSIONINFO
@@ -57,7 +65,7 @@ BEGIN
       VALUE "InternalName", "{internal_name}"
       VALUE "LegalCopyright", "© 2026 TerrieFlow contributors"
       VALUE "OriginalFilename", "{original_filename}"
-      VALUE "ProductName", "TerrieFlow"
+      VALUE "ProductName", "{product_name}"
       VALUE "ProductVersion", "{version}"
     END
   END

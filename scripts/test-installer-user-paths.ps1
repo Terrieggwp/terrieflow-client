@@ -36,7 +36,7 @@ $process = $null
 try {
     New-Item -ItemType Directory -Path $hostile | Out-Null
     $probeSource = @"
-#define AppExeName "MultiCore.exe"
+#define AppExeName "TerrieFlow.exe"
 #define Arch "x64"
 [Setup]
 AppName=MultiCore installer probe

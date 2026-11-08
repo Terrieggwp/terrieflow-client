@@ -3,11 +3,11 @@
 PackageIdentifier: fatyzzz.MULTICORE
 PackageVersion: @VERSION@
 PackageLocale: ru-RU
-Publisher: MULTICORE
-PackageName: MULTICORE
+Publisher: TerrieFlow
+PackageName: TerrieFlow
 ShortDescription: 'Сетевой клиент: маршрутизация Mihomo и транспорты Xray'
 Description: |-
-  MULTICORE подключается по подписке провайдера: Mihomo отвечает за маршрутизацию,
+  TerrieFlow подключается по подписке провайдера: Mihomo отвечает за маршрутизацию,
   Xray — за транспорты, весь трафик идёт через TUN-адаптер или через системный прокси.
 ReleaseNotesUrl: @RELEASE_PAGE@
 ManifestType: locale

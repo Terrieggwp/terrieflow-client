@@ -1,11 +1,11 @@
-# MULTICORE Windows x86 (32-bit) portable preview
+# TerrieFlow Client Windows x86 (32-bit) portable preview
 
 This file is copied into packages by `scripts/package-windows-release.ps1`.
-Keep the generated directory intact and start `MultiCore.exe`.
+Keep the generated directory intact and start `TerrieFlow.exe`.
 
 The package contains exactly:
 
-- `MultiCore.exe`;
+- `TerrieFlow.exe`;
 - `runtime/multicore-daemon.exe`, `multicore-updater.exe`, and
   `multicore-core-host.exe`;
 - pinned `cores/xray.exe` and `cores/mihomo.exe`;
@@ -23,9 +23,9 @@ diagnostics are bounded, redacted, and currently retained in memory rather than
 written to a promised persistent log.
 
 Runtime data lives under `%LOCALAPPDATA%\MultiCore`; update downloads are under
-`%LOCALAPPDATA%\MultiCore\updates`. `MultiCore-Setup-x86.exe` installs this bundle
-beneath `%LOCALAPPDATA%\Programs\MultiCore\current` (without the service) or, with
-the service, beneath `Program Files\MultiCore` on 32-bit Windows (`Program Files (x86)`
+`%LOCALAPPDATA%\MultiCore\updates`. `TerrieFlow-Client-Setup-x86.exe` installs this bundle
+beneath `%LOCALAPPDATA%\Programs\TerrieFlow\current` (without the service) or, with
+the service, beneath `Program Files\TerrieFlow` on 32-bit Windows (`Program Files (x86)`
 on 64-bit Windows, where the x64 build is recommended and the installer says so).
 Mihomo embeds Wintun, so no separate `wintun.dll` is shipped.
 
@@ -35,12 +35,12 @@ Build the updater asset for the official anonymous channel with:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\package-windows-release.ps1 `
   -Architecture x86 `
   -DestinationPath dist\multicore-windows-x86 `
-  -UpdateRepository fatyzzz/multicore `
-  -ReleaseAssetPath dist\release\multicore-windows-x86.zip
+  -UpdateRepository Terrieggwp/terrieflow-client `
+  -ReleaseAssetPath dist\release\TerrieFlow-Client-windows-x86.zip
 ```
 
 The updater accepts the latest public, non-draft `vX.Y.Z` GitHub Release, requires
-the asset name `multicore-windows-x86.zip` (a 32-bit build never takes the x64
+the asset name `TerrieFlow-Client-windows-x86.zip` (a 32-bit build never takes the x64
 bundle) and GitHub `sha256:` digest, then also
 verifies this package's internal checksums before replacing the full bundle.
 The public release-only repository contains binary releases so installed clients

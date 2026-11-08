@@ -5,16 +5,16 @@ use multicore_release::{
 
 #[test]
 fn repository_accepts_one_owner_and_repository() {
-    let repository = Repository::parse("Fatyzzz/multi-core").unwrap();
-    assert_eq!(repository.owner(), "Fatyzzz");
-    assert_eq!(repository.name(), "multi-core");
+    let repository = Repository::parse("Terrieggwp/terrieflow-client").unwrap();
+    assert_eq!(repository.owner(), "Terrieggwp");
+    assert_eq!(repository.name(), "terrieflow-client");
     assert_eq!(
         repository.release_hint_url(),
-        "https://raw.githubusercontent.com/Fatyzzz/multi-core/main/release.txt"
+        "https://raw.githubusercontent.com/Terrieggwp/terrieflow-client/main/release.txt"
     );
     assert_eq!(
         repository.latest_release_api_url(),
-        "https://api.github.com/repos/Fatyzzz/multi-core/releases/latest"
+        "https://api.github.com/repos/Terrieggwp/terrieflow-client/releases/latest"
     );
 
     for invalid in ["", "owner", "owner/repo/extra", "../repo", "owner repo/x"] {
@@ -35,10 +35,10 @@ fn stable_versions_compare_numerically() {
 fn release_requires_exact_asset_size_and_sha256_digest() {
     let body = br#"{
         "tag_name":"v0.2.0",
-        "html_url":"https://github.com/Fatyzzz/multi-core/releases/tag/v0.2.0",
+        "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v0.2.0",
         "assets":[{
-            "name":"multicore-windows-x64.zip",
-            "browser_download_url":"https://github.com/Fatyzzz/multi-core/releases/download/v0.2.0/multicore-windows-x64.zip",
+            "name":"TerrieFlow-Client-windows-x64.zip",
+            "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.2.0/TerrieFlow-Client-windows-x64.zip",
             "size":1234,
             "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         }]
@@ -62,7 +62,7 @@ fn release_requires_exact_asset_size_and_sha256_digest() {
 fn release_rejects_missing_or_non_sha256_digest() {
     for digest in ["", "sha512:abcd", "sha256:abcd"] {
         let body = format!(
-            r#"{{"tag_name":"v0.2.0","html_url":"https://github.com/o/r/releases/tag/v0.2.0","assets":[{{"name":"multicore-windows-x64.zip","browser_download_url":"https://github.com/o/r/releases/download/v0.2.0/multicore-windows-x64.zip","size":12,"digest":"{digest}"}}]}}"#
+            r#"{{"tag_name":"v0.2.0","html_url":"https://github.com/o/r/releases/tag/v0.2.0","assets":[{{"name":"TerrieFlow-Client-windows-x64.zip","browser_download_url":"https://github.com/o/r/releases/download/v0.2.0/TerrieFlow-Client-windows-x64.zip","size":12,"digest":"{digest}"}}]}}"#
         );
         assert!(GitHubRelease::parse_for_arch(body.as_bytes(), WindowsArch::X64).is_err());
     }
@@ -75,8 +75,8 @@ fn pinned_repository_rejects_cross_repository_release_urls() {
         "tag_name":"v0.2.0",
         "html_url":"https://github.com/attacker/repo/releases/tag/v0.2.0",
         "assets":[{
-            "name":"multicore-windows-x64.zip",
-            "browser_download_url":"https://github.com/attacker/repo/releases/download/v0.2.0/multicore-windows-x64.zip",
+            "name":"TerrieFlow-Client-windows-x64.zip",
+            "browser_download_url":"https://github.com/attacker/repo/releases/download/v0.2.0/TerrieFlow-Client-windows-x64.zip",
             "size":12,
             "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         }]
@@ -86,29 +86,29 @@ fn pinned_repository_rejects_cross_repository_release_urls() {
 
 const MIXED_RELEASE: &[u8] = br#"{
     "tag_name":"v0.3.0",
-    "html_url":"https://github.com/fatyzzz/multicore-releases/releases/tag/v0.3.0",
+    "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v0.3.0",
     "assets":[
         {
-            "name":"multicore-windows-x64.zip",
-            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v0.3.0/multicore-windows-x64.zip",
+            "name":"TerrieFlow-Client-windows-x64.zip",
+            "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.3.0/TerrieFlow-Client-windows-x64.zip",
             "size":1234,
             "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         },
         {
-            "name":"multicore-windows-x86.zip",
-            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v0.3.0/multicore-windows-x86.zip",
+            "name":"TerrieFlow-Client-windows-x86.zip",
+            "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.3.0/TerrieFlow-Client-windows-x86.zip",
             "size":4321,
             "digest":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         },
         {
-            "name":"multicore-windows-arm64.zip",
-            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v0.3.0/multicore-windows-arm64.zip",
+            "name":"TerrieFlow-Client-windows-arm64.zip",
+            "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.3.0/TerrieFlow-Client-windows-arm64.zip",
             "size":5555,
             "digest":"sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
         },
         {
             "name":"MultiCore-0.3.0-x86_64.AppImage",
-            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v0.3.0/MultiCore-0.3.0-x86_64.AppImage",
+            "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.3.0/MultiCore-0.3.0-x86_64.AppImage",
             "size":5678,
             "digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
         }
@@ -117,7 +117,7 @@ const MIXED_RELEASE: &[u8] = br#"{
 
 #[test]
 fn appimage_release_selects_the_versioned_linux_asset() {
-    let repository = Repository::parse("fatyzzz/multicore-releases").unwrap();
+    let repository = Repository::parse("Terrieggwp/terrieflow-client").unwrap();
     let release = GitHubRelease::parse_appimage_for_repository(&repository, MIXED_RELEASE).unwrap();
     assert_eq!(release.version().to_string(), "0.3.0");
     assert_eq!(release.asset().size(), 5678);
@@ -155,15 +155,15 @@ fn mixed_release_bundle(arch: WindowsArch) -> (u64, char) {
 fn each_windows_flavour_takes_only_its_own_bundle() {
     assert_eq!(
         WindowsArch::X64.bundle_asset_name(),
-        "multicore-windows-x64.zip"
+        "TerrieFlow-Client-windows-x64.zip"
     );
     assert_eq!(
         WindowsArch::X86.bundle_asset_name(),
-        "multicore-windows-x86.zip"
+        "TerrieFlow-Client-windows-x86.zip"
     );
     assert_eq!(
         WindowsArch::Arm64.bundle_asset_name(),
-        "multicore-windows-arm64.zip"
+        "TerrieFlow-Client-windows-arm64.zip"
     );
     for arch in WindowsArch::ALL {
         let (size, digest) = mixed_release_bundle(arch);
@@ -262,7 +262,7 @@ fn pe_identity_of_each_windows_flavour() {
 
 #[test]
 fn appimage_release_rejects_missing_or_foreign_assets() {
-    let repository = Repository::parse("fatyzzz/multicore-releases").unwrap();
+    let repository = Repository::parse("Terrieggwp/terrieflow-client").unwrap();
     let windows_only = String::from_utf8(MIXED_RELEASE.to_vec()).unwrap().replace(
         "MultiCore-0.3.0-x86_64.AppImage",
         "MultiCore-0.2.9-x86_64.AppImage",
@@ -278,44 +278,44 @@ fn appimage_release_rejects_missing_or_foreign_assets() {
 fn the_installer_asset_is_parsed_from_the_pinned_repository() {
     assert_eq!(
         WindowsArch::X64.installer_asset_name(),
-        "MultiCore-Setup-x64.exe"
+        "TerrieFlow-Client-Setup-x64.exe"
     );
     assert_eq!(
         WindowsArch::X86.installer_asset_name(),
-        "MultiCore-Setup-x86.exe"
+        "TerrieFlow-Client-Setup-x86.exe"
     );
     assert_eq!(
         WindowsArch::Arm64.installer_asset_name(),
-        "MultiCore-Setup-arm64.exe"
+        "TerrieFlow-Client-Setup-arm64.exe"
     );
-    let repository = Repository::parse("fatyzzz/multicore-releases").unwrap();
+    let repository = Repository::parse("Terrieggwp/terrieflow-client").unwrap();
     let digest = "a".repeat(64);
     let x86_digest = "d".repeat(64);
     let arm64_digest = "f".repeat(64);
     let body = format!(
-        r#"{{"tag_name":"v1.1.0","html_url":"https://github.com/fatyzzz/multicore-releases/releases/tag/v1.1.0",
-            "assets":[{{"name":"MultiCore-Setup-x64.exe","size":1000,
-            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v1.1.0/MultiCore-Setup-x64.exe",
+        r#"{{"tag_name":"v1.1.0","html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v1.1.0",
+            "assets":[{{"name":"TerrieFlow-Client-Setup-x64.exe","size":1000,
+            "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v1.1.0/TerrieFlow-Client-Setup-x64.exe",
             "digest":"sha256:{digest}"}},
-            {{"name":"MultiCore-Setup-x86.exe","size":900,
-            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v1.1.0/MultiCore-Setup-x86.exe",
+            {{"name":"TerrieFlow-Client-Setup-x86.exe","size":900,
+            "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v1.1.0/TerrieFlow-Client-Setup-x86.exe",
             "digest":"sha256:{x86_digest}"}},
-            {{"name":"MultiCore-Setup-arm64.exe","size":950,
-            "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v1.1.0/MultiCore-Setup-arm64.exe",
+            {{"name":"TerrieFlow-Client-Setup-arm64.exe","size":950,
+            "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v1.1.0/TerrieFlow-Client-Setup-arm64.exe",
             "digest":"sha256:{arm64_digest}"}}]}}"#
     );
     let x64 = GitHubRelease::parse_installer_for_arch(body.as_bytes(), WindowsArch::X64).unwrap();
     assert!(
         x64.asset()
             .download_url()
-            .ends_with("/MultiCore-Setup-x64.exe")
+            .ends_with("/TerrieFlow-Client-Setup-x64.exe")
     );
     assert_eq!(x64.asset().sha256_hex(), digest);
     let x86 = GitHubRelease::parse_installer_for_arch(body.as_bytes(), WindowsArch::X86).unwrap();
     assert!(
         x86.asset()
             .download_url()
-            .ends_with("/MultiCore-Setup-x86.exe")
+            .ends_with("/TerrieFlow-Client-Setup-x86.exe")
     );
     assert_eq!(x86.asset().sha256_hex(), x86_digest);
     let arm64 =
@@ -324,11 +324,14 @@ fn the_installer_asset_is_parsed_from_the_pinned_repository() {
         arm64
             .asset()
             .download_url()
-            .ends_with("/MultiCore-Setup-arm64.exe")
+            .ends_with("/TerrieFlow-Client-Setup-arm64.exe")
     );
     assert_eq!(arm64.asset().sha256_hex(), arm64_digest);
     // Each flavour's installer only: without the ARM64 installer an ARM64 client gets none.
-    let without_arm64 = body.replace("MultiCore-Setup-arm64.exe", "MultiCore-Setup-other.exe");
+    let without_arm64 = body.replace(
+        "TerrieFlow-Client-Setup-arm64.exe",
+        "TerrieFlow-Client-Setup-other.exe",
+    );
     assert!(
         GitHubRelease::parse_installer_for_arch(without_arm64.as_bytes(), WindowsArch::Arm64)
             .is_err()

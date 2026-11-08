@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PackagePath,
     [string]$OutputDirectory = 'dist\release',
-    [string]$AppVersion = '1.1.15',
+    [string]$AppVersion = '1.1.17',
     [string]$CompilerPath,
     # x64 (default), x86 or arm64; the payload must be the package built for the same flavour.
     [ValidateSet('x64', 'x86', 'arm64')]
@@ -25,11 +25,13 @@ $DefinitionPath = Join-Path $RepositoryRoot 'packaging\windows-x64\installer.iss
 # missing file, wrong hash, or malformed/unsafe checksum line - it only
 # stops assuming the exact dashboard filenames in advance.
 $RequiredCoreFiles = @(
-    'MultiCore.exe',
+    'TerrieFlow.exe',
+    'LICENSE.txt',
     'README.md',
     'THIRD_PARTY_NOTICES.md',
     'cores/mihomo.exe',
     'cores/xray.exe',
+    'licenses/Skia-BSD-3-Clause.txt',
     'licenses/Xray-core-MPL-2.0.txt',
     'licenses/mihomo-GPL-3.0.txt',
     'runtime/multicore-daemon.exe',
@@ -147,10 +149,14 @@ if ([string]$payloadManifest.platform -cne "windows-$Architecture") {
 }
 
 $compiler = Resolve-Compiler $CompilerPath
+$setupIconPath = Get-FullPath (Join-Path $RepositoryRoot 'brand\TerrieFlow_Logo_Kit\02_compact_symbol\terrieflow-symbol.ico')
+if (-not (Test-Path -LiteralPath $setupIconPath -PathType Leaf)) {
+    throw "TerrieFlow setup icon is missing: $setupIconPath"
+}
 $output = Get-FullPath $OutputDirectory
 Assert-NoReparseAncestor $output
 if (-not (Test-Path -LiteralPath $output)) { New-Item -ItemType Directory -Path $output | Out-Null }
-$installerName = "MultiCore-Setup-$Architecture.exe"
+$installerName = "TerrieFlow-Client-Setup-$Architecture.exe"
 $finalPath = Join-Path $output $installerName
 if (Test-Path -LiteralPath $finalPath) { throw "Refusing to overwrite existing installer: $finalPath" }
 
@@ -161,6 +167,7 @@ try {
         "/DPayloadDir=$payload",
         "/DOutputDir=$temporaryOutput",
         "/DAppVersion=$AppVersion",
+        "/DSetupIconPath=$setupIconPath",
         "/DArch=$Architecture",
         '/Qp',
         $DefinitionPath

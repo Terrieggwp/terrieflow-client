@@ -34,7 +34,9 @@ pub(crate) struct InstanceGuard {
 }
 
 pub(crate) fn claim_or_forward(activation: &Activation) -> io::Result<Claim> {
-    let preview_scope = crate::preview_mode::enabled();
+    let preview_scope = cfg!(debug_assertions)
+        && std::env::var_os("MULTICORE_PREVIEW_INSTANCE").as_deref()
+            == Some(std::ffi::OsStr::new("1"));
     platform::claim_or_forward(activation, preview_scope)
 }
 

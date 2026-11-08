@@ -65,7 +65,6 @@ Known issue to address during the audit: server lists can appear as a large blan
 ## Continuing on another computer
 
 1. Clone the private `Terrieggwp/terrieflow-client` repository.
-2. Check out `codex/terrieflow-branding` unless it has already been merged into the repository's main development branch.
+2. Check out the active reviewed feature branch, or `main` after its pull request has been merged.
 3. Open the repository folder in Codex.
 4. Ask Codex to read this file, inspect `git status` and recent commits, then continue with the visual/state audit.
-

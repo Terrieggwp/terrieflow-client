@@ -28,8 +28,8 @@ pub const NEW_SUBSCRIPTION: &str = "https://c.invalid/sub";
 pub const FAILING_SUBSCRIPTION: &str = "https://fail.invalid/sub";
 const WARM_UP_FAILED: &str = "Ядра не удалось запустить заранее. Они запустятся при подключении.";
 const CORES_LOST: &str =
-    "Служба MULTICORE потеряла ядра — подключение разорвано. Подключитесь снова.";
-const CORES_LOST_RECONNECTING: &str = "Служба MULTICORE потеряла ядра — переподключаемся…";
+    "Служба TerrieFlow потеряла ядра — подключение разорвано. Подключитесь снова.";
+const CORES_LOST_RECONNECTING: &str = "Служба TerrieFlow потеряла ядра — переподключаемся…";
 const CORES_RECONNECTED: &str = "Подключение восстановлено автоматически.";
 const CORES_RECONNECT_FAILED: &str =
     "Не удалось переподключиться автоматически — подключитесь снова.";
@@ -422,7 +422,9 @@ async fn a_notice_reaches_status_and_events() {
         .await;
     assert_eq!(
         h.backend.status().await.unwrap().message.as_deref(),
-        Some("Служба MULTICORE недоступна — права администратора будут запрошены при подключении.")
+        Some(
+            "Служба TerrieFlow недоступна — права администратора будут запрошены при подключении."
+        )
     );
     assert!(
         h.backend
@@ -430,7 +432,7 @@ async fn a_notice_reaches_status_and_events() {
             .await
             .unwrap()
             .iter()
-            .any(|event| event.message == "Служба MULTICORE недоступна — права администратора будут запрошены при подключении."
+            .any(|event| event.message == "Служба TerrieFlow недоступна — права администратора будут запрошены при подключении."
                 && event.message_key.as_ref().is_some_and(|key| key.code == "service.unavailable_notice"))
     );
 }
@@ -1245,7 +1247,9 @@ async fn the_unavailable_notice_is_cleared_once_the_service_is_back() {
         .await;
     assert_eq!(
         h.backend.status().await.unwrap().message.as_deref(),
-        Some("Служба MULTICORE недоступна — права администратора будут запрошены при подключении.")
+        Some(
+            "Служба TerrieFlow недоступна — права администратора будут запрошены при подключении."
+        )
     );
     h.backend
         .clear_notice(&DaemonText::code("service.unavailable_notice"))

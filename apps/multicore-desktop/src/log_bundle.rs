@@ -7,7 +7,7 @@
 //! (`events.log`, `client-errors.log`, `crash.log` with the app's own panics, native crashes
 //! and unrequested event loop exits, `stderr.log`, the per-user core log and rotated
 //! predecessors), plus `logs/service.log` (and `service.log.1`) of the always-ready service,
-//! and on Windows `windows-errors.txt`: the system's «Application Error» events of MULTICORE's
+//! and on Windows `windows-errors.txt`: the system's «Application Error» events of TerrieFlow's
 //! executables (exception code, faulting module and offset), and `core-sessions/`: one folder
 //! per connection of the range chosen in the «Сохранить лог» popup with that connection's core
 //! output (`session_logs`).
@@ -52,9 +52,9 @@ pub(crate) fn note_app_start() {
     let _ = APP_STARTED.set(Instant::now());
 }
 
-/// `MULTICORE-logs-20261002-153012.zip`, in local time.
+/// `TerrieFlow-logs-20261002-153012.zip`, in local time.
 pub(crate) fn default_file_name(now: chrono::DateTime<chrono::Local>) -> String {
-    format!("MULTICORE-logs-{}.zip", now.format("%Y%m%d-%H%M%S"))
+    format!("TerrieFlow-logs-{}.zip", now.format("%Y%m%d-%H%M%S"))
 }
 
 /// What the UI thread knows when the user asks for the archive.
@@ -156,7 +156,7 @@ pub(crate) fn service_log_entries(
     (line(&note), files)
 }
 
-/// MULTICORE's executables as Windows Error Reporting names them.
+/// TerrieFlow's executables as Windows Error Reporting names them.
 #[cfg(windows)]
 const OWN_EXECUTABLES: [&str; 4] = [
     "multicore-desktop.exe",
@@ -171,7 +171,7 @@ const MAX_WINDOWS_ERROR_EVENTS: usize = 20;
 #[cfg(windows)]
 const WINDOWS_EVENTS_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
-/// The newest «Application Error» events (Event ID 1000) of MULTICORE's executables from the
+/// The newest «Application Error» events (Event ID 1000) of TerrieFlow's executables from the
 /// Windows Application log, one line each: a native crash the app could not record itself
 /// (a fail-fast abort, heap corruption, a crash before the handler was installed) is still
 /// named there with its exception code, faulting module and offset. Empty when there are none
@@ -283,7 +283,7 @@ fn summarize_application_errors(xml: &str) -> String {
         return String::new();
     }
     format!(
-        "Windows «Application Error» events (Event ID 1000) of MULTICORE, newest first:
+        "Windows «Application Error» events (Event ID 1000) of TerrieFlow, newest first:
 {}
 ",
         lines.join(
@@ -598,7 +598,7 @@ pub(crate) fn system_report(ui: &UiFacts) -> String {
     };
     line(
         &mut out,
-        "MULTICORE",
+        "TerrieFlow",
         &format!(
             "{} ({}, {}-bit build)",
             env!("CARGO_PKG_VERSION"),
@@ -925,7 +925,7 @@ mod tests {
         fs::write(
             logs.join(crate::crash_log::CRASH_LOG_FILE_NAME),
             format!(
-                "=== panic 1 · MULTICORE 1.1.5 ===
+                "=== panic 1 · TerrieFlow 1.1.5 ===
 thread 'main' panicked at x.rs:1:1:
                  bad url {SUBSCRIPTION_URL}
 "
@@ -1201,7 +1201,10 @@ thread 'main' panicked at x.rs:1:1:
             .with_ymd_and_hms(2026, 10, 2, 15, 30, 12)
             .single()
             .unwrap();
-        assert_eq!(default_file_name(now), "MULTICORE-logs-20261002-153012.zip");
+        assert_eq!(
+            default_file_name(now),
+            "TerrieFlow-logs-20261002-153012.zip"
+        );
     }
 
     #[test]

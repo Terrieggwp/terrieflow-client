@@ -2154,7 +2154,7 @@ async fn connect_failure_message_explains_the_classified_cause() {
         (
             Engine::Mihomo,
             StartFailureCause::CoreMissing,
-            "Не удалось запустить Mihomo: файл ядра не найден или заблокирован. Проверьте карантин антивируса и переустановите MULTICORE.",
+            "Не удалось запустить Mihomo: файл ядра не найден или заблокирован. Проверьте карантин антивируса и переустановите TerrieFlow.",
         ),
         (
             Engine::Xray,

@@ -316,7 +316,7 @@ fn launch_and_finalize(
     mut sleep: impl FnMut(Duration),
     before_rollback: impl FnOnce(),
 ) -> Result<Finalization, String> {
-    let executable = target.join("MultiCore.exe");
+    let executable = target.join("TerrieFlow.exe");
     let failure = match launch(&executable) {
         Err(launch_error) => format!("new client could not start: {launch_error}"),
         Ok(mut client) => {
@@ -352,11 +352,11 @@ fn launch_and_finalize(
 
 fn relaunch_current_client(request: &ApplyRequest) -> io::Result<()> {
     start_service(request);
-    let executable = request.target.join("MultiCore.exe");
+    let executable = request.target.join("TerrieFlow.exe");
     if !executable.is_file() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
-            "current MultiCore executable is unavailable",
+            "current TerrieFlow executable is unavailable",
         ));
     }
     launch_client(request, &executable, &request.target).map(|_| ())
@@ -595,7 +595,7 @@ fn wait_for_process_exit(pid: u32, timeout_ms: u32) -> io::Result<()> {
 fn wait_for_process_exit(_pid: u32, _timeout_ms: u32) -> io::Result<()> {
     Err(io::Error::new(
         io::ErrorKind::Unsupported,
-        "MultiCore updates are supported only on Windows",
+        "TerrieFlow updates are supported only on Windows",
     ))
 }
 
@@ -976,14 +976,14 @@ mod tests {
     #[test]
     fn the_client_is_relaunched_from_the_plain_path() {
         let (executable, directory) = super::client_launch_paths(
-            Path::new(r"\\?\C:\Program Files\MultiCore\current\MultiCore.exe"),
-            Path::new(r"\\?\C:\Program Files\MultiCore\current"),
+            Path::new(r"\\?\C:\Program Files\TerrieFlow\current\TerrieFlow.exe"),
+            Path::new(r"\\?\C:\Program Files\TerrieFlow\current"),
         );
         assert_eq!(
             executable,
-            Path::new(r"C:\Program Files\MultiCore\current\MultiCore.exe")
+            Path::new(r"C:\Program Files\TerrieFlow\current\TerrieFlow.exe")
         );
-        assert_eq!(directory, Path::new(r"C:\Program Files\MultiCore\current"));
+        assert_eq!(directory, Path::new(r"C:\Program Files\TerrieFlow\current"));
         let source = include_str!("main.rs");
         let launch = source
             .split("fn launch_client(")

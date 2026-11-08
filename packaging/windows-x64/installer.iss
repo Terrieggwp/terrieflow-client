@@ -7,6 +7,9 @@
 #ifndef AppVersion
   #error AppVersion must be provided by build-windows-installer.ps1
 #endif
+#ifndef SetupIconPath
+  #error SetupIconPath must point at the TerrieFlow setup icon
+#endif
 ; x64 (default), x86 (the 32-bit flavour for 32-bit Windows, installed in 32-bit mode) or arm64
 ; (Windows on ARM, installed in 64-bit mode like x64).
 #ifndef Arch
@@ -16,18 +19,19 @@
   #error Arch must be x64, x86 or arm64
 #endif
 
-#define AppName "MULTICORE"
-#define AppPublisher "MULTICORE"
-#define AppExeName "MultiCore.exe"
+#define AppName "TerrieFlow Client"
+#define AppPublisher "TerrieFlow"
+#define AppExeName "TerrieFlow.exe"
 
 [Setup]
 AppId={{D95AB954-248C-44C9-9E3A-952398802A2D}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
-; Service mode (default): Program Files + the MULTICORE service. "Без службы": per-user.
-DefaultDirName={autopf}\MultiCore
-DefaultGroupName=MultiCore
+; Service mode (default): Program Files + the TerrieFlow service. "Без службы": per-user.
+DefaultDirName={autopf}\TerrieFlow
+DefaultGroupName=TerrieFlow Client
+UsePreviousAppDir=no
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=commandline dialog
@@ -43,27 +47,28 @@ UsePreviousLanguage=no
 #if Arch == "x64"
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-OutputBaseFilename=MultiCore-Setup-x64
+OutputBaseFilename=TerrieFlow-Client-Setup-x64
 #elif Arch == "arm64"
 ; Same AppId, folders and 64-bit uninstall entry as x64, so on Windows on ARM it replaces an
 ; (emulated) x64 install in place. ARM64 Windows only: an x64 or x86 PC refuses this installer.
 ArchitecturesAllowed=arm64
 ArchitecturesInstallIn64BitMode=arm64
-OutputBaseFilename=MultiCore-Setup-arm64
+OutputBaseFilename=TerrieFlow-Client-Setup-arm64
 #else
 ; Same AppId as x64. Always 32-bit install mode: {commonpf} is Program Files (x86) on 64-bit
 ; Windows, Program Files on 32-bit Windows; the uninstall entry lives in the 32-bit view.
 ArchitecturesAllowed=x86compatible
-OutputBaseFilename=MultiCore-Setup-x86
+OutputBaseFilename=TerrieFlow-Client-Setup-x86
 #endif
 OutputDir={#OutputDir}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
-CloseApplicationsFilter=MultiCore.exe,multicore-daemon.exe,multicore-updater.exe,multicore-core-host.exe,mihomo.exe,xray.exe
+CloseApplicationsFilter=TerrieFlow.exe,MultiCore.exe,multicore-daemon.exe,multicore-updater.exe,multicore-core-host.exe,mihomo.exe,xray.exe
 RestartApplications=no
-UninstallDisplayIcon={app}\current\MultiCore.exe
+UninstallDisplayIcon={app}\TerrieFlow-Symbol.ico
+SetupIconFile={#SetupIconPath}
 VersionInfoVersion={#AppVersion}
 VersionInfoProductName={#AppName}
 VersionInfoProductVersion={#AppVersion}
@@ -73,18 +78,18 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 
 [Messages]
-russian.PrivilegesRequiredOverrideTitle=Как установить MULTICORE
+russian.PrivilegesRequiredOverrideTitle=Как установить TerrieFlow
 russian.PrivilegesRequiredOverrideInstruction=Выберите способ установки
-russian.PrivilegesRequiredOverrideText1=Со службой MULTICORE подключается мгновенно. Один запрос прав администратора сейчас и ни одного потом. Без службы установка не требует прав: системный прокси работает как раньше, а режим TUN будет запрашивать права при каждом подключении.
-russian.PrivilegesRequiredOverrideText2=Со службой MULTICORE подключается мгновенно. Один запрос прав администратора сейчас и ни одного потом. Без службы установка не требует прав: системный прокси работает как раньше, а режим TUN будет запрашивать права при каждом подключении.
+russian.PrivilegesRequiredOverrideText1=Со службой TerrieFlow подключается мгновенно. Один запрос прав администратора сейчас и ни одного потом. Без службы установка не требует прав: системный прокси работает как раньше, а режим TUN будет запрашивать права при каждом подключении.
+russian.PrivilegesRequiredOverrideText2=Со службой TerrieFlow подключается мгновенно. Один запрос прав администратора сейчас и ни одного потом. Без службы установка не требует прав: системный прокси работает как раньше, а режим TUN будет запрашивать права при каждом подключении.
 russian.PrivilegesRequiredOverrideAllUsers=Со службой (рекомендуется)
 russian.PrivilegesRequiredOverrideAllUsersRecommended=Со службой (рекомендуется)
 russian.PrivilegesRequiredOverrideCurrentUser=Без службы
 russian.PrivilegesRequiredOverrideCurrentUserRecommended=Без службы
-english.PrivilegesRequiredOverrideTitle=How to install MULTICORE
+english.PrivilegesRequiredOverrideTitle=How to install TerrieFlow
 english.PrivilegesRequiredOverrideInstruction=Choose how to install
-english.PrivilegesRequiredOverrideText1=With the service MULTICORE connects instantly: one administrator prompt now and none later. Without the service no administrator rights are needed: the system proxy works as before, and TUN mode asks for rights on every connect.
-english.PrivilegesRequiredOverrideText2=With the service MULTICORE connects instantly: one administrator prompt now and none later. Without the service no administrator rights are needed: the system proxy works as before, and TUN mode asks for rights on every connect.
+english.PrivilegesRequiredOverrideText1=With the service TerrieFlow connects instantly: one administrator prompt now and none later. Without the service no administrator rights are needed: the system proxy works as before, and TUN mode asks for rights on every connect.
+english.PrivilegesRequiredOverrideText2=With the service TerrieFlow connects instantly: one administrator prompt now and none later. Without the service no administrator rights are needed: the system proxy works as before, and TUN mode asks for rights on every connect.
 english.PrivilegesRequiredOverrideAllUsers=With service (recommended)
 english.PrivilegesRequiredOverrideAllUsersRecommended=With service (recommended)
 english.PrivilegesRequiredOverrideCurrentUser=No service
@@ -98,42 +103,46 @@ russian.DesktopIconTask=Создать ярлык на рабочем столе
 english.DesktopIconTask=Create a desktop shortcut
 russian.AutostartGroup=Автозапуск:
 english.AutostartGroup=Startup:
-russian.AutostartTask=Запускать MULTICORE вместе с Windows
-english.AutostartTask=Start MULTICORE with Windows
+russian.AutostartTask=Запускать TerrieFlow вместе с Windows
+english.AutostartTask=Start TerrieFlow with Windows
 russian.DataGroup=Данные:
 english.DataGroup=Data:
 russian.CleanDataTask=Удалить старые подписки и настройки
 english.CleanDataTask=Delete old subscriptions and settings
-russian.LaunchApp=Запустить MULTICORE
-english.LaunchApp=Launch MULTICORE
-russian.ServiceDescription=MULTICORE: ядра Mihomo и Xray для мгновенного подключения
-english.ServiceDescription=MULTICORE: Mihomo and Xray cores for instant connection
-russian.ServiceRegisterFailed=Не удалось зарегистрировать службу MULTICORE (код %1). Приложение будет работать без службы и запрашивать права для TUN. Перезагрузите компьютер и запустите установку снова.
-english.ServiceRegisterFailed=Could not register the MULTICORE service (code %1). The app will run without it and ask for rights for TUN. Restart the computer and run Setup again.
-russian.ServiceInstallPresent=MULTICORE уже установлен со службой. Чтобы установить его без службы, версию со службой нужно удалить (потребуются права администратора). Подписки и настройки сохранятся.%n%nУдалить MULTICORE со службой и продолжить?
-english.ServiceInstallPresent=MULTICORE is installed with the service. To install it without the service, that version must be removed first (administrator rights needed). Subscriptions and settings are kept.%n%nRemove MULTICORE with the service and continue?
-russian.ServiceInstallKept=MULTICORE уже установлен со службой. Запустите установку снова и выберите «Со службой» или сначала удалите MULTICORE в «Параметры → Приложения».
-english.ServiceInstallKept=MULTICORE is installed with the service. Run Setup again and choose "With service", or first remove MULTICORE in Settings → Apps.
-russian.StillRunning=MULTICORE ещё запущен. Закройте его (значок в трее → Выйти) и запустите установку снова.
-english.StillRunning=MULTICORE is still running. Close it (tray icon → Quit) and run Setup again.
-russian.ServiceInstallRemoveFailed=Не удалось удалить MULTICORE со службой. Удалите его в «Параметры → Приложения» и запустите установку снова.
-english.ServiceInstallRemoveFailed=Could not remove MULTICORE with the service. Remove it in Settings → Apps and run Setup again.
-russian.X86RemoveFailedCode=Не удалось удалить 32-битный MULTICORE (код %1). Удалите его в «Параметры → Приложения» и запустите установку снова.
-english.X86RemoveFailedCode=Could not remove the 32-bit MULTICORE (code %1). Remove it in Settings → Apps and run Setup again.
-russian.X86RemoveFailed=Не удалось удалить 32-битный MULTICORE. Удалите его в «Параметры → Приложения» и запустите установку снова.
-english.X86RemoveFailed=Could not remove the 32-bit MULTICORE. Remove it in Settings → Apps and run Setup again.
-russian.X86SetupOn64BitWindows=Это 32-битная версия MULTICORE. На 64-битной Windows лучше установить %1: 32-битная версия работает, но медленнее и может дольше поднимать TUN.%n%nВсё равно установить 32-битную версию?
-english.X86SetupOn64BitWindows=This is the 32-bit MULTICORE. On 64-bit Windows, %1 fits better: the 32-bit version works, but slower, and TUN may take longer to start.%n%nInstall the 32-bit version anyway?
-russian.X64SetupOnArm64=Это версия MULTICORE для x64. На Windows для ARM лучше установить MultiCore-Setup-arm64.exe: версия x64 работает здесь только через эмуляцию, медленнее и расходует больше заряда.%n%nВсё равно установить версию x64?
-english.X64SetupOnArm64=This is MULTICORE for x64. On Windows on ARM, MultiCore-Setup-arm64.exe fits better: x64 runs here only emulated, slower and with more battery drain.%n%nInstall the x64 version anyway?
-russian.X64InstallPresent=На этом компьютере уже установлен 64-битный MULTICORE. Установите %1 или сначала удалите MULTICORE в «Параметры → Приложения».
-english.X64InstallPresent=The 64-bit MULTICORE is already installed on this PC. Install %1, or first remove MULTICORE in Settings → Apps.
-russian.Arm64InstallPresent=На этом компьютере уже установлен MULTICORE для ARM64. Установите MultiCore-Setup-arm64.exe или сначала удалите MULTICORE в «Параметры → Приложения».
-english.Arm64InstallPresent=MULTICORE for ARM64 is already installed on this PC. Install MultiCore-Setup-arm64.exe, or first remove MULTICORE in Settings → Apps.
-russian.ServiceDirOnly=Со службой MULTICORE устанавливается только в %1.
-english.ServiceDirOnly=With the service, MULTICORE installs only to %1.
+russian.LaunchApp=Запустить TerrieFlow
+english.LaunchApp=Launch TerrieFlow
+russian.ServiceDescription=TerrieFlow: ядра Mihomo и Xray для мгновенного подключения
+english.ServiceDescription=TerrieFlow: Mihomo and Xray cores for instant connection
+russian.ServiceRegisterFailed=Не удалось зарегистрировать службу TerrieFlow (код %1). Приложение будет работать без службы и запрашивать права для TUN. Перезагрузите компьютер и запустите установку снова.
+english.ServiceRegisterFailed=Could not register the TerrieFlow service (code %1). The app will run without it and ask for rights for TUN. Restart the computer and run Setup again.
+russian.ServiceInstallPresent=TerrieFlow уже установлен со службой. Чтобы установить его без службы, версию со службой нужно удалить (потребуются права администратора). Подписки и настройки сохранятся.%n%nУдалить TerrieFlow со службой и продолжить?
+english.ServiceInstallPresent=TerrieFlow is installed with the service. To install it without the service, that version must be removed first (administrator rights needed). Subscriptions and settings are kept.%n%nRemove TerrieFlow with the service and continue?
+russian.ServiceInstallKept=TerrieFlow уже установлен со службой. Запустите установку снова и выберите «Со службой» или сначала удалите TerrieFlow в «Параметры → Приложения».
+english.ServiceInstallKept=TerrieFlow is installed with the service. Run Setup again and choose "With service", or first remove TerrieFlow in Settings → Apps.
+russian.StillRunning=TerrieFlow ещё запущен. Закройте его (значок в трее → Выйти) и запустите установку снова.
+english.StillRunning=TerrieFlow is still running. Close it (tray icon → Quit) and run Setup again.
+russian.ServiceInstallRemoveFailed=Не удалось удалить TerrieFlow со службой. Удалите его в «Параметры → Приложения» и запустите установку снова.
+english.ServiceInstallRemoveFailed=Could not remove TerrieFlow with the service. Remove it in Settings → Apps and run Setup again.
+russian.X86RemoveFailedCode=Не удалось удалить 32-битный TerrieFlow (код %1). Удалите его в «Параметры → Приложения» и запустите установку снова.
+english.X86RemoveFailedCode=Could not remove the 32-bit TerrieFlow (code %1). Remove it in Settings → Apps and run Setup again.
+russian.X86RemoveFailed=Не удалось удалить 32-битный TerrieFlow. Удалите его в «Параметры → Приложения» и запустите установку снова.
+english.X86RemoveFailed=Could not remove the 32-bit TerrieFlow. Remove it in Settings → Apps and run Setup again.
+russian.X86SetupOn64BitWindows=Это 32-битная версия TerrieFlow. На 64-битной Windows лучше установить %1: 32-битная версия работает, но медленнее и может дольше поднимать TUN.%n%nВсё равно установить 32-битную версию?
+english.X86SetupOn64BitWindows=This is the 32-bit TerrieFlow. On 64-bit Windows, %1 fits better: the 32-bit version works, but slower, and TUN may take longer to start.%n%nInstall the 32-bit version anyway?
+russian.X64SetupOnArm64=Это версия TerrieFlow для x64. На Windows для ARM лучше установить TerrieFlow-Client-Setup-arm64.exe: версия x64 работает здесь только через эмуляцию, медленнее и расходует больше заряда.%n%nВсё равно установить версию x64?
+english.X64SetupOnArm64=This is TerrieFlow for x64. On Windows on ARM, TerrieFlow-Client-Setup-arm64.exe fits better: x64 runs here only emulated, slower and with more battery drain.%n%nInstall the x64 version anyway?
+russian.X64InstallPresent=На этом компьютере уже установлен 64-битный TerrieFlow. Установите %1 или сначала удалите TerrieFlow в «Параметры → Приложения».
+english.X64InstallPresent=The 64-bit TerrieFlow is already installed on this PC. Install %1, or first remove TerrieFlow in Settings → Apps.
+russian.Arm64InstallPresent=На этом компьютере уже установлен TerrieFlow для ARM64. Установите TerrieFlow-Client-Setup-arm64.exe или сначала удалите TerrieFlow в «Параметры → Приложения».
+english.Arm64InstallPresent=TerrieFlow for ARM64 is already installed on this PC. Install TerrieFlow-Client-Setup-arm64.exe, or first remove TerrieFlow in Settings → Apps.
+russian.ServiceDirOnly=Со службой TerrieFlow устанавливается только в %1.
+english.ServiceDirOnly=With the service, TerrieFlow installs only to %1.
 russian.DeleteDataPrompt=Удалить подписки и настройки?
 english.DeleteDataPrompt=Erase subscriptions and settings?
+russian.LegacyMigrationFailed=Не удалось безопасно перенести прежнюю установку TerrieFlow из папки MultiCore. Старая версия и пользовательские данные сохранены. Закройте TerrieFlow и повторите установку.
+english.LegacyMigrationFailed=The previous TerrieFlow installation could not be migrated safely from the MultiCore folder. The old version and user data were preserved. Close TerrieFlow and run Setup again.
+russian.ForeignMultiCoreFound=В папке MultiCore найдена установка, которую нельзя надёжно определить как TerrieFlow. Она не будет изменена. Удалите только прежнюю тестовую сборку TerrieFlow вручную либо выберите установщик на чистой системе.
+english.ForeignMultiCoreFound=An installation in the MultiCore folder could not be reliably identified as TerrieFlow and will not be changed. Remove only the previous TerrieFlow test build manually, or use this installer on a clean system.
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:DesktopIconTask}"; GroupDescription: "{cm:ShortcutsGroup}"; Flags: unchecked
@@ -142,30 +151,40 @@ Name: "cleandata"; Description: "{cm:CleanDataTask}"; GroupDescription: "{cm:Dat
 
 [Files]
 Source: "{#PayloadDir}\*"; DestDir: "{app}\current"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SetupIconPath}"; DestDir: "{app}"; DestName: "TerrieFlow-Symbol.ico"; Flags: ignoreversion
 
 [InstallDelete]
 ; Up to 1.1.1 the shortcuts were "MultiCore.lnk". NTFS is case-insensitive, so writing
-; "MULTICORE.lnk" over them would keep the old name: delete them before [Icons] recreates them.
+; "TerrieFlow.lnk" over them would keep the old name: delete them before [Icons] recreates them.
 Type: files; Name: "{autoprograms}\MultiCore.lnk"
 Type: files; Name: "{autodesktop}\MultiCore.lnk"; Tasks: desktopicon
+Type: files; Name: "{autoprograms}\TerrieFlow.lnk"
+Type: files; Name: "{autodesktop}\TerrieFlow.lnk"; Tasks: desktopicon
+; Recreate TerrieFlow shortcuts instead of updating them in place: Explorer caches icons by the
+; shortcut and icon paths, so an older square-backed icon could otherwise survive reinstalling.
+Type: files; Name: "{autoprograms}\TerrieFlow Client.lnk"
+Type: files; Name: "{autodesktop}\TerrieFlow Client.lnk"; Tasks: desktopicon
+Type: files; Name: "{app}\TerrieFlow.ico"
+; A transitional build used the new folder with the old executable name.
+Type: files; Name: "{app}\current\MultiCore.exe"
 
 [Icons]
-Name: "{autoprograms}\MULTICORE"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"
-Name: "{autodesktop}\MULTICORE"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"; Tasks: desktopicon
+Name: "{autoprograms}\TerrieFlow Client"; Filename: "{app}\current\{#AppExeName}"; WorkingDir: "{app}\current"; IconFilename: "{app}\TerrieFlow-Symbol.ico"
+Name: "{autodesktop}\TerrieFlow Client"; Filename: "{app}\current\{#AppExeName}"; WorkingDir: "{app}\current"; IconFilename: "{app}\TerrieFlow-Symbol.ico"; Tasks: desktopicon
 
 [Registry]
 ; Service mode: an elevated Setup may run as another account (a standard user typing an
 ; administrator's credentials), so its HKCU is not the user's. The user's launch at sign-in is
 ; written by [Code] into the signed-in user's hive; the URL handler is machine-wide (HKA = HKLM)
 ; and the app registers it again for each user that starts it.
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "MultiCore"; ValueData: """{app}\current\MultiCore.exe"" --background"; Tasks: autostart; Check: not IsAdminInstallMode
-Root: HKA; Subkey: "Software\Classes\multicore"; ValueType: string; ValueName: ""; ValueData: "URL:MULTICORE Protocol"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "MultiCore"; ValueData: """{app}\current\{#AppExeName}"" --background"; Tasks: autostart; Check: not IsAdminInstallMode
+Root: HKA; Subkey: "Software\Classes\multicore"; ValueType: string; ValueName: ""; ValueData: "URL:TerrieFlow Protocol"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\multicore"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-Root: HKA; Subkey: "Software\Classes\multicore\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\current\MultiCore.exe,0"
-Root: HKA; Subkey: "Software\Classes\multicore\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\current\MultiCore.exe"" ""%1"""
+Root: HKA; Subkey: "Software\Classes\multicore\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\current\{#AppExeName},0"
+Root: HKA; Subkey: "Software\Classes\multicore\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\current\{#AppExeName}"" ""%1"""
 
 [Run]
-Filename: "{app}\current\MultiCore.exe"; Description: "{cm:LaunchApp}"; WorkingDir: "{app}\current"; Flags: postinstall shellexec skipifsilent
+Filename: "{app}\current\{#AppExeName}"; Description: "{cm:LaunchApp}"; WorkingDir: "{app}\current"; Flags: postinstall shellexec skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\.multicore-previous-*"
@@ -223,6 +242,16 @@ end;
   The x86 installer always runs in 32-bit install mode (Program Files (x86) on 64-bit Windows),
   the x64 and arm64 ones always in 64-bit mode (Program Files, also on Windows on ARM). }
 function ServiceInstallDir: String;
+begin
+  if not Is64BitInstallMode then
+  begin
+    Result := ExpandConstant('{commonpf32}\TerrieFlow');
+    exit;
+  end;
+  Result := ExpandConstant('{commonpf64}\TerrieFlow');
+end;
+
+function LegacyServiceInstallDir: String;
 begin
   if not Is64BitInstallMode then
   begin
@@ -369,6 +398,13 @@ function PerUserInstallDir: String;
 begin
   Result := UserLocalAppData;
   if Result <> '' then
+    Result := Result + '\Programs\TerrieFlow';
+end;
+
+function LegacyPerUserInstallDir: String;
+begin
+  Result := UserLocalAppData;
+  if Result <> '' then
     Result := Result + '\Programs\MultiCore';
 end;
 
@@ -442,9 +478,9 @@ var
   Registered: Integer;
 begin
   if RunSc('query ' + ServiceName) = 0 then
-    Registered := RunSc('config ' + ServiceName + ' binPath= "\"' + ServiceBinaryPath + '\" --service" start= auto obj= LocalSystem DisplayName= "MULTICORE Service"')
+    Registered := RunSc('config ' + ServiceName + ' binPath= "\"' + ServiceBinaryPath + '\" --service" start= auto obj= LocalSystem DisplayName= "TerrieFlow Service"')
   else
-    Registered := RunSc('create ' + ServiceName + ' binPath= "\"' + ServiceBinaryPath + '\" --service" start= auto obj= LocalSystem DisplayName= "MULTICORE Service"');
+    Registered := RunSc('create ' + ServiceName + ' binPath= "\"' + ServiceBinaryPath + '\" --service" start= auto obj= LocalSystem DisplayName= "TerrieFlow Service"');
   if Registered <> 0 then
   begin
     { 1072: the old service is still marked for deletion until a reboot. }
@@ -528,7 +564,158 @@ begin
   if not ExecAsOriginalUser(Uninstaller, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
     ResultCode := -1;
   if ResultCode <> 0 then
-    Log('Per-user MULTICORE uninstaller exited with ' + IntToStr(ResultCode));
+    Log('Per-user TerrieFlow uninstaller exited with ' + IntToStr(ResultCode));
+end;
+
+function LegacyEntryUninstaller(const Root: Integer; const Key, ExpectedDir: String;
+  const RequireTerrieFlowBrand: Boolean): String;
+var
+  Uninstaller, DisplayName, Publisher: String;
+  Branded: Boolean;
+begin
+  Result := '';
+  if not RegQueryStringValue(Root, Key, 'UninstallString', Uninstaller) then
+    exit;
+  Uninstaller := RemoveQuotes(Uninstaller);
+  if (CompareText(ExtractFilePath(Uninstaller), AddBackslash(ExpectedDir)) <> 0) or
+     not FileExists(Uninstaller) then
+    exit;
+  Branded :=
+    (RegQueryStringValue(Root, Key, 'DisplayName', DisplayName) and
+      (Pos('terrieflow', AnsiLowercase(DisplayName)) = 1)) or
+    (RegQueryStringValue(Root, Key, 'Publisher', Publisher) and
+      (CompareText(Publisher, 'TerrieFlow') = 0));
+  if (not RequireTerrieFlowBrand) or Branded then
+    Result := Uninstaller;
+end;
+
+function LegacyServiceUninstaller: String;
+begin
+  Result := '';
+  if Is64BitInstallMode then
+    Result := LegacyEntryUninstaller(HKLM64, UninstallKey,
+      ExpandConstant('{commonpf64}\MultiCore'), True)
+  else
+    Result := LegacyEntryUninstaller(HKLM32, UninstallKey,
+      ExpandConstant('{commonpf32}\MultiCore'), True);
+  { A native 64-bit installer also migrates the old x86 test build. }
+  if (Result = '') and Is64BitInstallMode then
+    Result := LegacyEntryUninstaller(HKLM32, UninstallKey,
+      ExpandConstant('{commonpf32}\MultiCore'), True);
+end;
+
+function LegacyPerUserUninstaller: String;
+begin
+  Result := '';
+  if LegacyPerUserInstallDir <> '' then
+    Result := LegacyEntryUninstaller(UserHiveRoot, UserHiveKey(UninstallKey),
+      LegacyPerUserInstallDir, True);
+end;
+
+function ForeignLegacyInstallPresent: Boolean;
+var
+  Candidate: String;
+begin
+  Result := False;
+  if Is64BitInstallMode then
+  begin
+    Candidate := LegacyEntryUninstaller(HKLM64, UninstallKey,
+      ExpandConstant('{commonpf64}\MultiCore'), False);
+    if Candidate = '' then
+      Candidate := LegacyEntryUninstaller(HKLM32, UninstallKey,
+        ExpandConstant('{commonpf32}\MultiCore'), False);
+  end
+  else
+    Candidate := LegacyEntryUninstaller(HKLM32, UninstallKey,
+      ExpandConstant('{commonpf32}\MultiCore'), False);
+  if (Candidate <> '') and (LegacyServiceUninstaller = '') then
+  begin
+    Result := True;
+    exit;
+  end;
+  if LegacyPerUserInstallDir <> '' then
+  begin
+    Candidate := LegacyEntryUninstaller(UserHiveRoot, UserHiveKey(UninstallKey),
+      LegacyPerUserInstallDir, False);
+    Result := (Candidate <> '') and (LegacyPerUserUninstaller = '');
+  end;
+end;
+
+function RemoveLegacyServiceInstall: String;
+var
+  LegacyUninstaller, InstallDir, AutostartValue: String;
+  ResultCode, Waited: Integer;
+begin
+  Result := '';
+  LegacyUninstaller := LegacyServiceUninstaller;
+  if LegacyUninstaller = '' then
+    exit;
+  InstallDir := RemoveBackslash(ExtractFilePath(LegacyUninstaller));
+  Log('Migrating the previous TerrieFlow service install from ' + InstallDir);
+  MoveAutostartFromServiceInstall :=
+    RegQueryStringValue(UserHiveRoot, UserHiveKey(RunKey), 'MultiCore', AutostartValue) and
+    (CompareText(AutostartValue,
+      '"' + InstallDir + '\current\MultiCore.exe" --background') = 0);
+  StopService;
+  if not WaitForExit(InstallDir, False) then
+  begin
+    MoveAutostartFromServiceInstall := False;
+    Result := CustomMessage('StillRunning');
+    exit;
+  end;
+  if not Exec(LegacyUninstaller, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE,
+      ewWaitUntilTerminated, ResultCode) then
+    ResultCode := -1;
+  Waited := 0;
+  while FileExists(LegacyUninstaller) and (Waited < ServiceUninstallWaitSeconds) do
+  begin
+    Sleep(1000);
+    Waited := Waited + 1;
+  end;
+  if FileExists(LegacyUninstaller) then
+  begin
+    Log('Legacy service uninstaller exited with ' + IntToStr(ResultCode));
+    MoveAutostartFromServiceInstall := False;
+    Result := CustomMessage('LegacyMigrationFailed');
+  end;
+end;
+
+function RemoveLegacyPerUserInstall: String;
+var
+  Uninstaller, InstallDir, AutostartValue: String;
+  ResultCode, Waited: Integer;
+begin
+  Result := '';
+  Uninstaller := LegacyPerUserUninstaller;
+  if Uninstaller = '' then
+    exit;
+  InstallDir := RemoveBackslash(ExtractFilePath(Uninstaller));
+  Log('Migrating the previous TerrieFlow per-user install from ' + InstallDir);
+  MoveAutostartFromServiceInstall := MoveAutostartFromServiceInstall or
+    (RegQueryStringValue(UserHiveRoot, UserHiveKey(RunKey), 'MultiCore', AutostartValue) and
+      (CompareText(AutostartValue,
+        '"' + InstallDir + '\current\MultiCore.exe" --background') = 0));
+  if not WaitForExit(InstallDir, False) then
+  begin
+    MoveAutostartFromServiceInstall := False;
+    Result := CustomMessage('StillRunning');
+    exit;
+  end;
+  if not ExecAsOriginalUser(Uninstaller, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '',
+      SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    ResultCode := -1;
+  Waited := 0;
+  while FileExists(Uninstaller) and (Waited < ServiceUninstallWaitSeconds) do
+  begin
+    Sleep(1000);
+    Waited := Waited + 1;
+  end;
+  if FileExists(Uninstaller) then
+  begin
+    Log('Legacy per-user uninstaller exited with ' + IntToStr(ResultCode));
+    MoveAutostartFromServiceInstall := False;
+    Result := CustomMessage('LegacyMigrationFailed');
+  end;
 end;
 
 { x64 or arm64 on 64-bit Windows: the uninstaller of an x86 service install (32-bit uninstall
@@ -544,7 +731,7 @@ begin
   begin
     X86Uninstaller := RemoveQuotes(X86Uninstaller);
     { Only the x86 service install's own uninstaller in the administrators-only folder. }
-    if (CompareText(ExtractFilePath(X86Uninstaller), ExpandConstant('{commonpf32}\MultiCore\')) = 0) and
+    if (CompareText(ExtractFilePath(X86Uninstaller), ExpandConstant('{commonpf32}\TerrieFlow\')) = 0) and
        FileExists(X86Uninstaller) then
       Result := X86Uninstaller;
   end;
@@ -565,7 +752,8 @@ begin
   if Found then
   begin
     Uninstaller := RemoveQuotes(Uninstaller);
-    if FileExists(Uninstaller) then
+    if (CompareText(ExtractFilePath(Uninstaller), AddBackslash(ServiceInstallDir)) = 0) and
+       FileExists(Uninstaller) then
       Result := Uninstaller;
   end;
   { x64/arm64 "Без службы" over an x86 service install removes it the same way. }
@@ -711,9 +899,9 @@ end;
 function Native64BitSetupName: String;
 begin
   if IsArm64 then
-    Result := 'MultiCore-Setup-arm64.exe'
+    Result := 'TerrieFlow-Client-Setup-arm64.exe'
   else
-    Result := 'MultiCore-Setup-x64.exe';
+    Result := 'TerrieFlow-Client-Setup-x64.exe';
 end;
 
 { The 32-bit installer (32-bit install mode) on 64-bit Windows: a 64-bit installer fits better. }
@@ -771,7 +959,8 @@ begin
   Result := False;
   if not IsX64SetupOnArm64 then
     exit;
-  if LoadStringFromFile(ExpandConstant('{commonpf64}\MultiCore\current\versions.json'), Manifest) and
+  if (LoadStringFromFile(ExpandConstant('{commonpf64}\TerrieFlow\current\versions.json'), Manifest) or
+      LoadStringFromFile(ExpandConstant('{commonpf64}\MultiCore\current\versions.json'), Manifest)) and
      (Pos('"platform": "windows-arm64"', Manifest) > 0) then
   begin
     Result := True;
@@ -803,7 +992,7 @@ procedure LaunchAfterSilentMigration;
 var
   ResultCode: Integer;
 begin
-  { The Settings card runs Setup with /SILENT /LAUNCH=1 after quitting MULTICORE; the
+  { The Settings card runs Setup with /SILENT /LAUNCH=1 after quitting TerrieFlow; the
     postinstall [Run] entry is skipped when silent, so start the app once the service runs. }
   if WizardSilent and (ExpandConstant('{param:LAUNCH|0}') = '1') then
     ExecAsOriginalUser(ExpandConstant('{app}\current\{#AppExeName}'), '',
@@ -825,6 +1014,17 @@ begin
     Result := CustomMessage('Arm64InstallPresent');
     exit;
   end;
+  if ForeignLegacyInstallPresent then
+  begin
+    Result := CustomMessage('ForeignMultiCoreFound');
+    exit;
+  end;
+  Result := RemoveLegacyServiceInstall;
+  if Result <> '' then
+    exit;
+  Result := RemoveLegacyPerUserInstall;
+  if Result <> '' then
+    exit;
   if not IsAdminInstallMode then
   begin
     Result := RemoveServiceInstall;

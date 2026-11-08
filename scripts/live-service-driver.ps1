@@ -32,7 +32,7 @@ param(
     [string]$SubscriptionUrl,
     # Fetched while connected to prove traffic flows; empty skips the check.
     [string]$TrafficUrl = 'https://www.gstatic.com/generate_204',
-    # Service mode: also start the desktop (MultiCore.exe --background) and kill it.
+    # Service mode: also start the desktop (TerrieFlow.exe --background) and kill it.
     [switch]$WithDesktop,
     # Uninstall mode: the uninstaller to run and the answer to "remove subscriptions and settings?".
     [string]$Uninstaller,
@@ -570,7 +570,7 @@ function Invoke-ServiceMode {
 
     if ($WithDesktop) {
         Check 'desktop-warms-and-exit-stops-cores' {
-            $desktopExe = Join-Path $InstallRoot 'current\MultiCore.exe'
+            $desktopExe = Join-Path $InstallRoot 'current\TerrieFlow.exe'
             $desktop = Start-Process -FilePath $desktopExe -ArgumentList '--background' -WorkingDirectory (Split-Path -Parent $desktopExe) -PassThru
             try {
                 $pids = Wait-Until { Get-ServiceCorePids } 120 'cores warmed by the desktop'
@@ -698,7 +698,7 @@ try {
     Remove-Item -LiteralPath $ResultPath, ($ResultPath + '.done') -Force -ErrorAction SilentlyContinue
     Write-Log "driver start: mode=$Mode user=$env:USERNAME"
     if (-not $InstallRoot) {
-        $InstallRoot = if ($Mode -eq 'PerUser') { Join-Path $env:LOCALAPPDATA 'Programs\MultiCore' } else { Join-Path $env:ProgramFiles 'MultiCore' }
+        $InstallRoot = if ($Mode -eq 'PerUser') { Join-Path $env:LOCALAPPDATA 'Programs\TerrieFlow' } else { Join-Path $env:ProgramFiles 'TerrieFlow' }
     }
     if ($SubscriptionUrl) { $script:subscription = $SubscriptionUrl }
     # Task Scheduler cannot pass an empty argument reliably; 'none' disables the traffic check.

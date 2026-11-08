@@ -3,18 +3,18 @@
 PackageIdentifier: fatyzzz.MULTICORE
 PackageVersion: @VERSION@
 PackageLocale: en-US
-Publisher: MULTICORE
-PublisherUrl: https://github.com/fatyzzz
-PublisherSupportUrl: https://github.com/fatyzzz/multicore/issues
-PackageName: MULTICORE
-PackageUrl: https://github.com/fatyzzz/multicore
+Publisher: TerrieFlow
+PublisherUrl: https://github.com/Terrieggwp
+PublisherSupportUrl: https://github.com/Terrieggwp/terrieflow-client/issues
+PackageName: TerrieFlow
+PackageUrl: https://github.com/Terrieggwp/terrieflow-client
 License: GPL-3.0-only (bundled cores MPL-2.0 and GPL-3.0)
-LicenseUrl: https://github.com/fatyzzz/multicore/blob/main/LICENSE
+LicenseUrl: https://github.com/Terrieggwp/terrieflow-client/blob/main/LICENSE
 ShortDescription: Native network client combining Mihomo routing with Xray transports
 Description: |-
-  MULTICORE connects through a provider subscription: Mihomo routes, Xray carries the
+  TerrieFlow connects through a provider subscription: Mihomo routes, Xray carries the
   transports, and all traffic goes through a TUN adapter or through the system proxy.
-Moniker: multicore
+Moniker: terrieflow
 Tags:
 - mihomo
 - proxy

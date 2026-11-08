@@ -129,7 +129,7 @@ mod platform {
         let filter: Vec<u16> = format!("{}\0*.zip\0\0", multicore_i18n::tr!("ZIP-архив (*.zip)"))
             .encode_utf16()
             .collect();
-        let title = wide(multicore_i18n::tr!("Сохранить лог MULTICORE"));
+        let title = wide(multicore_i18n::tr!("Сохранить лог TerrieFlow"));
         let extension = wide("zip");
         let mut dialog: OPENFILENAMEW = unsafe { std::mem::zeroed() };
         dialog.lStructSize = size_of::<OPENFILENAMEW>() as u32;
@@ -240,7 +240,7 @@ mod platform {
         options.insert_value("modal", &glib::ToVariant::to_variant(&true));
         let parameters = glib::Variant::tuple_from_iter([
             glib::ToVariant::to_variant(""),
-            glib::ToVariant::to_variant(multicore_i18n::tr!("Сохранить лог MULTICORE")),
+            glib::ToVariant::to_variant(multicore_i18n::tr!("Сохранить лог TerrieFlow")),
             options.end(),
         ]);
         let call = connection.call_sync(

@@ -189,10 +189,10 @@ export component QuietChip inherits Rectangle {
         ? root.natural-width
         : chip-label.preferred-width + Theme.space-3 * 2 + (root.has-icon-slot ? 22px : 0px);
     preferred-height: 32px;
-    background: root.selected ? Theme.elevated : chip-touch.has-hover && root.enabled && root.modal-enabled ? #ffffff08 : transparent;
-    border-color: Theme.focus;
-    border-width: chip-focus.has-focus ? Theme.focus-width : 0px;
-    border-radius: 8px;
+    background: root.selected ? Theme.active-surface : chip-touch.has-hover && root.enabled && root.modal-enabled ? #159fff14 : transparent;
+    border-color: chip-focus.has-focus ? Theme.focus : Theme.line-accent;
+    border-width: chip-focus.has-focus ? Theme.focus-width : root.selected ? 1px : 0px;
+    border-radius: 10px;
     clip: true;
     animate background { duration: 140ms; easing: ease-out; }
     opacity: root.enabled ? 1 : 0.5;
@@ -208,7 +208,7 @@ export component QuietChip inherits Rectangle {
     chip-cursor-wash := Rectangle {
         property <length> cursor-x: chip-touch.mouse-x;
         property <length> cursor-y: chip-touch.mouse-y;
-        property <color> cursor-color: root.selected ? #4c9dff1c : #4c9dff12;
+        property <color> cursor-color: root.selected ? #159fff1c : #159fff12;
         background: @radial-gradient(
             circle 72px at cursor-x cursor-y,
             cursor-color 0%,
@@ -325,7 +325,7 @@ export component RouteNodeRow inherits Rectangle {
     min-height: Theme.interactive-min;
     preferred-height: 48px;
     max-height: 48px;
-    background: root.selected ? Theme.elevated : row-touch.has-hover && root.enabled ? #ffffff06 : transparent;
+    background: root.selected ? Theme.raised : row-touch.has-hover && root.enabled ? #159fff0f : transparent;
     border-color: Theme.focus;
     border-width: row-focus.has-focus ? Theme.focus-width : 0px;
     border-radius: row-focus.has-focus ? 10px : 0px;
@@ -343,7 +343,7 @@ export component RouteNodeRow inherits Rectangle {
     row-cursor-wash := Rectangle {
         property <length> cursor-x: row-touch.mouse-x;
         property <length> cursor-y: row-touch.mouse-y;
-        property <color> cursor-color: root.selected ? #4c9dff1a : #4c9dff0e;
+        property <color> cursor-color: root.selected ? #159fff1a : #159fff0e;
         background: @radial-gradient(
             circle 140px at cursor-x cursor-y,
             cursor-color 0%,
@@ -434,22 +434,41 @@ export component RouteNodeRow inherits Rectangle {
     property <length> trailing-inset: root.pending ? 44px : 20px;
     animate trailing-inset { duration: 140ms; easing: ease-out; }
 
-    trailing-label := Text {
+    trailing-label := Rectangle {
         x: parent.width - self.width - root.trailing-inset;
-        width: 76px;
-        height: parent.height;
-        text: root.trailing-text;
-        color: root.trailing-tone == "success"
-            ? Theme.accent-green
-            : root.trailing-tone == "warning"
-                ? Theme.warning
-                : root.trailing-tone == "danger" ? Theme.error : Theme.text-muted;
-        font-family: Theme.font-family;
-        font-size: Theme.type-metadata-size;
-        font-weight: Theme.weight-semibold;
-        horizontal-alignment: right;
-        vertical-alignment: center;
-        accessible-role: none;
+        y: (parent.height - self.height) / 2;
+        width: root.trailing-text == "" ? 0px : 82px;
+        height: root.trailing-text == "" ? 0px : 28px;
+        border-radius: 14px;
+        background: root.trailing-tone == "success" ? #18dfa114
+            : root.trailing-tone == "warning" ? #f3c34a14
+            : root.trailing-tone == "high-latency" ? Theme.high-latency-soft
+            : root.trailing-tone == "danger" ? #f0526a14
+            : #159fff0d;
+        border-color: root.trailing-tone == "success" ? #18dfa180
+            : root.trailing-tone == "warning" ? #f3c34a80
+            : root.trailing-tone == "high-latency" ? Theme.high-latency-border
+            : root.trailing-tone == "danger" ? #f0526a80
+            : Theme.line-soft;
+        border-width: root.trailing-text == "" ? 0px : 1px;
+        animate background, border-color { duration: 180ms; easing: ease-out; }
+        Text {
+            width: parent.width;
+            height: parent.height;
+            text: root.trailing-text;
+            color: root.trailing-tone == "success"
+                ? Theme.accent-green
+                : root.trailing-tone == "warning"
+                    ? Theme.warning
+                    : root.trailing-tone == "high-latency" ? Theme.high-latency
+                    : root.trailing-tone == "danger" ? Theme.error : Theme.text-muted;
+            font-family: Theme.font-family;
+            font-size: Theme.type-metadata-size;
+            font-weight: Theme.weight-semibold;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
     }
 
     if root.trailing-text == "": Rectangle {
@@ -484,7 +503,7 @@ export component RouteNodeRow inherits Rectangle {
         y: parent.height - 1px;
         width: parent.width - 56px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
     }
 
     // Focus is taken once the row exists and the event loop runs again, never while the

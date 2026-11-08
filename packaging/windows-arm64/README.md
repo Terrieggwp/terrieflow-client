@@ -1,11 +1,11 @@
-# MULTICORE Windows ARM64 portable preview
+# TerrieFlow Client Windows ARM64 portable preview
 
 This file is copied into packages by `scripts/package-windows-release.ps1`.
-Keep the generated directory intact and start `MultiCore.exe`.
+Keep the generated directory intact and start `TerrieFlow.exe`.
 
 The package contains exactly:
 
-- `MultiCore.exe`;
+- `TerrieFlow.exe`;
 - `runtime/multicore-daemon.exe`, `multicore-updater.exe`, and
   `multicore-core-host.exe`;
 - pinned `cores/xray.exe` and `cores/mihomo.exe`;
@@ -25,10 +25,10 @@ diagnostics are bounded, redacted, and currently retained in memory rather than
 written to a promised persistent log.
 
 Runtime data lives under `%LOCALAPPDATA%\MultiCore`; update downloads are under
-`%LOCALAPPDATA%\MultiCore\updates`. `MultiCore-Setup-arm64.exe` runs only on ARM64
+`%LOCALAPPDATA%\MultiCore\updates`. `TerrieFlow-Client-Setup-arm64.exe` runs only on ARM64
 Windows (an x64 or x86 PC refuses it) and installs this bundle beneath
-`%LOCALAPPDATA%\Programs\MultiCore\current` (without the service) or, with the
-service, beneath `Program Files\MultiCore`: the same folders and uninstall entry as
+`%LOCALAPPDATA%\Programs\TerrieFlow\current` (without the service) or, with the
+service, beneath `Program Files\TerrieFlow`: the same folders and uninstall entry as
 the x64 build, so it replaces an x64 install (which Windows 11 on ARM runs emulated)
 in place, and it migrates an x86 install the way the x64 installer does. On ARM64
 Windows the x64 installer recommends this one and refuses to replace an ARM64
@@ -41,12 +41,12 @@ Build the updater asset for the official anonymous channel with:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\package-windows-release.ps1 `
   -Architecture arm64 `
   -DestinationPath dist\multicore-windows-arm64 `
-  -UpdateRepository fatyzzz/multicore `
-  -ReleaseAssetPath dist\release\multicore-windows-arm64.zip
+  -UpdateRepository Terrieggwp/terrieflow-client `
+  -ReleaseAssetPath dist\release\TerrieFlow-Client-windows-arm64.zip
 ```
 
 The updater accepts the latest public, non-draft `vX.Y.Z` GitHub Release, requires
-the asset name `multicore-windows-arm64.zip` (an ARM64 build never takes the x64
+the asset name `TerrieFlow-Client-windows-arm64.zip` (an ARM64 build never takes the x64
 bundle, which would only run emulated) and GitHub `sha256:` digest, then also
 verifies this package's internal checksums before replacing the full bundle.
 The public release-only repository contains binary releases so installed clients

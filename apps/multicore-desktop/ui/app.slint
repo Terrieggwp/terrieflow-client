@@ -95,15 +95,17 @@ component NavItem inherits Rectangle {
 
     height: root.compact ? 44px : 40px;
     animate height { duration: 180ms; easing: ease-in-out; }
-    background: root.active ? Theme.elevated : nav-touch.has-hover ? #ffffff08 : transparent;
-    border-radius: 8px;
-    border-width: nav-focus.has-focus ? 2px : 0px;
-    border-color: Theme.focus;
+    background: root.active ? Theme.raised : nav-touch.has-hover ? #159fff14 : transparent;
+    border-radius: 12px;
+    border-width: nav-focus.has-focus ? 2px : root.active ? 1px : 0px;
+    border-color: nav-focus.has-focus ? Theme.focus : Theme.line-accent;
+    drop-shadow-blur: root.active ? 14px : 0px;
+    drop-shadow-color: root.active ? #159fff26 : transparent;
     accessible-role: button;
     accessible-label: root.label;
     accessible-enabled: root.enabled;
     accessible-action-default => { if (root.enabled) { root.activated(); } }
-    animate background { duration: 140ms; easing: ease-out; }
+    animate background, border-color, drop-shadow-blur { duration: 160ms; easing: ease-out; }
 
     Rectangle {
         x: 0;
@@ -238,256 +240,6 @@ component NavToggle inherits Rectangle {
     }
 }
 
-// Subscription lifetime summary used by the TerrieFlow visual preview. Regular unlimited
-// plans show time only; grace mode can reuse the secondary line for its temporary data cap.
-component PreviewSubscriptionCard inherits Rectangle {
-    in property <bool> grace: false;
-    height: 188px;
-    background: #0b1626;
-    border-color: #243a58;
-    border-width: 1px;
-    border-radius: 12px;
-
-    Text {
-        x: 14px;
-        y: 14px;
-        text: root.grace ? "Grace-доступ" : "Подписка";
-        color: Theme.text-primary;
-        font-size: 13px;
-        font-weight: Theme.weight-semibold;
-    }
-    Text {
-        x: 14px;
-        y: 36px;
-        text: root.grace ? "Льготный период активен" : "Premium Pro";
-        color: root.grace ? #a78bfa : Theme.text-secondary;
-        font-size: 12px;
-    }
-
-    Rectangle {
-        x: (parent.width - self.width) / 2;
-        y: 60px;
-        width: 68px;
-        height: 68px;
-        background: transparent;
-
-        Path {
-            width: parent.width;
-            height: parent.height;
-            viewbox-width: 100;
-            viewbox-height: 100;
-            commands: "M 50 8 A 42 42 0 1 1 49.9 8";
-            stroke: #1b2d49;
-            stroke-width: 10px;
-            stroke-line-cap: round;
-            fill: transparent;
-        }
-        Path {
-            width: parent.width;
-            height: parent.height;
-            viewbox-width: 100;
-            viewbox-height: 100;
-            commands: "M 50 8 A 42 42 0 0 1 65.8 88.9";
-            stroke: root.grace ? #8b5cf6 : Theme.accent-blue;
-            stroke-width: 10px;
-            stroke-line-cap: round;
-            fill: transparent;
-        }
-        Text {
-            x: 0px;
-            y: 0px;
-            width: parent.width;
-            height: parent.height;
-            text: "44%";
-            color: Theme.text-primary;
-            font-size: 15px;
-            font-weight: Theme.weight-semibold;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-        }
-    }
-
-    Rectangle { x: 14px; y: 140px; width: parent.width - 28px; height: 1px; background: Theme.line; }
-    Text { x: 14px; y: 146px; width: parent.width - 28px; text: root.grace ? "71 ч 42 мин 18 с" : "12 дн 04 ч 37 мин"; color: Theme.text-primary; font-size: 11px; font-weight: Theme.weight-semibold; overflow: elide; }
-    Text { x: 14px; y: 166px; width: parent.width - 28px; text: root.grace ? "780 МБ из 1 ГБ" : "до 26 окт., 18:52"; color: Theme.text-muted; font-size: 10px; overflow: elide; }
-}
-
-component PreviewModeCard inherits Rectangle {
-    in property <image> icon-source;
-    in property <string> title;
-    in property <string> detail;
-    in property <bool> selected: false;
-    callback activated();
-
-    height: 72px;
-    background: root.selected ? #10294a : mode-touch.has-hover ? #111f34 : Theme.surface;
-    border-color: root.selected ? Theme.accent-blue : Theme.line;
-    border-width: 1px;
-    border-radius: 12px;
-    animate background, border-color { duration: 140ms; easing: ease-out; }
-
-    Rectangle {
-        x: 14px;
-        y: 18px;
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        background: root.selected ? #139dff26 : #ffffff0a;
-        Image {
-            x: 9px;
-            y: 9px;
-            width: 18px;
-            height: 18px;
-            source: root.icon-source;
-            colorize: root.selected ? Theme.accent-blue-hover : Theme.text-secondary;
-            image-fit: contain;
-        }
-    }
-    Text { x: 62px; y: 14px; width: parent.width - 74px; height: 22px; text: root.title; color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
-    Text { x: 62px; y: 36px; width: parent.width - 74px; height: 20px; text: root.detail; color: Theme.text-muted; font-size: 11px; vertical-alignment: center; overflow: elide; }
-    mode-touch := TouchArea { mouse-cursor: pointer; clicked => { root.activated(); } }
-}
-
-component PreviewSwitch inherits Rectangle {
-    in-out property <bool> checked: true;
-    callback toggled(bool);
-    width: 66px;
-    height: 36px;
-    border-radius: 18px;
-    background: root.checked ? #10b7ee : #1b2a3e;
-    border-color: root.checked ? #56d7ff : Theme.line;
-    border-width: 1px;
-    animate background, border-color { duration: 160ms; easing: ease-out; }
-    Rectangle {
-        x: root.checked ? parent.width - self.width - 4px : 4px;
-        y: 4px;
-        width: 28px;
-        height: 28px;
-        border-radius: 14px;
-        background: #f7fbff;
-        drop-shadow-blur: 8px;
-        drop-shadow-color: #00000066;
-        animate x { duration: 180ms; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
-    }
-    switch-touch := TouchArea {
-        mouse-cursor: pointer;
-        clicked => { root.checked = !root.checked; root.toggled(root.checked); }
-    }
-}
-
-component PreviewRuleChoice inherits Rectangle {
-    in property <string> label;
-    in property <bool> selected: false;
-    callback activated();
-    height: 32px;
-    min-width: 62px;
-    background: root.selected ? #0f79c9 : choice-touch.has-hover ? #ffffff0d : transparent;
-    border-color: root.selected ? #25b8ff : transparent;
-    border-width: 1px;
-    border-radius: 8px;
-    Text {
-        text: root.label;
-        color: root.selected ? #ffffff : Theme.text-secondary;
-        font-size: 11px;
-        font-weight: root.selected ? Theme.weight-semibold : Theme.weight-medium;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-    choice-touch := TouchArea { mouse-cursor: pointer; clicked => { root.activated(); } }
-}
-
-component PreviewAppRuleRow inherits Rectangle {
-    in property <string> title;
-    in property <string> initial;
-    in property <color> tile-color: Theme.accent-blue;
-    in-out property <string> mode: "auto";
-    in property <bool> show-separator: true;
-
-    height: 54px;
-    background: row-touch.has-hover ? #ffffff05 : transparent;
-    row-touch := TouchArea { }
-    Rectangle {
-        x: 12px; y: 10px; width: 34px; height: 34px; border-radius: 9px; background: root.tile-color;
-        Text { text: root.initial; color: #ffffff; font-size: 14px; font-weight: Theme.weight-bold; horizontal-alignment: center; vertical-alignment: center; }
-    }
-    Text { x: 58px; y: 0px; width: Math.max(80px, parent.width - 350px); height: parent.height; text: root.title; color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-medium; vertical-alignment: center; overflow: elide; }
-    HorizontalLayout {
-        x: parent.width - 278px;
-        y: 11px;
-        width: 266px;
-        height: 32px;
-        spacing: 4px;
-        PreviewRuleChoice { horizontal-stretch: 1; label: "Напрямую"; selected: root.mode == "direct"; activated => { root.mode = "direct"; } }
-        PreviewRuleChoice { horizontal-stretch: 1; label: "Через TF"; selected: root.mode == "terrieflow"; activated => { root.mode = "terrieflow"; } }
-        PreviewRuleChoice { horizontal-stretch: 1; label: "Авто"; selected: root.mode == "auto"; activated => { root.mode = "auto"; } }
-    }
-    if root.show-separator: Rectangle { x: 58px; y: parent.height - 1px; width: parent.width - 70px; height: 1px; background: #ffffff0f; }
-}
-
-component PreviewDeviceRow inherits Rectangle {
-    in property <image> icon-source;
-    in property <string> title;
-    in property <string> detail;
-    in property <string> status;
-    in property <bool> online: true;
-    in property <bool> current: false;
-    in property <bool> show-separator: true;
-
-    height: 50px;
-    background: transparent;
-    Rectangle {
-        x: 10px; y: 8px; width: 34px; height: 34px; border-radius: 9px; background: #12335a;
-        Image { x: 8px; y: 8px; width: 18px; height: 18px; source: root.icon-source; colorize: Theme.accent-blue-hover; image-fit: contain; }
-    }
-    Text { x: 56px; y: 7px; width: parent.width - 230px; height: 20px; text: root.title; color: Theme.text-primary; font-size: 12px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
-    if root.current: Rectangle {
-        x: 142px; y: 10px; width: 114px; height: 18px; border-radius: 9px; background: #117ac733;
-        Text { text: "Текущее устройство"; color: Theme.accent-blue-hover; font-size: 9px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; }
-    }
-    Text { x: 56px; y: 27px; width: parent.width - 230px; height: 17px; text: root.detail; color: Theme.text-muted; font-size: 10px; vertical-alignment: center; overflow: elide; }
-    Rectangle { x: parent.width - 156px; y: 21px; width: 7px; height: 7px; border-radius: 3.5px; background: root.online ? Theme.accent-green : #718096; }
-    Text { x: parent.width - 138px; y: 11px; width: 112px; height: 28px; text: root.status; color: root.online ? Theme.accent-green : Theme.text-muted; font-size: 11px; vertical-alignment: center; horizontal-alignment: left; overflow: elide; }
-    Rectangle {
-        x: parent.width - 42px; y: 10px; width: 32px; height: 30px; border-radius: 8px; background: device-menu-touch.has-hover ? #ffffff0d : transparent;
-        Image { x: 8px; y: 7px; width: 16px; height: 16px; source: @image-url("../assets/more-horizontal.svg"); colorize: Theme.text-muted; image-fit: contain; }
-        device-menu-touch := TouchArea { mouse-cursor: pointer; }
-    }
-    if root.show-separator: Rectangle { x: 56px; y: parent.height - 1px; width: parent.width - 66px; height: 1px; background: #ffffff0f; }
-}
-
-component PreviewHealthTile inherits Rectangle {
-    in property <image> icon-source;
-    in property <string> title;
-    in property <string> status: "Работает";
-    height: 68px;
-    background: Theme.surface;
-    border-color: Theme.line;
-    border-width: 1px;
-    border-radius: 12px;
-    Image { x: 12px; y: 12px; width: 20px; height: 20px; source: root.icon-source; colorize: Theme.accent-blue-hover; image-fit: contain; }
-    Text { x: 40px; y: 9px; width: parent.width - 50px; height: 24px; text: root.title; color: Theme.text-primary; font-size: 11px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
-    Rectangle { x: 13px; y: 46px; width: 7px; height: 7px; border-radius: 3.5px; background: Theme.accent-green; }
-    Text { x: 29px; y: 36px; width: parent.width - 39px; height: 27px; text: root.status; color: Theme.accent-green; font-size: 10px; vertical-alignment: center; overflow: elide; }
-}
-
-component PreviewServerRow inherits Rectangle {
-    in property <string> code;
-    in property <string> country;
-    in property <string> latency;
-    in property <string> quality;
-    in property <color> tone: Theme.accent-green;
-    in property <color> tone-soft: #26d99520;
-    in property <bool> show-separator: true;
-    height: 37px;
-    background: transparent;
-    Rectangle { x: 8px; y: 7px; width: 30px; height: 23px; border-radius: 6px; background: #12335a; Text { text: root.code; color: Theme.text-primary; font-size: 9px; font-weight: Theme.weight-bold; horizontal-alignment: center; vertical-alignment: center; } }
-    Text { x: 48px; y: 0px; width: parent.width - 235px; height: parent.height; text: root.country; color: Theme.text-primary; font-size: 11px; vertical-alignment: center; overflow: elide; }
-    Text { x: parent.width - 178px; y: 0px; width: 54px; height: parent.height; text: root.latency; color: root.tone; font-size: 10px; horizontal-alignment: right; vertical-alignment: center; }
-    Rectangle { x: parent.width - 112px; y: 9px; width: 102px; height: 20px; border-radius: 10px; background: root.tone-soft; border-color: root.tone; border-width: 1px; Text { text: root.quality; color: root.tone; font-size: 9px; horizontal-alignment: center; vertical-alignment: center; overflow: elide; } }
-    if root.show-separator: Rectangle { x: 48px; y: parent.height - 1px; width: parent.width - 58px; height: 1px; background: #ffffff0f; }
-}
-
 component SmallAction inherits Rectangle {
     in property <string> label;
     in property <bool> enabled: true;
@@ -510,8 +262,8 @@ component SmallAction inherits Rectangle {
     max-width: 160px;
     horizontal-stretch: 0;
     height: 44px;
-    background: root.selected ? #4c9dff18 : root.enabled ? (small-touch.pressed ? Theme.elevated : small-touch.has-hover ? #ffffff0d : transparent) : transparent;
-    border-color: small-focus.has-focus ? Theme.focus : root.selected ? #4c9dff88 : Theme.line;
+    background: root.selected ? #159fff18 : root.enabled ? (small-touch.pressed ? Theme.elevated : small-touch.has-hover ? #ffffff0d : transparent) : transparent;
+    border-color: small-focus.has-focus ? Theme.focus : root.selected ? #159fff88 : Theme.line;
     border-width: small-focus.has-focus ? 2px : 1px;
     border-radius: 8px;
     opacity: root.enabled ? 1 : 0.45;
@@ -574,8 +326,8 @@ component LogRangeOption inherits Rectangle {
 
     height: 58px;
     border-radius: 10px;
-    background: root.selected ? #4c9dff1a : range-touch.has-hover ? #ffffff0f : #ffffff08;
-    border-color: range-focus.has-focus ? Theme.focus : root.selected ? #4c9dff66 : range-touch.has-hover ? #ffffff1a : #ffffff0d;
+    background: root.selected ? #159fff1a : range-touch.has-hover ? #ffffff0f : #ffffff08;
+    border-color: range-focus.has-focus ? Theme.focus : root.selected ? #159fff66 : range-touch.has-hover ? #ffffff1a : #ffffff0d;
     border-width: range-focus.has-focus ? Theme.focus-width : 1px;
     animate background, border-color { duration: Motion.reduced ? 0ms : 140ms; easing: ease-out; }
     accessible-role: radio-button;
@@ -691,7 +443,7 @@ component LogRangeButton inherits Rectangle {
     border-color: button-focus.has-focus ? Theme.focus : transparent;
     border-width: button-focus.has-focus ? Theme.focus-width : 0px;
     drop-shadow-blur: root.primary ? 12px : 0px;
-    drop-shadow-color: root.primary ? #4c9dff1a : transparent;
+    drop-shadow-color: root.primary ? #159fff1a : transparent;
     animate background { duration: Motion.reduced ? 0ms : 120ms; easing: ease-out; }
     accessible-role: button;
     accessible-label: root.label;
@@ -853,7 +605,7 @@ component PageHeader inherits Rectangle {
         HorizontalLayout {
             height: 36px;
             spacing: 4px;
-            Text { text: root.title; color: Theme.text-primary; font-size: 20px; font-weight: Theme.weight-semibold; vertical-alignment: center; accessible-role: text; }
+            Text { text: root.title; color: Theme.text-primary; font-size: Theme.type-title-size; font-weight: Theme.weight-bold; vertical-alignment: center; accessible-role: text; }
             Rectangle { horizontal-stretch: 1; background: transparent; }
             @children
         }
@@ -863,7 +615,7 @@ component PageHeader inherits Rectangle {
     Rectangle {
         y: parent.height - 1px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
         opacity: root.scrolled ? 1 : 0;
         animate opacity { duration: root.reduced-motion ? 0ms : 160ms; easing: ease-out; }
     }
@@ -985,7 +737,7 @@ component UrlField inherits Rectangle {
     border-radius: 8px;
     background: Theme.elevated;
     border-width: 1px;
-    border-color: url-input.has-focus ? #4c9dff99 : Theme.line;
+    border-color: url-input.has-focus ? #159fff99 : Theme.line;
     opacity: root.enabled ? 1 : 0.6;
     animate border-color { duration: 160ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
 
@@ -1024,6 +776,246 @@ component UrlField inherits Rectangle {
         vertical-alignment: center;
         accessible-label: root.accessible-name;
         accepted => { root.accepted(); }
+    }
+}
+
+component AccountField inherits Rectangle {
+    in-out property <string> text;
+    in property <string> placeholder;
+    in property <bool> password: false;
+    in property <bool> reveal: false;
+    in property <bool> enabled: true;
+    in property <string> accessible-name;
+    callback accepted();
+    callback toggle-reveal();
+    forward-focus: account-field-input;
+
+    height: 44px;
+    border-radius: 10px;
+    background: #071a2dcc;
+    border-width: 1px;
+    border-color: account-field-input.has-focus ? Theme.accent-cyan : Theme.line-accent;
+    opacity: root.enabled ? 1 : 0.65;
+    animate border-color { duration: 170ms; easing: ease-out; }
+
+    if root.text == "": Text {
+        x: 14px;
+        width: parent.width - (root.password ? 54px : 28px);
+        height: parent.height;
+        text: root.placeholder;
+        color: Theme.text-muted;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+        accessible-role: none;
+    }
+
+    account-field-input := TextInput {
+        x: 14px;
+        width: parent.width - (root.password ? 54px : 28px);
+        height: parent.height;
+        text <=> root.text;
+        enabled: root.enabled;
+        single-line: true;
+        input-type: root.password && !root.reveal ? InputType.password : InputType.text;
+        color: Theme.text-primary;
+        font-size: 13px;
+        vertical-alignment: center;
+        accessible-label: root.accessible-name;
+        accepted => { root.accepted(); }
+    }
+
+    if root.password: Rectangle {
+        x: parent.width - 42px;
+        y: 5px;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background: account-eye-touch.has-hover ? #159fff18 : transparent;
+        border-color: Theme.focus;
+        border-width: account-eye-focus.has-focus ? 2px : 0px;
+        Image {
+            x: 8px;
+            y: 8px;
+            width: 18px;
+            height: 18px;
+            source: root.reveal ? @image-url("../assets/eye-off.svg") : @image-url("../assets/eye.svg");
+            colorize: account-eye-touch.has-hover ? Theme.accent-cyan : Theme.text-muted;
+            image-fit: contain;
+        }
+        account-eye-focus := FocusScope {
+            enabled: root.enabled;
+            focus-on-click: true;
+            focus-on-tab-navigation: true;
+            accessible-role: button;
+            accessible-label: root.reveal ? @tr("Скрыть пароль") : @tr("Показать пароль");
+            key-pressed(event) => {
+                if (event.text == " " || event.text == "\n") {
+                    root.toggle-reveal();
+                    return accept;
+                }
+                return reject;
+            }
+            account-eye-touch := TouchArea { enabled: root.enabled; clicked => { root.toggle-reveal(); } }
+        }
+    }
+}
+
+component AccountButton inherits Rectangle {
+    in property <string> label;
+    in property <image> icon;
+    in property <bool> primary: false;
+    in property <bool> enabled: true;
+    in property <bool> emphasized: false;
+    in property <bool> icon-spinning: false;
+    out property <bool> hovered: account-button-touch.has-hover;
+    callback activated();
+
+    height: 44px;
+    border-radius: 10px;
+    background: root.primary
+        ? (account-button-touch.pressed ? #117ec8 : account-button-touch.has-hover ? #198fdd : #176fba)
+        : account-button-touch.has-hover ? #159fff1f : #0d2b47cc;
+    border-color: account-button-focus.has-focus ? Theme.focus : root.primary ? #31b7ff : #159fff70;
+    border-width: account-button-focus.has-focus ? 2px : 1px;
+    drop-shadow-blur: root.emphasized && account-button-touch.has-hover ? 22px : 0px;
+    drop-shadow-offset-y: root.emphasized && account-button-touch.has-hover ? 5px : 0px;
+    drop-shadow-color: #159fff70;
+    opacity: root.enabled ? 1 : 0.55;
+    animate background { duration: 150ms; easing: ease-out; }
+    animate drop-shadow-blur, drop-shadow-offset-y { duration: 150ms; easing: ease-out; }
+
+    HorizontalLayout {
+        x: 0;
+        y: (parent.height - self.height) / 2;
+        width: parent.width;
+        height: 20px;
+        alignment: center;
+        spacing: 9px;
+        Image {
+            width: 17px;
+            height: 17px;
+            source: root.icon;
+            colorize: root.primary ? white : Theme.accent-cyan;
+            image-fit: contain;
+            transform-rotation: root.icon-spinning ? Math.mod(animation-tick() / 1ms, 900) / 900 * 360deg : 0deg;
+        }
+        Text { height: 20px; text: root.label; color: root.primary ? white : Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
+    }
+    account-button-focus := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: true;
+        focus-on-tab-navigation: true;
+        accessible-role: button;
+        accessible-label: root.label;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.activated();
+                return accept;
+            }
+            return reject;
+        }
+        account-button-touch := TouchArea { enabled: root.enabled; clicked => { root.activated(); } }
+    }
+}
+
+component RenewalCard inherits Rectangle {
+    in property <string> plan;
+    in property <string> end-date;
+    in property <bool> busy: false;
+    in property <bool> show-subscriptions-action: false;
+    in property <string> last-checked;
+    in property <string> status-message;
+    in property <bool> status-error: false;
+    in property <bool> stale: false;
+    callback renew();
+    callback refresh();
+    callback open-subscriptions();
+
+    height: root.show-subscriptions-action ? 272px : 238px;
+    border-radius: 18px;
+    background: @linear-gradient(135deg, #0b2943f2 0%, #081b30f4 58%, #102640f2 100%);
+    border-color: #ff64705e;
+    border-width: 1px;
+    drop-shadow-blur: 20px;
+    drop-shadow-offset-y: 7px;
+    drop-shadow-color: #081523a8;
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 10px;
+        HorizontalLayout {
+            height: 56px;
+            spacing: 14px;
+            Rectangle {
+                width: 54px;
+                height: 54px;
+                border-radius: 16px;
+                background: @radial-gradient(circle, #ff647029 0%, #18334a80 100%);
+                border-color: #ff64705e;
+                border-width: 1px;
+                Image { x: 14px; y: 14px; width: 26px; height: 26px; source: @image-url("../assets/shield-off.svg"); colorize: Theme.error; image-fit: contain; }
+            }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 3px;
+                Text { text: @tr("Срок подписки истёк"); color: Theme.text-primary; font-size: 18px; font-weight: Theme.weight-semibold; overflow: elide; }
+                Text { text: @tr("Продлите подписку TerrieFlow, чтобы восстановить доступ к серверам"); color: Theme.text-secondary; font-size: Theme.type-metadata-size; wrap: word-wrap; }
+            }
+        }
+        if root.plan != "" || root.end-date != "": Text {
+            height: 18px;
+            text: root.plan != "" && root.end-date != "" ? root.plan + " · " + @tr("истекла {}", root.end-date)
+                : root.plan != "" ? root.plan : @tr("Истекла {}", root.end-date);
+            color: Theme.text-muted;
+            font-size: Theme.type-metadata-size;
+            overflow: elide;
+        }
+        HorizontalLayout {
+            height: 44px;
+            spacing: 10px;
+            renew-button := AccountButton {
+                horizontal-stretch: 1;
+                label: @tr("Продлить подписку");
+                icon: @image-url("../assets/external-link.svg");
+                primary: true;
+                emphasized: true;
+                activated => { root.renew(); }
+            }
+            AccountButton {
+                horizontal-stretch: 1;
+                label: root.busy ? @tr("Проверяем…") : @tr("Проверить статус");
+                icon: @image-url("../assets/refresh.svg");
+                icon-spinning: root.busy;
+                enabled: !root.busy;
+                activated => { root.refresh(); }
+            }
+        }
+        Text {
+            height: 18px;
+            text: renew-button.hovered
+                ? @tr("Откроется личный кабинет TerrieFlow")
+                : root.status-message != "" ? root.status-message
+                : root.stale ? @tr("Новые данные временно недоступны. Показан последний подтверждённый статус")
+                : root.last-checked != "" ? @tr("Последняя проверка: {}", root.last-checked)
+                : @tr("Статус ещё не проверялся");
+            color: renew-button.hovered ? Theme.accent-cyan
+                : root.status-error || root.stale ? Theme.warning
+                : root.status-message != "" ? Theme.accent-green
+                : Theme.text-muted;
+            font-size: 11px;
+            horizontal-alignment: center;
+            overflow: elide;
+            accessible-live-region: polite;
+        }
+        if root.show-subscriptions-action: HorizontalLayout {
+            alignment: center;
+            TextAction {
+                label: @tr("Открыть раздел «Подписки»");
+                activated => { root.open-subscriptions(); }
+            }
+        }
     }
 }
 
@@ -1097,7 +1089,7 @@ component ActionRow inherits Rectangle {
         y: parent.height - 1px;
         width: parent.width - 48px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
     }
     row-focus := FocusScope {
         enabled: root.enabled;
@@ -1130,6 +1122,8 @@ component HealthRow inherits Rectangle {
         height: 8px;
         border-radius: 4px;
         background: root.tone == "success" ? Theme.accent-green : root.tone == "danger" ? Theme.error : root.tone == "warning" ? Theme.warning : Theme.text-muted;
+        drop-shadow-blur: root.tone == "success" ? 8px : 0px;
+        drop-shadow-color: #18dfa180;
         animate background { duration: 240ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
     }
     Text {
@@ -1143,24 +1137,34 @@ component HealthRow inherits Rectangle {
         vertical-alignment: center;
         overflow: elide;
     }
-    Text {
+    Rectangle {
         x: parent.width - self.width - 16px;
-        width: 140px;
-        height: parent.height;
-        text: root.value;
-        color: Theme.text-secondary;
-        font-family: Theme.font-family;
-        font-size: Theme.type-metadata-size;
-        horizontal-alignment: right;
-        vertical-alignment: center;
-        overflow: elide;
+        y: (parent.height - self.height) / 2;
+        width: 86px;
+        height: 26px;
+        border-radius: 13px;
+        background: root.tone == "success" ? #18dfa112 : root.tone == "danger" ? #f0526a12 : root.tone == "warning" ? #f3c34a12 : #159fff0d;
+        border-color: root.tone == "success" ? #18dfa14d : root.tone == "danger" ? #f0526a4d : root.tone == "warning" ? #f3c34a4d : Theme.line-soft;
+        border-width: 1px;
+        Text {
+            width: parent.width;
+            height: parent.height;
+            text: root.value;
+            color: root.tone == "success" ? Theme.accent-green : root.tone == "danger" ? Theme.error : root.tone == "warning" ? Theme.warning : Theme.text-secondary;
+            font-family: Theme.font-family;
+            font-size: Theme.type-metadata-size;
+            font-weight: Theme.weight-semibold;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            overflow: elide;
+        }
     }
     if root.show-separator: Rectangle {
         x: 36px;
         y: parent.height - 1px;
         width: parent.width - 36px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
     }
 }
 
@@ -1285,13 +1289,14 @@ component LanguageRow inherits Rectangle {
         y: parent.height - 1px;
         width: parent.width + 16px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
     }
 }
 
 component ToggleRow inherits Rectangle {
     in property <string> label;
     in property <string> description;
+    in property <image> icon;
     in property <bool> checked;
     in property <bool> enabled: true;
     in property <bool> show-separator: false;
@@ -1305,8 +1310,30 @@ component ToggleRow inherits Rectangle {
     accessible-enabled: root.enabled;
     accessible-action-default => { if (root.enabled) { root.toggled(!root.checked); } }
 
-    Text {
+    if root.icon.width > 0: Rectangle {
         x: 0;
+        y: (parent.height - self.height) / 2;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: Theme.raised;
+        border-color: Theme.line-soft;
+        border-width: 1px;
+        Image {
+            x: 9px;
+            y: 9px;
+            width: 18px;
+            height: 18px;
+            source: root.icon;
+            colorize: root.checked ? Theme.accent-cyan : Theme.text-secondary;
+            image-fit: contain;
+            animate colorize { duration: 180ms; easing: ease-out; }
+            accessible-role: none;
+        }
+    }
+
+    Text {
+        x: root.icon.width > 0 ? 52px : 0px;
         y: root.description == "" ? 0px : 10px;
         width: parent.width - 64px;
         height: root.description == "" ? parent.height : 20px;
@@ -1319,7 +1346,7 @@ component ToggleRow inherits Rectangle {
         overflow: elide;
     }
     if root.description != "": Text {
-        x: 0;
+        x: root.icon.width > 0 ? 52px : 0px;
         y: 31px;
         width: parent.width - 64px;
         text: root.description;
@@ -1353,11 +1380,11 @@ component ToggleRow inherits Rectangle {
         }
     }
     if root.show-separator: Rectangle {
-        x: 0;
+        x: root.icon.width > 0 ? 52px : 0px;
         y: parent.height - 1px;
         width: parent.width + 16px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
     }
     toggle-focus := FocusScope {
         enabled: root.enabled;
@@ -1425,7 +1452,7 @@ component TitleBarButton inherits Rectangle {
             y: -3px;
             width: 9px;
             height: 8px;
-            background: #0a0c0f;
+            background: #06101f;
             border-width: 1px;
             border-color: Theme.text-secondary;
         }
@@ -1545,6 +1572,7 @@ component RouteSearchRow inherits Rectangle {
         text: root.latency-text;
         color: root.latency-tone == "success" ? Theme.accent-green
             : root.latency-tone == "warning" ? Theme.warning
+            : root.latency-tone == "high-latency" ? Theme.high-latency
             : root.latency-tone == "danger" ? Theme.error : Theme.text-muted;
         font-size: Theme.type-metadata-size;
         font-weight: Theme.weight-semibold;
@@ -1569,7 +1597,7 @@ component RouteSearchRow inherits Rectangle {
         y: parent.height - 1px;
         width: parent.width - 56px;
         height: 1px;
-        background: #ffffff0f;
+        background: #7cc8ff18;
     }
     }
 
@@ -1620,7 +1648,7 @@ component RouteSkeletonRow inherits Rectangle {
     Rectangle { x: 16px; y: 13px; width: 22px; height: 22px; border-radius: 11px; background: #ffffff; opacity: 0.05 + 0.04 * root.phase; }
     Rectangle { x: 56px; y: 19px; width: root.label-width; height: 10px; border-radius: 5px; background: #ffffff; opacity: 0.06 + 0.05 * root.phase; }
     Rectangle { x: parent.width - self.width - 20px; y: 20px; width: 34px; height: 8px; border-radius: 4px; background: #ffffff; opacity: 0.05 + 0.04 * root.phase; }
-    if root.show-separator: Rectangle { x: 56px; y: parent.height - 1px; width: parent.width - 56px; height: 1px; background: #ffffff0f; }
+    if root.show-separator: Rectangle { x: 56px; y: parent.height - 1px; width: parent.width - 56px; height: 1px; background: #7cc8ff18; }
 }
 
 // 14px traffic gauge (title chip, its dropdown): a faint track and, from 12
@@ -1721,10 +1749,10 @@ component QuotaLogo inherits Rectangle {
 
 export component AppWindow inherits Window {
     title: "TerrieFlow";
-    icon: @image-url("../assets/terrieflow-icon-temp.png");
+    icon: @image-url("../assets/app-icon.svg");
     no-frame: true;
-    preferred-width: 1120px;
-    preferred-height: 760px;
+    preferred-width: 840px;
+    preferred-height: 720px;
     min-width: 700px;
     min-height: 620px;
     background: Theme.canvas;
@@ -1909,35 +1937,19 @@ export component AppWindow inherits Window {
     // The language follows the active subscription's `app-language` header.
     in property <bool> language-from-provider: false;
     // Icon-only navigation rail; collapsed on first run, remembered after.
-    in-out property <bool> navigation-collapsed: false;
-    // Development-only shell and fixture data; enabled only by the isolated preview host.
-    in property <bool> terrieflow-preview: false;
-    in property <bool> terrieflow-preview-grace: false;
-    in-out property <string> terrieflow-preview-mode: "auto";
-    in-out property <string> terrieflow-route-query;
-    in-out property <bool> terrieflow-split-enabled: true;
-    in-out property <string> terrieflow-split-default-mode: "auto";
-    in-out property <string> terrieflow-split-query;
-    in-out property <string> terrieflow-steam-mode: "direct";
-    in-out property <string> terrieflow-discord-mode: "terrieflow";
-    in-out property <string> terrieflow-chrome-mode: "auto";
-    in-out property <string> terrieflow-telegram-mode: "terrieflow";
-    in-out property <string> terrieflow-pubg-mode: "auto";
-    in-out property <bool> terrieflow-subscription-copied: false;
-    in-out property <bool> terrieflow-subscription-revealed: false;
-    in-out property <bool> terrieflow-diagnostics-checked: false;
+    in-out property <bool> navigation-collapsed: true;
     in-out property <bool> shell-active: true;
     in property <bool> reduced-motion: false;
     in property <string> system-name: "Windows";
     in property <string> runtime-versions: "TerrieFlow";
     // The window has keyboard focus (set by the host); the ambient waves rest while it does not.
     in property <bool> window-active: true;
-    // Ambient waves drift at most ~5px/s at a few percent opacity, so four steps a second
-    // (about a pixel each) look continuous: every step redraws the whole window.
+    // Drive ambient motion close to the display refresh rate. The timer is gated below, so it
+    // does no work while the background is disabled or the window is inactive/minimized.
     private property <int> ambient-wave-step: 0;
     // 0 → 1 → 0 over 24 s (12 s each way), cosine-eased like ease-in-out.
-    private property <float> ambient-wave-t: (1 - Math.cos(root.ambient-wave-step / 96 * 360deg)) / 2;
-    private property <bool> ambient-motion-active: root.ambient-background-enabled && root.shell-active && root.window-active && !root.reduced-motion && !root.minimized && root.visible-page == "home";
+    private property <float> ambient-wave-t: (1 - Math.cos(root.ambient-wave-step / 1500 * 360deg)) / 2;
+    private property <bool> ambient-motion-active: root.ambient-background-enabled && root.shell-active && root.window-active && !root.reduced-motion && !root.minimized;
     in-out property <bool> replace-editor-open: false;
     in-out property <int> import-success-serial: 0;
     in-out property <bool> first-run-manual-open: false;
@@ -1945,7 +1957,7 @@ export component AppWindow inherits Window {
     private property <int> first-run-trigger-focus-serial: 0;
     private property <int> power-action-focus-serial: 0;
     in property <bool> update-available: false;
-    in property <string> update-status: "TerrieFlow";
+    in property <string> update-status: "TerrieFlow 1.1.17";
     in property <string> update-detail: @tr("Канал обновлений не настроен");
     in property <string> update-action-label;
     in property <bool> update-action-enabled: false;
@@ -1995,7 +2007,6 @@ export component AppWindow inherits Window {
     in-out property <int> rail-growth-delta: 0;
     // Host-driven rail width while the window resizes with it (negative = not driven).
     in property <length> rail-width-live: -1px;
-    private property <length> navigation-expanded-width: root.terrieflow-preview ? 208px : 176px;
     in-out property <int> rail-grown-width: 0;
     in property <bool> conflicting-apps-banner-visible: false;
     in property <string> conflicting-apps-message;
@@ -2041,6 +2052,39 @@ export component AppWindow inherits Window {
     in-out property <int> profile-delete-control-focus-serial;
     private property <string> visible-page: root.active-panel == "routes" ? "home" : root.active-panel == "events" ? "status" : root.local-page;
     private property <bool> profile-menu-open: root.active-panel == "subscription";
+    in-out property <bool> account-menu-open: false;
+    in property <string> account-phase: "guest";
+    in property <string> account-display-name: @tr("Войти в аккаунт");
+    in property <string> account-username;
+    in property <string> account-email;
+    in property <string> account-detail: @tr("Через Telegram");
+    in property <bool> account-authenticated: false;
+    in property <bool> account-busy: false;
+    in-out property <bool> account-refresh-success: false;
+    in-out property <bool> account-status-check-loading: false;
+    in property <bool> account-access-known: false;
+    in property <bool> account-access-expired: false;
+    in property <string> account-access-status;
+    in-out property <string> account-access-pending-status;
+    in property <string> account-access-plan;
+    in property <string> account-access-end-date;
+    in property <string> account-access-end-date-display;
+    in property <string> account-access-last-checked;
+    in-out property <string> account-status-check-message;
+    in-out property <bool> account-status-check-error: false;
+    in property <bool> account-access-stale: false;
+    in-out property <bool> expired-connect-notice: false;
+    in-out property <string> account-profile-id;
+    out property <bool> account-selected-expired: root.account-authenticated
+        && root.account-access-known
+        && root.account-access-expired
+        && root.account-profile-id != ""
+        && root.active-profile-id == root.account-profile-id;
+    in-out property <bool> account-email-login-open: false;
+    in-out property <string> account-login-email;
+    in-out property <string> account-login-password;
+    in-out property <bool> account-password-visible: false;
+    in property <string> account-email-error;
     // Dim for everything under the title bar while the profile menu is open.
     private property <color> menu-scrim: #00000073;
     // True for one frame after the page changes, so the new page starts hidden and
@@ -2101,7 +2145,25 @@ export component AppWindow inherits Window {
     callback delete-profile(string);
     callback add-subscription();
     callback retry-profile-menu();
+    callback account-login();
+    callback account-email-login(string, string);
+    callback account-cancel-login();
+    callback account-refresh();
+    callback account-background-refresh();
+    callback account-logout();
+    callback account-open-cabinet();
+    callback account-open-password-recovery();
+    callback account-open-registration();
     callback primary-action();
+
+    function close-account-email-login() {
+        if (!root.account-busy) {
+            root.account-email-login-open = false;
+            root.account-login-password = "";
+            root.account-password-visible = false;
+            root.account-cancel-login();
+        }
+    }
     // Optimistic switch: the knob and title follow the user's intent at once; the
     // real connection state takes over as soon as the daemon reports it, so network
     // latency never reads as a laggy UI.
@@ -2118,10 +2180,19 @@ export component AppWindow inherits Window {
         if (!root.primary-pressable) {
             return;
         }
+        if (root.account-selected-expired && !root.toggle-on) {
+            root.expired-connect-notice = true;
+            return;
+        }
         if (!root.toggle-busy) {
             root.toggle-intent = root.toggle-on ? "off" : "on";
         }
         root.primary-action();
+    }
+    expired-connect-notice-timer := Timer {
+        interval: 5s;
+        running: root.expired-connect-notice;
+        triggered => { root.expired-connect-notice = false; }
     }
     callback open-dashboard();
     callback install-service();
@@ -2303,11 +2374,6 @@ export component AppWindow inherits Window {
         running: root.tooltip-owner != "" && !root.tooltip-ready;
         triggered => { root.tooltip-ready = true; }
     }
-    Timer {
-        interval: 30000ms;
-        running: root.terrieflow-preview && root.terrieflow-subscription-revealed;
-        triggered => { root.terrieflow-subscription-revealed = false; }
-    }
     init => { Motion.reduced = root.reduced-motion; }
     changed reduced-motion => { Motion.reduced = root.reduced-motion; }
 
@@ -2369,18 +2435,14 @@ export component AppWindow inherits Window {
         if (root.visible-page != "home" && root.route-search-open) {
             root.close-route-search();
         }
-        if (root.visible-page != "subscriptions") {
-            root.terrieflow-subscription-revealed = false;
-            root.terrieflow-subscription-copied = false;
-        }
         // An armed "Удалить все данные" never survives leaving Settings.
         root.reset-data-armed = false;
     }
 
     wave-step-timer := Timer {
-        interval: 250ms;
+        interval: 16ms;
         running: root.ambient-motion-active;
-        triggered => { root.ambient-wave-step = Math.mod(root.ambient-wave-step + 1, 96); }
+        triggered => { root.ambient-wave-step = Math.mod(root.ambient-wave-step + 1, 1500); }
     }
 
     // Any reported change of the real state ends the optimistic phase.
@@ -2424,7 +2486,7 @@ export component AppWindow inherits Window {
     }
 
     visual-frame := FocusScope {
-        enabled: !root.deep-link-confirm-open && !root.update-confirm-open && !root.log-range-open;
+        enabled: !root.deep-link-confirm-open && !root.update-confirm-open && !root.log-range-open && !root.account-email-login-open;
         x: root.resize-border;
         y: root.resize-border;
         width: parent.width - 2 * root.resize-border;
@@ -2475,6 +2537,8 @@ export component AppWindow inherits Window {
                     root.close-route-search();
                 } else if (root.announcement-open) {
                     root.announcement-open = false;
+                } else if (root.account-menu-open) {
+                    root.account-menu-open = false;
                 } else if (root.profile-delete-confirm-id != "") {
                     root.profile-delete-control-focus-id = root.profile-delete-confirm-id;
                     root.profile-delete-confirm-id = "";
@@ -2500,13 +2564,13 @@ export component AppWindow inherits Window {
 
             title-bar := Rectangle {
                 height: 44px;
-                background: #07101c;
+                background: #06101f;
                 border-color: Theme.line;
                 border-width: 0px;
 
                 Rectangle { x: 0; y: parent.height - 1px; width: parent.width; height: 1px; background: Theme.line; }
                 brand-divider := Rectangle {
-                    x: (root.navigation-collapsed ? 64px : root.navigation-expanded-width) - 1px;
+                    x: (root.navigation-collapsed ? 64px : 176px) - 1px;
                     y: 0;
                     width: 1px;
                     height: parent.height;
@@ -2528,7 +2592,7 @@ export component AppWindow inherits Window {
                         y: 12px - root.title-lift;
                         width: 20px;
                         height: 20px;
-                        source: @image-url("../assets/terrieflow-icon-temp.png");
+                        source: @image-url("../assets/app-icon.svg");
                         image-fit: contain;
                         animate x { duration: 240ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                     }
@@ -2542,9 +2606,9 @@ export component AppWindow inherits Window {
                         color: Theme.text-primary;
                         font-family: Theme.font-family;
                         // The tray popup's wordmark: tighter, bolder, tracked caps.
-                        font-size: 15px;
-                        font-weight: Theme.weight-semibold;
-                        letter-spacing: 0px;
+                        font-size: 13px;
+                        font-weight: Theme.weight-bold;
+                        letter-spacing: 0.6px;
                         vertical-alignment: center;
                     }
 
@@ -2577,10 +2641,10 @@ export component AppWindow inherits Window {
                     property <length> chip-width: Math.min(
                         self.width - 76px,
                         30px + chip-title.preferred-width + 6px + chip-meta.preferred-width + 28px);
-                    // Clears the expanded rail's brand divider by 8px.
-                    x: root.navigation-collapsed ? 56px : root.navigation-expanded-width + 8px;
+                    // Clears the expanded rail's brand divider (176px) by 8px.
+                    x: root.navigation-collapsed ? 56px : 184px;
                     y: 7px - root.title-lift;
-                    width: Math.max(0px, parent.width - self.x - 148px);
+                    width: Math.max(0px, parent.width - self.x - 184px);
                     height: 30px;
                     animate x { duration: 240ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
 
@@ -2645,9 +2709,9 @@ export component AppWindow inherits Window {
                                 opacity: root.chip-shows-logo && !root.chip-logo-entering ? 1 : 0;
                                 visible: self.opacity > 0;
                                 transform-scale: root.chip-logo-entering ? 0.6 : 1;
-                                border-color: self.popping ? #4c9dff66 : #ffffff1a;
+                                border-color: self.popping ? #159fff66 : #ffffff1a;
                                 drop-shadow-blur: self.popping ? 8px : 0px;
-                                drop-shadow-color: #4c9dff4d;
+                                drop-shadow-color: #159fff4d;
                                 // The entering frame jumps to the start state; the pop animates from there.
                                 animate opacity { duration: Motion.reduced || root.chip-logo-entering ? 0ms : 240ms; easing: ease-out; }
                                 animate transform-scale { duration: Motion.reduced || root.chip-logo-entering ? 0ms : 350ms; easing: cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -2662,7 +2726,7 @@ export component AppWindow inherits Window {
                                 border-radius: 4.5px;
                                 background: Theme.accent-green;
                                 border-width: 1px;
-                                border-color: #0a0c0f;
+                                border-color: #06101f;
                                 opacity: root.chip-phase == "hold" ? 1 : 0;
                                 visible: self.opacity > 0;
                                 animate opacity { duration: Motion.reduced ? 0ms : 160ms; easing: ease-out; }
@@ -2748,6 +2812,7 @@ export component AppWindow inherits Window {
                             changed focus-serial => { self.focus(); }
                             function toggle-menu(keyboard: bool) {
                                 root.announcement-open = false;
+                                root.account-menu-open = false;
                                 if (root.profile-menu-open) { root.close-profile-menu(); }
                                 else if (root.subscription-profiles.length == 0 && !root.profile-menu-loading && root.profile-menu-error == "") {
                                     root.local-page = "subscriptions";
@@ -2890,7 +2955,7 @@ export component AppWindow inherits Window {
                                 height: 7px;
                                 border-radius: 3.5px;
                                 border-width: 1.5px;
-                                border-color: #0a0c0f;
+                                border-color: #06101f;
                                 background: root.subscription-announcement-tone == "danger" ? Theme.error
                                     : root.subscription-announcement-tone == "success" ? Theme.accent-green
                                     : Theme.accent-blue;
@@ -2902,6 +2967,54 @@ export component AppWindow inherits Window {
                     }
                 }
 
+                account-title-action := FocusScope {
+                    x: parent.width - 168px;
+                    y: 8px - root.title-lift;
+                    width: 28px;
+                    height: 28px;
+                    focus-on-click: true;
+                    focus-on-tab-navigation: true;
+                    accessible-role: button;
+                    accessible-label: root.account-authenticated ? @tr("Открыть меню аккаунта") : @tr("Войти в аккаунт");
+                    accessible-action-default => { self.toggle(); }
+                    function toggle() {
+                        if (root.profile-menu-open) { root.close-profile-menu(); }
+                        root.announcement-open = false;
+                        root.account-menu-open = !root.account-menu-open;
+                    }
+                    key-pressed(event) => {
+                        if (event.text == " " || event.text == "\n") {
+                            self.toggle();
+                            return accept;
+                        }
+                        return reject;
+                    }
+                    Rectangle {
+                        border-radius: 7px;
+                        background: root.account-menu-open ? #169cff24 : account-title-touch.has-hover ? #ffffff0d : transparent;
+                        border-color: parent.has-focus ? Theme.focus : root.account-authenticated ? #22d3a838 : transparent;
+                        border-width: parent.has-focus || root.account-authenticated ? 1px : 0px;
+                        Image {
+                            x: 6px;
+                            y: 6px;
+                            width: 16px;
+                            height: 16px;
+                            source: @image-url("../assets/account.svg");
+                            colorize: root.account-authenticated ? Theme.accent-green : Theme.text-secondary;
+                            image-fit: contain;
+                        }
+                        if root.account-busy: Rectangle {
+                            x: 20px;
+                            y: 3px;
+                            width: 6px;
+                            height: 6px;
+                            border-radius: 3px;
+                            background: Theme.accent-blue;
+                        }
+                    }
+                    account-title-touch := TouchArea { clicked => { account-title-action.toggle(); } }
+                }
+
                 TitleBarButton { x: parent.width - 132px; y: -root.resize-border; height: 44px + root.resize-border; kind: "minimize"; state-label: @tr("Свернуть окно"); activated => { if (root.profile-menu-open) { root.close-profile-menu(); } root.window-minimize(); } }
                 TitleBarButton { x: parent.width - 88px; y: -root.resize-border; height: 44px + root.resize-border; kind: root.maximized ? "restore" : "maximize"; state-label: @tr("Развернуть или восстановить окно"); activated => { if (root.profile-menu-open) { root.close-profile-menu(); } root.window-toggle-maximize(); } }
                 TitleBarButton { x: parent.width - 44px; y: -root.resize-border; height: 44px + root.resize-border; kind: "close"; state-label: @tr("Закрыть TerrieFlow"); activated => { if (root.profile-menu-open) { root.close-profile-menu(); } root.window-close(); } }
@@ -2911,8 +3024,8 @@ export component AppWindow inherits Window {
                 spacing: 0px;
 
         navigation-rail := Rectangle {
-            width: root.rail-width-live >= 0px ? root.rail-width-live : root.navigation-collapsed ? 64px : root.navigation-expanded-width;
-            background: #07101c;
+            width: root.rail-width-live >= 0px ? root.rail-width-live : root.navigation-collapsed ? 64px : 176px;
+            background: #06101f;
             border-color: Theme.line;
             border-width: 0px;
             // Host-driven frames are already eased; only animate on its own.
@@ -2925,32 +3038,63 @@ export component AppWindow inherits Window {
                 spacing: root.navigation-collapsed ? 8px : 4px;
 
                 NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/home.svg"); label: @tr("Главная"); active: root.visible-page == "home"; enabled: !root.profile-menu-open; activated => { root.local-page = "home"; root.close-panel(); } }
-                if root.terrieflow-preview: NavItem { compact: false; icon-source: @image-url("../assets/server.svg"); label: "Маршруты"; active: root.visible-page == "routes"; enabled: !root.profile-menu-open; activated => { root.local-page = "routes"; root.close-panel(); } }
-                if root.terrieflow-preview: NavItem { compact: false; icon-source: @image-url("../assets/layers.svg"); label: "Раздельный доступ"; active: root.visible-page == "split"; enabled: !root.profile-menu-open; activated => { root.local-page = "split"; root.close-panel(); } }
-                NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/subscriptions.svg"); label: root.terrieflow-preview ? "Подписка" : @tr("Подписки"); badge: root.subscription-profiles.length > 1 ? "" + root.subscription-profiles.length : ""; active: root.visible-page == "subscriptions"; enabled: !root.profile-menu-open; activated => { root.local-page = "subscriptions"; root.close-panel(); } }
-                NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/diagnostics.svg"); label: root.terrieflow-preview ? "Диагностика" : @tr("Состояние"); active: root.visible-page == "status"; enabled: !root.profile-menu-open; activated => { root.local-page = "status"; if (root.terrieflow-preview) { root.close-panel(); } else { root.open-panel("events"); } } }
+                NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/status.svg"); label: @tr("Состояние"); active: root.visible-page == "status"; enabled: !root.profile-menu-open; activated => { root.local-page = "status"; root.open-panel("events"); } }
+                NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/subscriptions.svg"); label: @tr("Подписки"); badge: root.subscription-profiles.length > 1 ? "" + root.subscription-profiles.length : ""; active: root.visible-page == "subscriptions"; enabled: !root.profile-menu-open; activated => { root.local-page = "subscriptions"; root.close-panel(); } }
                 NavItem { compact: root.navigation-collapsed; icon-source: @image-url("../assets/settings.svg"); label: @tr("Настройки"); active: root.visible-page == "settings" || root.visible-page == "troubleshoot"; enabled: !root.profile-menu-open; activated => { root.local-page = "settings"; root.close-panel(); } }
 
                 Rectangle { vertical-stretch: 1; background: transparent; }
 
-                if root.terrieflow-preview: PreviewSubscriptionCard { grace: root.terrieflow-preview-grace; }
-
-                if root.terrieflow-preview: Rectangle {
-                    height: 44px;
-                    background: transparent;
-                    Rectangle { x: 4px; y: 8px; width: 9px; height: 9px; border-radius: 4.5px; background: Theme.accent-green; drop-shadow-blur: 8px; drop-shadow-color: #3ee59a80; }
-                    Text { x: 22px; y: 2px; width: parent.width - 22px; height: 22px; text: "Соединение активно"; color: Theme.text-secondary; font-size: 11px; vertical-alignment: center; overflow: elide; }
-                    Text { x: 4px; y: 24px; width: parent.width - 4px; height: 18px; text: "Windows 11 · v0.1 preview"; color: Theme.text-muted; font-size: 10px; vertical-alignment: center; overflow: elide; }
+                account-rail-action := FocusScope {
+                    height: root.navigation-collapsed ? 44px : 62px;
+                    focus-on-click: true;
+                    focus-on-tab-navigation: true;
+                    accessible-role: button;
+                    accessible-label: root.account-display-name;
+                    accessible-action-default => { self.toggle(); }
+                    function toggle() {
+                        if (root.profile-menu-open) { root.close-profile-menu(); }
+                        root.account-menu-open = !root.account-menu-open;
+                    }
+                    key-pressed(event) => {
+                        if (event.text == " " || event.text == "\n") { self.toggle(); return accept; }
+                        return reject;
+                    }
+                    Rectangle {
+                        border-radius: 10px;
+                        background: root.account-authenticated
+                            ? @linear-gradient(135deg, #0b2d42dd 0%, #092237dd 62%, #0a3145cc 100%)
+                            : root.account-menu-open ? #169cff20 : account-rail-touch.has-hover ? #ffffff0a : transparent;
+                        border-color: root.account-menu-open ? #20c9f5aa : root.account-authenticated ? #18c7e75c : transparent;
+                        border-width: root.account-menu-open || root.account-authenticated ? 1px : 0px;
+                        drop-shadow-blur: root.account-menu-open ? 14px : account-rail-touch.has-hover && root.account-authenticated ? 9px : 0px;
+                        drop-shadow-color: #14bce84a;
+                        animate background { duration: 150ms; easing: ease-out; }
+                        animate border-color { duration: 150ms; easing: ease-out; }
+                        Rectangle {
+                            x: root.navigation-collapsed ? 7px : 6px;
+                            y: root.navigation-collapsed ? 7px : 13px;
+                            width: 30px;
+                            height: 30px;
+                            border-radius: 9px;
+                            background: root.account-authenticated ? @radial-gradient(circle, #14d6b92e 0%, #0d405044 100%) : #169cff18;
+                            border-color: root.account-authenticated ? #16dfbd62 : transparent;
+                            border-width: root.account-authenticated ? 1px : 0px;
+                            Image { x: 7px; y: 7px; width: 16px; height: 16px; source: @image-url("../assets/account.svg"); colorize: root.account-authenticated ? #2ee7c3 : Theme.accent-blue; }
+                        }
+                        if !root.navigation-collapsed: Text { x: 46px; y: 10px; width: parent.width - 52px; height: 22px; text: root.account-display-name; color: Theme.text-primary; font-size: 12px; font-weight: Theme.weight-semibold; overflow: elide; vertical-alignment: center; }
+                        if !root.navigation-collapsed: Text { x: 46px; y: 31px; width: parent.width - 52px; height: 20px; text: root.account-detail; color: Theme.text-muted; font-size: 10px; overflow: elide; vertical-alignment: center; }
+                    }
+                    account-rail-touch := TouchArea { clicked => { account-rail-action.toggle(); } }
                 }
 
-                if !root.terrieflow-preview: Rectangle {
+                Rectangle {
                     height: 1px;
                     background: Theme.line;
                     opacity: root.navigation-collapsed ? 0 : 1;
                     animate opacity { duration: 160ms; easing: ease-out; }
                 }
 
-                if !root.terrieflow-preview: NavToggle {
+                NavToggle {
                     collapsed: root.navigation-collapsed;
                     activated => {
                         root.navigation-collapsed = !root.navigation-collapsed;
@@ -2973,7 +3117,62 @@ export component AppWindow inherits Window {
         }
 
         main-pane := Rectangle {
-            background: Theme.canvas;
+            background: @linear-gradient(145deg, Theme.canvas 0%, #07182b 55%, #06101f 100%);
+            clip: true;
+
+            // A single inexpensive ambient layer sits behind every page. The
+            // same slow phase drives three vector strokes, so there are no
+            // per-card animation clocks or large blurred textures.
+            ambient-page-glow := Rectangle {
+                width: parent.width;
+                height: parent.height;
+                visible: root.ambient-background-enabled;
+                background: @radial-gradient(
+                    circle 620px at parent.width - 120px 90px,
+                    #159fff1f 0%,
+                    #17c9b40c 38%,
+                    #00000000 76%
+                );
+            }
+            ambient-page-wave-a := Path {
+                visible: root.ambient-background-enabled;
+                x: -80px + 44px * root.ambient-wave-t;
+                y: -30px - 14px * root.ambient-wave-t;
+                width: parent.width + 180px;
+                height: parent.height + 100px;
+                viewbox-width: 1100;
+                viewbox-height: 760;
+                commands: "M -20 245 C 170 92 352 114 520 224 C 700 342 852 172 1120 112";
+                fill: transparent;
+                stroke: #159fff52;
+                stroke-width: 1px;
+            }
+            ambient-page-wave-b := Path {
+                visible: root.ambient-background-enabled;
+                x: -40px - 32px * root.ambient-wave-t;
+                y: 90px + 26px * root.ambient-wave-t;
+                width: parent.width + 160px;
+                height: parent.height + 80px;
+                viewbox-width: 1100;
+                viewbox-height: 760;
+                commands: "M -30 146 C 180 254 360 232 536 116 C 716 -4 900 42 1130 198";
+                fill: transparent;
+                stroke: #35d5ff2e;
+                stroke-width: 1px;
+            }
+            ambient-page-wave-c := Path {
+                visible: root.ambient-background-enabled;
+                x: -54px + 26px * root.ambient-wave-t;
+                y: 310px - 18px * root.ambient-wave-t;
+                width: parent.width + 150px;
+                height: parent.height;
+                viewbox-width: 1100;
+                viewbox-height: 760;
+                commands: "M -20 292 C 208 116 354 162 542 286 C 714 400 902 344 1120 214";
+                fill: transparent;
+                stroke: #17c9b426;
+                stroke-width: 1px;
+            }
 
             if root.visible-page == "home": Rectangle {
                 opacity: root.page-entering ? 0 : 1;
@@ -3050,12 +3249,16 @@ export component AppWindow inherits Window {
                             : root.first-run-manual-open
                                 ? (root.import-error == "" ? 174px : 200px)
                                 : (root.import-error == "" ? 124px : 150px);
-                        background: root.has-profile ? Theme.surface : #101721;
-                        border-color: !root.has-profile ? #4c9dff55
-                            : root.shown-busy ? #4c9dff59
-                            : root.shown-tone == "success" ? #3ccb7f59
-                            : root.shown-tone == "danger" ? #f06a6a66
-                            : root.shown-tone == "warning" ? #e7aa4566
+                        background: root.has-profile
+                            ? root.shown-tone == "success"
+                                ? @linear-gradient(110deg, #0b2d34 0%, #0b2537 58%, #0a1b31 100%)
+                                : @linear-gradient(110deg, Theme.surface 0%, Theme.elevated 100%)
+                            : @linear-gradient(110deg, #0a1a30 0%, Theme.surface 100%);
+                        border-color: !root.has-profile ? #159fff55
+                            : root.shown-busy ? #159fff59
+                            : root.shown-tone == "success" ? #18dfa159
+                            : root.shown-tone == "danger" ? #f0526a66
+                            : root.shown-tone == "warning" ? #f3c34a66
                             : #ffffff0a;
                         border-width: 1px;
                         border-radius: 14px;
@@ -3064,7 +3267,7 @@ export component AppWindow inherits Window {
                         // at rest, and the software renderer simply ignores the shadow.
                         drop-shadow-blur: strip-glow-touch.has-hover ? 20px : 0px;
                         drop-shadow-offset-y: strip-glow-touch.has-hover ? 6px : 0px;
-                        drop-shadow-color: strip-glow-touch.has-hover ? #00000073 : #00000000;
+                        drop-shadow-color: root.shown-tone == "success" ? #18dfa12e : strip-glow-touch.has-hover ? #159fff2e : #00000000;
                         animate border-color { duration: 220ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                         animate drop-shadow-blur, drop-shadow-offset-y, drop-shadow-color { duration: 180ms; easing: ease-out; }
 
@@ -3079,9 +3282,9 @@ export component AppWindow inherits Window {
                                 property <bool> active: strip-glow-touch.has-hover;
                                 property <length> cursor-x: strip-glow-touch.mouse-x;
                                 property <length> cursor-y: strip-glow-touch.mouse-y;
-                                property <color> glow-strong: root.shown-tone == "success" ? #22c55e3d : root.shown-tone == "danger" ? #f06a6a3d : #0091ff47;
-                                property <color> glow-medium: root.shown-tone == "success" ? #22c55e24 : root.shown-tone == "danger" ? #f06a6a24 : #0091ff29;
-                                property <color> glow-soft: root.shown-tone == "success" ? #22c55e0f : root.shown-tone == "danger" ? #f06a6a0f : #0091ff0f;
+                                property <color> glow-strong: root.shown-tone == "success" ? #18dfa13d : root.shown-tone == "danger" ? #f0526a3d : #159fff47;
+                                property <color> glow-medium: root.shown-tone == "success" ? #18dfa124 : root.shown-tone == "danger" ? #f0526a24 : #159fff29;
+                                property <color> glow-soft: root.shown-tone == "success" ? #18dfa10f : root.shown-tone == "danger" ? #f0526a0f : #159fff0f;
                                 property <color> grid-line-strong: root.shown-tone == "success" ? #8ea39770 : root.shown-tone == "danger" ? #a3939370 : #8f9eae70;
                                 x: 0;
                                 y: 0;
@@ -3136,9 +3339,9 @@ export component AppWindow inherits Window {
                                 width: 44px;
                                 height: 44px;
                                 border-radius: 12px;
-                                background: root.shown-tone == "success" ? #3ccb7f24
-                                    : root.shown-tone == "danger" ? #f06a6a24
-                                    : root.shown-tone == "warning" && !root.shown-busy ? #e7aa4524
+                                background: root.shown-tone == "success" ? #18dfa124
+                                    : root.shown-tone == "danger" ? #f0526a24
+                                    : root.shown-tone == "warning" && !root.shown-busy ? #f3c34a24
                                     : Theme.elevated;
                                 animate background { duration: 180ms; easing: ease-in-out; }
 
@@ -3240,7 +3443,9 @@ export component AppWindow inherits Window {
                                     Rectangle { horizontal-stretch: 1; background: transparent; }
                                 }
                                 if !root.toggle-detail-is-exit: Text {
-                                    text: root.supporting;
+                                    text: root.account-selected-expired
+                                        ? @tr("Продлите подписку TerrieFlow, чтобы снова использовать её маршруты")
+                                        : root.supporting;
                                     // A failed connect reads its reason in a soft red.
                                     color: root.shown-tone == "danger" ? #f0a3a3 : Theme.text-secondary;
                                     font-size: Theme.type-metadata-size;
@@ -3303,12 +3508,12 @@ export component AppWindow inherits Window {
                                         background: root.shown-on && !root.shown-busy ? #28a863 : #1a1e24;
                                         animate background { duration: 220ms; easing: ease-out; }
                                         border-color: power-action.has-focus ? Theme.focus
-                                            : root.shown-busy ? #4c9dff99
+                                            : root.shown-busy ? #159fff99
                                             : root.shown-on ? #ffffff26
                                             : (power-button.hovered ? #4a525e : #2a3038);
                                         border-width: power-action.has-focus ? Theme.focus-width : 1px;
                                         drop-shadow-blur: root.shown-on && !root.shown-busy ? (power-button.hovered ? 16px : 10px) : 0px;
-                                        drop-shadow-color: #3ccb7f55;
+                                        drop-shadow-color: #18dfa155;
                                         animate border-color, drop-shadow-blur { duration: 220ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
 
                                         // Sheen on the upper half of the lit rail.
@@ -3345,7 +3550,7 @@ export component AppWindow inherits Window {
                                         border-radius: self.height / 2;
                                         // Solid fill: gradients ignore border-radius in the software renderer.
                                         background: root.shown-on && !root.shown-busy ? #2fbf73 : (power-button.hovered ? #242931 : #1e2229);
-                                        border-color: root.shown-busy ? #4c9dff80
+                                        border-color: root.shown-busy ? #159fff80
                                             : root.shown-on ? #ffffff4d
                                             : (power-button.hovered ? #ffffff2e : #ffffff14);
                                         border-width: 1px;
@@ -3374,7 +3579,7 @@ export component AppWindow inherits Window {
                                             height: parent.height + 6px;
                                             border-radius: self.height / 2;
                                             border-width: 1px;
-                                            border-color: root.shown-busy ? #4c9dff59 : #3ccb7f66;
+                                            border-color: root.shown-busy ? #159fff59 : #18dfa166;
                                             background: transparent;
                                             opacity: root.shown-on || root.shown-busy ? 1 : 0;
                                             animate opacity { duration: 220ms; easing: ease-out; }
@@ -3416,6 +3621,33 @@ export component AppWindow inherits Window {
 
                     }
 
+                    if root.expired-connect-notice: Rectangle {
+                        height: 62px;
+                        border-radius: 14px;
+                        background: @linear-gradient(110deg, #2b1824f2 0%, #11243af2 100%);
+                        border-color: #ff647066;
+                        border-width: 1px;
+                        HorizontalLayout {
+                            padding-left: 18px;
+                            padding-right: 18px;
+                            spacing: 12px;
+                            VerticalLayout {
+                                width: 20px;
+                                alignment: center;
+                                Image { width: 20px; height: 20px; source: @image-url("../assets/shield-off.svg"); colorize: Theme.error; image-fit: contain; }
+                            }
+                            Text {
+                                horizontal-stretch: 1;
+                                text: @tr("Подключение недоступно. Продлите подписку TerrieFlow, чтобы восстановить доступ");
+                                color: Theme.text-primary;
+                                font-size: Theme.type-metadata-size;
+                                wrap: word-wrap;
+                                vertical-alignment: center;
+                                accessible-live-region: assertive;
+                            }
+                        }
+                    }
+
                     // An iOS-style card (surface, tinted hairline, icon tile, quiet text
                     // actions). The outer rectangle is the layout slot; the card inside
                     // eases in (fade + 6px rise) the moment the banner appears.
@@ -3430,8 +3662,8 @@ export component AppWindow inherits Window {
                             width: parent.width;
                             height: parent.height;
                             opacity: root.conflict-banner-entering ? 0 : 1;
-                            background: Theme.surface;
-                            border-color: #f06a6a59;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: #f0526a59;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -3490,8 +3722,8 @@ export component AppWindow inherits Window {
                         Rectangle {
                             width: parent.width;
                             height: parent.height;
-                            background: Theme.surface;
-                            border-color: #4c9dff47;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: #159fff47;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -3556,10 +3788,9 @@ export component AppWindow inherits Window {
                                 HorizontalLayout {
                                     alignment: center;
                                     Image {
-                                        width: 44px;
-                                        height: 44px;
-                                        source: @image-url("../assets/terrieflow-icon-temp.png");
-                                        opacity: 0.85;
+                                        width: 82px;
+                                        height: 64px;
+                                        source: @image-url("../assets/app-icon.svg");
                                         image-fit: contain;
                                         accessible-role: none;
                                     }
@@ -3569,7 +3800,7 @@ export component AppWindow inherits Window {
                                 onboarding-copy := VerticalLayout {
                                     spacing: 8px;
                                     Text {
-                                        text: @tr("Добавьте подписку");
+                                        text: root.account-authenticated ? @tr("Добавьте VPN-подписку") : @tr("Добро пожаловать в TerrieFlow");
                                         color: Theme.text-primary;
                                         font-size: 20px;
                                         font-weight: Theme.weight-semibold;
@@ -3578,7 +3809,9 @@ export component AppWindow inherits Window {
                                         accessible-role: text;
                                     }
                                     Text {
-                                        text: @tr("Скопируйте ссылку у провайдера — мы подхватим её из буфера обмена");
+                                        text: root.account-authenticated
+                                            ? @tr("Аккаунт подключён. VPN-подписка пока не добавлена")
+                                            : @tr("Войдите в аккаунт или добавьте VPN-подписку вручную");
                                         color: Theme.text-secondary;
                                         font-size: Theme.type-label-size;
                                         horizontal-alignment: center;
@@ -3590,21 +3823,72 @@ export component AppWindow inherits Window {
 
                                 first-run-card := Rectangle {
                                     height: first-run-actions.preferred-height;
-                                    background: Theme.surface;
-                                    border-color: #ffffff0a;
+                                    background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                    border-color: Theme.line-accent;
                                     border-width: 1px;
-                                    border-radius: 14px;
+                                    border-radius: 18px;
+                                    drop-shadow-blur: 24px;
+                                    drop-shadow-color: #159fff24;
                                     clip: true;
                                     animate height { duration: Motion.reduced ? 0ms : 240ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
 
                                     first-run-actions := VerticalLayout {
                                         alignment: start;
                                         spacing: 0px;
+                                        if !root.account-authenticated: Rectangle {
+                                            height: 34px;
+                                            Text {
+                                                x: 16px;
+                                                width: parent.width - 32px;
+                                                height: parent.height;
+                                                text: @tr("ВХОД В TERRIEFLOW");
+                                                color: Theme.accent-cyan;
+                                                font-size: 10px;
+                                                font-weight: Theme.weight-semibold;
+                                                letter-spacing: 0.7px;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+                                        if !root.account-authenticated: ActionRow {
+                                            label: root.account-busy ? root.account-display-name : root.account-phase == "expired" ? @tr("Войти снова через Telegram") : @tr("Войти через Telegram");
+                                            state-label: @tr("Войти в аккаунт TerrieFlow через Telegram");
+                                            icon: @image-url("../assets/telegram.svg");
+                                            accent: true;
+                                            show-separator: true;
+                                            enabled: !root.account-busy;
+                                            activated => { root.account-login(); }
+                                        }
+                                        if !root.account-authenticated: ActionRow {
+                                            label: @tr("Войти по почте и паролю");
+                                            state-label: @tr("Открыть форму входа в TerrieFlow по электронной почте");
+                                            icon: @image-url("../assets/mail.svg");
+                                            chevron: true;
+                                            enabled: !root.account-busy;
+                                            activated => {
+                                                root.account-menu-open = false;
+                                                root.account-email-login-open = true;
+                                            }
+                                        }
+                                        if !root.account-authenticated: Rectangle {
+                                            height: 38px;
+                                            Rectangle { x: 16px; y: 18px; width: 54px; height: 1px; background: Theme.line-accent; }
+                                            Text {
+                                                x: 80px;
+                                                width: 104px;
+                                                height: parent.height;
+                                                text: @tr("ИЛИ ПО ССЫЛКЕ");
+                                                color: Theme.text-muted;
+                                                font-size: 10px;
+                                                letter-spacing: 0.5px;
+                                                vertical-alignment: center;
+                                            }
+                                            Rectangle { x: 184px; y: 18px; width: parent.width - 200px; height: 1px; background: Theme.line-accent; }
+                                        }
                                         ActionRow {
                                             label: root.import-pending ? @tr("Добавляем…") : @tr("Вставить из буфера");
                                             state-label: @tr("Вставить подписку из буфера обмена");
                                             icon: @image-url("../assets/clipboard.svg");
-                                            accent: true;
+                                            accent: false;
                                             show-separator: true;
                                             enabled: !root.import-pending;
                                             activated => { root.paste-subscription(); }
@@ -3683,7 +3967,9 @@ export component AppWindow inherits Window {
                                     accessible-live-region: polite;
                                 }
                                 if root.import-error == "": Text {
-                                    text: @tr("Ссылка хранится только на этом устройстве");
+                                    text: root.account-authenticated
+                                        ? @tr("Ссылка хранится только на этом устройстве")
+                                        : @tr("Вход необязателен. Можно использовать сторонние VPN-подписки");
                                     color: Theme.text-muted;
                                     font-size: Theme.type-metadata-size;
                                     horizontal-alignment: center;
@@ -3691,7 +3977,7 @@ export component AppWindow inherits Window {
                                 }
                                 Rectangle { height: 40px; background: transparent; }
 
-                                HorizontalLayout {
+                                if root.account-authenticated: HorizontalLayout {
                                     alignment: center;
                                     spacing: 12px;
                                     for step[i] in [@tr("1 СКОПИРУЙТЕ ССЫЛКУ"), @tr("2 ВСТАВЬТЕ"), @tr("3 ВКЛЮЧИТЕ ЗАЩИТУ")]: HorizontalLayout {
@@ -3704,41 +3990,29 @@ export component AppWindow inherits Window {
                         }
                     }
 
-                    if root.has-profile && root.terrieflow-preview: HorizontalLayout {
-                        height: 72px;
-                        spacing: 10px;
-                        PreviewModeCard {
-                            horizontal-stretch: 1;
-                            icon-source: @image-url("../assets/server.svg");
-                            title: "Автовыбор";
-                            detail: "Лучший маршрут";
-                            selected: root.terrieflow-preview-mode == "auto";
-                            activated => { root.terrieflow-preview-mode = "auto"; }
-                        }
-                        PreviewModeCard {
-                            horizontal-stretch: 1;
-                            icon-source: @image-url("../assets/gauge.svg");
-                            title: "Макс. скорость";
-                            detail: "Минимальный пинг";
-                            selected: root.terrieflow-preview-mode == "speed";
-                            activated => { root.terrieflow-preview-mode = "speed"; }
-                        }
-                        PreviewModeCard {
-                            horizontal-stretch: 1;
-                            icon-source: @image-url("../assets/shield-check.svg");
-                            title: "Макс. доступность";
-                            detail: "Стабильное соединение";
-                            selected: root.terrieflow-preview-mode == "stable";
-                            activated => { root.terrieflow-preview-mode = "stable"; }
-                        }
-                    }
-
                     if root.has-profile: inline-routes := Rectangle {
                         vertical-stretch: 1;
                         min-height: 140px;
                         background: transparent;
                         VerticalLayout {
                             // Same gap below the heading as above it (the home stack's 12px).
+                            spacing: 12px;
+                            if root.account-selected-expired: RenewalCard {
+                                plan: root.account-access-plan;
+                                end-date: root.account-access-end-date-display;
+                                busy: root.account-status-check-loading;
+                                last-checked: root.account-access-last-checked;
+                                status-message: root.account-status-check-message;
+                                status-error: root.account-status-check-error;
+                                stale: root.account-access-stale;
+                                show-subscriptions-action: true;
+                                renew => { root.account-open-cabinet(); }
+                                refresh => { root.account-refresh(); }
+                                open-subscriptions => { root.local-page = "subscriptions"; root.close-panel(); }
+                            }
+                            if root.account-selected-expired: Rectangle { vertical-stretch: 1; background: transparent; }
+                            if !root.account-selected-expired: VerticalLayout {
+                            vertical-stretch: 1;
                             spacing: 12px;
                             routes-header := Rectangle {
                             height: 36px;
@@ -3879,7 +4153,7 @@ export component AppWindow inherits Window {
                                             viewbox-width: 32;
                                             viewbox-height: 32;
                                             commands: "M 16 2 A 14 14 0 0 1 30 16";
-                                            stroke: #4c9dff;
+                                            stroke: #159fff;
                                             stroke-width: 2px;
                                             stroke-line-cap: round;
                                             fill: transparent;
@@ -3910,7 +4184,7 @@ export component AppWindow inherits Window {
                                     border-radius: 10px;
                                     background: #15181d;
                                     border-width: 1px;
-                                    border-color: route-search-input.has-focus ? #4c9dff99 : Theme.line;
+                                    border-color: route-search-input.has-focus ? #159fff99 : Theme.line;
                                     animate border-color { duration: 140ms; easing: ease-out; }
                                     Image {
                                         x: 12px;
@@ -4054,7 +4328,7 @@ export component AppWindow inherits Window {
                                     self.scroll-target = max(0px, min(self.max-scroll, self.scroll-x + direction * self.viewport-width * 0.6));
                                 }
                                 height: 38px;
-                                background: #0a0c0f;
+                                background: #06101f;
                                 border-color: Theme.line;
                                 border-width: 1px;
                                 border-radius: 10px;
@@ -4140,7 +4414,7 @@ export component AppWindow inherits Window {
                                     opacity: route-group-track.scroll-x > 0.5px ? 1 : 0;
                                     visible: self.opacity > 0;
                                     animate opacity { duration: root.reduced-motion ? 0ms : 140ms; easing: ease-out; }
-                                    background: @linear-gradient(90deg, #0a0c0f 0%, #0a0c0f 60%, #0a0c0f00 100%);
+                                    background: @linear-gradient(90deg, #06101f 0%, #06101f 60%, #06101f00 100%);
                                     route-group-prev := TouchArea {
                                         x: 0;
                                         width: 28px;
@@ -4166,7 +4440,7 @@ export component AppWindow inherits Window {
                                     opacity: route-group-track.scroll-x < route-group-track.max-scroll - 0.5px ? 1 : 0;
                                     visible: self.opacity > 0;
                                     animate opacity { duration: root.reduced-motion ? 0ms : 140ms; easing: ease-out; }
-                                    background: @linear-gradient(90deg, #0a0c0f00 0%, #0a0c0f 40%, #0a0c0f 100%);
+                                    background: @linear-gradient(90deg, #06101f00 0%, #06101f 40%, #06101f 100%);
                                     route-group-next := TouchArea {
                                         x: parent.width - self.width;
                                         width: 28px;
@@ -4205,8 +4479,8 @@ export component AppWindow inherits Window {
                             // A failed catalog load is a card with a retry, in place of the list.
                             if root.catalog-error != "": catalog-error-card := Rectangle {
                                 height: Math.max(56px, catalog-error-copy.preferred-height + 28px);
-                                background: Theme.surface;
-                                border-color: #ffffff0a;
+                                background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                border-color: Theme.line-soft;
                                 border-width: 1px;
                                 border-radius: 14px;
                                 HorizontalLayout {
@@ -4244,8 +4518,8 @@ export component AppWindow inherits Window {
                                 row-count: root.catalog-nodes.length;
                                 row-height: 48px;
                                 // iOS-style inset grouped list: one card, hairlines between rows.
-                                card-background: Theme.surface;
-                                card-border-color: #ffffff0a;
+                                card-background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                card-border-color: Theme.line-soft;
                                 card-border-width: 1px;
                                 card-radius: 14px;
                                 for node[index] in root.catalog-nodes: RouteNodeRow {
@@ -4284,8 +4558,8 @@ export component AppWindow inherits Window {
                                     // The failed-catalog card stands in for the list.
                                     visible: root.catalog-error == "";
                                     height: root.catalog-error == "" ? route-placeholder.preferred-height : 0px;
-                                    background: Theme.surface;
-                                    border-color: #ffffff0a;
+                                    background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                    border-color: Theme.line-soft;
                                     border-width: 1px;
                                     border-radius: 14px;
                                     clip: true;
@@ -4301,7 +4575,7 @@ export component AppWindow inherits Window {
                                             Rectangle { x: 16px; y: 13px; width: 22px; height: 22px; border-radius: 6px; background: #ffffff; opacity: 0.06 + 0.06 * root.skeleton-pulse; }
                                             Rectangle { x: 56px; y: 20px; width: i == 0 ? 112px : i == 1 ? 84px : i == 2 ? 132px : i == 3 ? 96px : 72px; height: 9px; border-radius: 4.5px; background: #ffffff; opacity: 0.05 + 0.06 * root.skeleton-pulse; }
                                             Rectangle { x: parent.width - self.width - 20px; y: 20px; width: 40px; height: 8px; border-radius: 4px; background: #ffffff; opacity: 0.04 + 0.05 * root.skeleton-pulse; }
-                                            if i < 4: Rectangle { x: 56px; y: parent.height - 1px; width: parent.width - 56px; height: 1px; background: #ffffff0f; }
+                                            if i < 4: Rectangle { x: 56px; y: parent.height - 1px; width: parent.width - 56px; height: 1px; background: #7cc8ff18; }
                                         }
                                     }
                                     if root.catalog-nodes.length == 0 && !root.catalog-loading: Text { height: 52px; text: @tr("В этой группе нет доступных серверов"); color: Theme.text-muted; font-size: Theme.type-metadata-size; vertical-alignment: center; horizontal-alignment: center; }
@@ -4317,8 +4591,8 @@ export component AppWindow inherits Window {
                                 animate opacity { duration: 200ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                                 row-count: root.route-search-hits.length;
                                 row-height: 48px;
-                                card-background: Theme.surface;
-                                card-border-color: #ffffff0a;
+                                card-background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                card-border-color: Theme.line-soft;
                                 card-border-width: 1px;
                                 card-radius: 14px;
                                 footer-text: @tr("Найдено {n} · поиск по всем группам" | "Найдено {n} · поиск по всем группам" % root.route-search-hits.length);
@@ -4360,8 +4634,8 @@ export component AppWindow inherits Window {
                                     spacing: 8px;
                                     if root.route-search-loading: route-search-skeleton := Rectangle {
                                         height: 144px;
-                                        background: Theme.surface;
-                                        border-color: #ffffff0a;
+                                        background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                        border-color: Theme.line-soft;
                                         border-width: 1px;
                                         border-radius: 14px;
                                         clip: true;
@@ -4383,328 +4657,13 @@ export component AppWindow inherits Window {
                                     }
                                 }
                             }
-                        }
-                    }
-                }
-            }
-
-            if root.terrieflow-preview && root.visible-page == "routes": Rectangle {
-                opacity: root.page-entering ? 0 : 1;
-                y: root.page-entering ? 6px : 0px;
-                animate opacity { duration: 180ms; easing: ease-out; }
-                animate y { duration: 220ms; easing: ease-out; }
-                background: transparent;
-                clip: true;
-
-                VerticalLayout {
-                    padding: 24px;
-                    spacing: 14px;
-
-                    VerticalLayout {
-                        height: 56px;
-                        spacing: 3px;
-                        Text { text: "Маршруты"; color: Theme.text-primary; font-size: 24px; font-weight: Theme.weight-title; }
-                        Text { text: "Выберите способ подключения или конкретный сервер"; color: Theme.text-secondary; font-size: 13px; }
-                    }
-
-                    Rectangle {
-                        height: 88px;
-                        background: #0d1d33;
-                        border-color: #238cff;
-                        border-width: 1px;
-                        border-radius: 14px;
-                        clip: true;
-                        Rectangle {
-                            x: 18px; y: 18px; width: 52px; height: 52px; border-radius: 26px;
-                            background: #139dff24; border-color: #139dff80; border-width: 1px;
-                            Image { x: 14px; y: 14px; width: 24px; height: 24px; source: @image-url("../assets/shield-check.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; }
-                        }
-                        Text { x: 86px; y: 17px; width: parent.width - 220px; height: 28px; text: "Текущий маршрут"; color: Theme.text-muted; font-size: 12px; vertical-alignment: center; }
-                        Text { x: 86px; y: 42px; width: parent.width - 220px; height: 28px; text: "Finland · Helsinki"; color: Theme.text-primary; font-size: 18px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
-                        Text { x: parent.width - 126px; y: 20px; width: 106px; height: 48px; text: "34 мс"; color: Theme.accent-green; font-size: 15px; font-weight: Theme.weight-semibold; horizontal-alignment: right; vertical-alignment: center; }
-                    }
-
-                    HorizontalLayout {
-                        height: 72px;
-                        spacing: 10px;
-                        PreviewModeCard { horizontal-stretch: 1; icon-source: @image-url("../assets/server.svg"); title: "Автовыбор"; detail: "Лучший маршрут"; selected: root.terrieflow-preview-mode == "auto"; activated => { root.terrieflow-preview-mode = "auto"; } }
-                        PreviewModeCard { horizontal-stretch: 1; icon-source: @image-url("../assets/gauge.svg"); title: "Макс. скорость"; detail: "Минимальный пинг"; selected: root.terrieflow-preview-mode == "speed"; activated => { root.terrieflow-preview-mode = "speed"; } }
-                        PreviewModeCard { horizontal-stretch: 1; icon-source: @image-url("../assets/shield-check.svg"); title: "Макс. доступность"; detail: "Стабильное соединение"; selected: root.terrieflow-preview-mode == "stable"; activated => { root.terrieflow-preview-mode = "stable"; } }
-                    }
-
-                    Rectangle {
-                        height: 40px;
-                        background: transparent;
-                        Text { x: 0px; width: 220px; height: parent.height; text: "Все серверы"; color: Theme.text-primary; font-size: 16px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
-                        Rectangle {
-                            x: parent.width - 300px; width: 300px; height: 40px; border-radius: 10px;
-                            background: #0b1626; border-color: route-preview-input.has-focus ? Theme.accent-blue : Theme.line; border-width: 1px;
-                            Image { x: 12px; y: 12px; width: 16px; height: 16px; source: @image-url("../assets/search.svg"); colorize: Theme.text-muted; image-fit: contain; }
-                            route-preview-input := TextInput {
-                                x: 38px; width: parent.width - 50px; height: parent.height;
-                                text <=> root.terrieflow-route-query;
-                                single-line: true; color: Theme.text-primary; font-size: 13px; vertical-alignment: center;
-                                accessible-label: "Поиск страны или сервера";
-                            }
-                            if root.terrieflow-route-query == "": Text { x: 38px; width: parent.width - 50px; height: parent.height; text: "Поиск страны или сервера…"; color: Theme.text-muted; font-size: 12px; vertical-alignment: center; }
-                        }
-                    }
-
-                    route-preview-list := ListView {
-                        vertical-stretch: 1;
-                        reduced-motion: true;
-                        row-count: root.catalog-nodes.length;
-                        row-height: 48px;
-                        card-background: Theme.surface;
-                        card-border-color: Theme.line;
-                        card-border-width: 1px;
-                        card-radius: 14px;
-                        footer-text: "6 локаций · данные предпросмотра";
-                        for node[index] in root.catalog-nodes: RouteNodeRow {
-                            height: 48px;
-                            show-separator: index < root.catalog-nodes.length - 1;
-                            icon: node.icon;
-                            icon-image: node.icon-image;
-                            icon-loading: false;
-                            reduced-motion: true;
-                            label: node.label;
-                            supporting-text: index == 0 ? "Helsinki" : index == 1 ? "Stockholm" : index == 2 ? "Amsterdam" : index == 3 ? "Frankfurt" : index == 4 ? "New York" : "Tirana";
-                            trailing-text: node.latency-text;
-                            trailing-tone: node.latency-tone;
-                            selected: node.selected;
-                            pending: false;
-                            enabled: false;
-                        }
-                    }
-                }
-            }
-
-            if root.terrieflow-preview && root.visible-page == "split": Rectangle {
-                opacity: root.page-entering ? 0 : 1;
-                y: root.page-entering ? 6px : 0px;
-                animate opacity { duration: 180ms; easing: ease-out; }
-                animate y { duration: 220ms; easing: ease-out; }
-                background: transparent;
-                clip: true;
-
-                VerticalLayout {
-                    padding: 20px;
-                    spacing: 12px;
-
-                    VerticalLayout {
-                        height: 54px;
-                        spacing: 3px;
-                        Text { text: "Раздельный доступ"; color: Theme.text-primary; font-size: 24px; font-weight: Theme.weight-title; }
-                        Text { text: "Укажите, какие приложения подключаются напрямую или через TerrieFlow"; color: Theme.text-secondary; font-size: 13px; overflow: elide; }
-                    }
-
-                    split-control-card := Rectangle {
-                        height: 118px;
-                        background: #0d1a2c;
-                        border-color: root.terrieflow-split-enabled ? #178edb : Theme.line;
-                        border-width: 1px;
-                        border-radius: 14px;
-                        Rectangle { x: 16px; y: 14px; width: 38px; height: 38px; border-radius: 11px; background: #139dff20; Image { x: 9px; y: 9px; width: 20px; height: 20px; source: @image-url("../assets/layers.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; } }
-                        Text { x: 66px; y: 10px; width: parent.width - 164px; height: 25px; text: "Включить раздельный доступ"; color: Theme.text-primary; font-size: 15px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
-                        Text { x: 66px; y: 35px; width: parent.width - 164px; height: 20px; text: root.terrieflow-split-enabled ? "Правила применяются к выбранным приложениям" : "Все приложения используют основной маршрут"; color: Theme.text-muted; font-size: 11px; vertical-alignment: center; overflow: elide; }
-                        PreviewSwitch { x: parent.width - 82px; y: 15px; checked <=> root.terrieflow-split-enabled; }
-                        Rectangle { x: 16px; y: 64px; width: parent.width - 32px; height: 1px; background: Theme.line; }
-                        Text { x: 16px; y: 72px; width: 128px; height: 32px; text: "Режим по умолчанию"; color: Theme.text-secondary; font-size: 11px; vertical-alignment: center; }
-                        HorizontalLayout {
-                            x: 154px; y: 72px; width: parent.width - 170px; height: 32px; spacing: 5px;
-                            PreviewRuleChoice { horizontal-stretch: 1; label: "Напрямую"; selected: root.terrieflow-split-default-mode == "direct"; activated => { root.terrieflow-split-default-mode = "direct"; } }
-                            PreviewRuleChoice { horizontal-stretch: 1; label: "Через TerrieFlow"; selected: root.terrieflow-split-default-mode == "terrieflow"; activated => { root.terrieflow-split-default-mode = "terrieflow"; } }
-                            PreviewRuleChoice { horizontal-stretch: 1; label: "Автовыбор"; selected: root.terrieflow-split-default-mode == "auto"; activated => { root.terrieflow-split-default-mode = "auto"; } }
-                        }
-                    }
-
-                    HorizontalLayout {
-                        vertical-stretch: 1;
-                        spacing: 12px;
-
-                        VerticalLayout {
-                            horizontal-stretch: 1;
-                            spacing: 8px;
-                            Rectangle {
-                                height: 38px;
-                                background: transparent;
-                                Text { x: 0px; width: 180px; height: parent.height; text: "Правила приложений  ·  5"; color: Theme.text-primary; font-size: 15px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
-                                Rectangle {
-                                    x: parent.width - 236px; width: 236px; height: 38px; border-radius: 10px; background: #0b1626; border-color: split-search-input.has-focus ? Theme.accent-blue : Theme.line; border-width: 1px;
-                                    Image { x: 11px; y: 11px; width: 16px; height: 16px; source: @image-url("../assets/search.svg"); colorize: Theme.text-muted; image-fit: contain; }
-                                    split-search-input := TextInput { x: 36px; width: parent.width - 48px; height: parent.height; text <=> root.terrieflow-split-query; single-line: true; color: Theme.text-primary; font-size: 12px; vertical-alignment: center; accessible-label: "Поиск приложения"; }
-                                    if root.terrieflow-split-query == "": Text { x: 36px; width: parent.width - 48px; height: parent.height; text: "Поиск приложения…"; color: Theme.text-muted; font-size: 11px; vertical-alignment: center; }
-                                }
-                            }
-
-                            Rectangle {
-                                vertical-stretch: 1;
-                                min-height: 270px;
-                                background: Theme.surface;
-                                border-color: Theme.line;
-                                border-width: 1px;
-                                border-radius: 14px;
-                                clip: true;
-                                VerticalLayout {
-                                    spacing: 0px;
-                                    PreviewAppRuleRow { title: "Steam"; initial: "S"; tile-color: #315c9d; mode <=> root.terrieflow-steam-mode; }
-                                    PreviewAppRuleRow { title: "Discord"; initial: "D"; tile-color: #5865f2; mode <=> root.terrieflow-discord-mode; }
-                                    PreviewAppRuleRow { title: "Chrome"; initial: "C"; tile-color: #d94a3a; mode <=> root.terrieflow-chrome-mode; }
-                                    PreviewAppRuleRow { title: "Telegram"; initial: "T"; tile-color: #2aabee; mode <=> root.terrieflow-telegram-mode; }
-                                    PreviewAppRuleRow { title: "PUBG"; initial: "P"; tile-color: #d88b20; mode <=> root.terrieflow-pubg-mode; show-separator: false; }
-                                }
-                            }
-
-                            Rectangle {
-                                height: 40px;
-                                background: #0e83d5;
-                                border-color: #34b9ff;
-                                border-width: 1px;
-                                border-radius: 10px;
-                                Text { text: "+  Добавить приложение"; color: #ffffff; font-size: 12px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; }
-                            }
-                        }
-
-                        VerticalLayout {
-                            width: 210px;
-                            spacing: 10px;
-                            Rectangle {
-                                height: 94px; background: Theme.surface; border-color: Theme.line; border-width: 1px; border-radius: 12px;
-                                Text { x: 14px; y: 12px; width: parent.width - 28px; text: "Текущий маршрут"; color: Theme.text-muted; font-size: 11px; }
-                                Text { x: 14px; y: 35px; width: parent.width - 28px; text: "🇫🇮  Finland · 34 мс"; color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; }
-                                Text { x: 14px; y: 60px; width: parent.width - 28px; text: "Автовыбор"; color: Theme.accent-blue-hover; font-size: 11px; }
-                            }
-                            Rectangle {
-                                height: 94px; background: Theme.surface; border-color: Theme.line; border-width: 1px; border-radius: 12px;
-                                Text { x: 14px; y: 12px; width: parent.width - 28px; text: "Применено правил"; color: Theme.text-muted; font-size: 11px; }
-                                Text { x: 14px; y: 34px; width: parent.width - 28px; text: root.terrieflow-split-enabled ? "5" : "0"; color: Theme.text-primary; font-size: 24px; font-weight: Theme.weight-bold; }
-                                Text { x: 48px; y: 44px; width: parent.width - 62px; text: root.terrieflow-split-enabled ? "локальных правил" : "режим выключен"; color: Theme.text-secondary; font-size: 11px; }
-                            }
-                            Rectangle {
-                                vertical-stretch: 1; min-height: 92px; background: #0c1a2d; border-color: #1c4e79; border-width: 1px; border-radius: 12px;
-                                Image { x: 14px; y: 14px; width: 18px; height: 18px; source: @image-url("../assets/info.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; }
-                                Text { x: 42px; y: 11px; width: parent.width - 56px; text: "Как это работает?"; color: Theme.text-primary; font-size: 12px; font-weight: Theme.weight-semibold; }
-                                Text { x: 14px; y: 42px; width: parent.width - 28px; text: "Правила применятся при следующем подключении."; color: Theme.text-muted; font-size: 11px; wrap: word-wrap; }
                             }
                         }
                     }
                 }
             }
 
-            if root.terrieflow-preview && root.visible-page == "status": Rectangle {
-                opacity: root.page-entering ? 0 : 1;
-                y: root.page-entering ? 6px : 0px;
-                animate opacity { duration: 180ms; easing: ease-out; }
-                animate y { duration: 220ms; easing: ease-out; }
-                background: transparent;
-                clip: true;
-
-                VerticalLayout {
-                    padding: 20px;
-                    spacing: 10px;
-
-                    VerticalLayout {
-                        height: 50px;
-                        spacing: 2px;
-                        Text { text: "Диагностика"; color: Theme.text-primary; font-size: 24px; font-weight: Theme.weight-title; }
-                        Text { text: "Проверка подключения и состояния компонентов"; color: Theme.text-secondary; font-size: 13px; overflow: elide; }
-                    }
-
-                    Rectangle {
-                        height: 88px;
-                        background: #0d2443;
-                        border-color: #259ef0;
-                        border-width: 1px;
-                        border-radius: 14px;
-                        Rectangle { x: 16px; y: 15px; width: 58px; height: 58px; border-radius: 29px; background: #139dff20; border-color: #18a8ff; border-width: 1px; Image { x: 15px; y: 15px; width: 28px; height: 28px; source: @image-url("../assets/shield-check.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; } }
-                        Text { x: 92px; y: 15px; width: parent.width - 330px; height: 27px; text: "Защита включена"; color: Theme.text-primary; font-size: 19px; font-weight: Theme.weight-bold; vertical-alignment: center; }
-                        Text { x: 92px; y: 44px; width: parent.width - 330px; height: 22px; text: "FI  Finland · 34 мс   ↓ 48.6 МБ/с   ↑ 6.2 МБ/с"; color: Theme.text-secondary; font-size: 12px; vertical-alignment: center; overflow: elide; }
-                        Rectangle {
-                            x: parent.width - 214px; y: 24px; width: 194px; height: 40px; border-radius: 20px; background: #123c36; border-color: Theme.accent-green; border-width: 1px;
-                            Rectangle { x: 16px; y: 16px; width: 8px; height: 8px; border-radius: 4px; background: Theme.accent-green; }
-                            Text { x: 34px; width: parent.width - 46px; height: parent.height; text: root.terrieflow-diagnostics-checked ? "Проверка завершена" : "Соединение в норме"; color: Theme.accent-green; font-size: 11px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
-                        }
-                    }
-
-                    HorizontalLayout {
-                        height: 68px;
-                        spacing: 8px;
-                        PreviewHealthTile { horizontal-stretch: 1; icon-source: @image-url("../assets/server.svg"); title: "Reality"; }
-                        PreviewHealthTile { horizontal-stretch: 1; icon-source: @image-url("../assets/status.svg"); title: "xHTTP"; }
-                        PreviewHealthTile { horizontal-stretch: 1; icon-source: @image-url("../assets/layers.svg"); title: "gRPC"; }
-                        PreviewHealthTile { horizontal-stretch: 1; icon-source: @image-url("../assets/gauge.svg"); title: "Hysteria2"; }
-                        PreviewHealthTile { horizontal-stretch: 1; icon-source: @image-url("../assets/diagnostics.svg"); title: "DNS"; }
-                        PreviewHealthTile { horizontal-stretch: 1; icon-source: @image-url("../assets/link.svg"); title: "TUN"; }
-                    }
-
-                    HorizontalLayout {
-                        vertical-stretch: 1;
-                        min-height: 220px;
-                        spacing: 10px;
-                        Rectangle {
-                            horizontal-stretch: 1;
-                            background: Theme.surface;
-                            border-color: Theme.line;
-                            border-width: 1px;
-                            border-radius: 14px;
-                            clip: true;
-                            Text { x: 14px; y: 7px; width: parent.width - 60px; height: 28px; text: "Проверка серверов"; color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
-                            Image { x: parent.width - 34px; y: 13px; width: 16px; height: 16px; source: @image-url("../assets/refresh.svg"); colorize: Theme.text-muted; image-fit: contain; }
-                            VerticalLayout {
-                                x: 5px; y: 36px; width: parent.width - 10px; height: parent.height - 41px; spacing: 0px;
-                                PreviewServerRow { code: "FI"; country: "Finland"; latency: "34 мс"; quality: "Отлично"; }
-                                PreviewServerRow { code: "SE"; country: "Sweden"; latency: "38 мс"; quality: "Отлично"; }
-                                PreviewServerRow { code: "NL"; country: "Netherlands"; latency: "52 мс"; quality: "Отлично"; }
-                                PreviewServerRow { code: "DE"; country: "Germany"; latency: "68 мс"; quality: "Хорошо"; tone: #f5c451; tone-soft: #f5c45120; }
-                                PreviewServerRow { code: "US"; country: "United States"; latency: "142 мс"; quality: "Допустимо"; tone: #f59e42; tone-soft: #f59e4220; show-separator: false; }
-                            }
-                        }
-                        Rectangle {
-                            width: 350px;
-                            background: #091321;
-                            border-color: Theme.line;
-                            border-width: 1px;
-                            border-radius: 14px;
-                            clip: true;
-                            Image { x: 14px; y: 12px; width: 17px; height: 17px; source: @image-url("../assets/diagnostics.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; }
-                            Text { x: 42px; y: 7px; width: 190px; height: 28px; text: "Журнал диагностики"; color: Theme.text-primary; font-size: 12px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
-                            Text { x: parent.width - 86px; y: 7px; width: 72px; height: 28px; text: "Очистить"; color: Theme.text-muted; font-size: 10px; horizontal-alignment: right; vertical-alignment: center; }
-                            Rectangle { x: 0px; y: 38px; width: parent.width; height: 1px; background: Theme.line; }
-                            VerticalLayout {
-                                x: 14px; y: 46px; width: parent.width - 28px; height: parent.height - 54px; spacing: 3px;
-                                Text { text: "14:27:12   Начата диагностика сети…"; color: Theme.text-muted; font-size: 9px; }
-                                Text { text: "14:27:13   ● DNS ................ OK (23 мс)"; color: Theme.accent-green; font-size: 9px; }
-                                Text { text: "14:27:14   ● Маршрут Finland ..... OK"; color: Theme.accent-green; font-size: 9px; }
-                                Text { text: "14:27:15   ● Сервер ............... OK"; color: Theme.accent-green; font-size: 9px; }
-                                Text { text: "14:27:16   ● Reality .............. OK"; color: Theme.accent-green; font-size: 9px; }
-                                Text { text: "14:27:16   ● xHTTP ................ OK"; color: Theme.accent-green; font-size: 9px; }
-                                Text { text: "14:27:17   ● gRPC ................. OK"; color: Theme.accent-green; font-size: 9px; }
-                                Text { text: "14:27:17   ● Hysteria2 ............. OK"; color: Theme.accent-green; font-size: 9px; }
-                                Text { text: "14:27:18   ● TUN .................. OK"; color: Theme.accent-green; font-size: 9px; }
-                                Text { text: root.terrieflow-diagnostics-checked ? "14:27:19   Диагностика завершена." : "14:27:19   Подключение стабильно."; color: Theme.text-secondary; font-size: 9px; }
-                            }
-                        }
-                    }
-
-                    HorizontalLayout {
-                        height: 40px;
-                        spacing: 10px;
-                        Rectangle {
-                            horizontal-stretch: 1; background: #0e83d5; border-color: #34b9ff; border-width: 1px; border-radius: 10px;
-                            Image { x: parent.width / 2 - 102px; y: 11px; width: 18px; height: 18px; source: @image-url("../assets/diagnostics.svg"); colorize: #ffffff; image-fit: contain; }
-                            Text { x: 0px; width: parent.width; height: parent.height; text: root.terrieflow-diagnostics-checked ? "Проверить ещё раз" : "Проверить подключение"; color: #ffffff; font-size: 12px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; }
-                            TouchArea { mouse-cursor: pointer; clicked => { root.terrieflow-diagnostics-checked = true; } }
-                        }
-                        Rectangle {
-                            horizontal-stretch: 1; background: #10213a; border-color: #2a5f90; border-width: 1px; border-radius: 10px;
-                            Image { x: parent.width / 2 - 94px; y: 11px; width: 18px; height: 18px; source: @image-url("../assets/settings.svg"); colorize: Theme.text-primary; image-fit: contain; }
-                            Text { text: "Устранить неполадки"; color: Theme.text-primary; font-size: 12px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; }
-                        }
-                    }
-                }
-            }
-
-            if !root.terrieflow-preview && root.visible-page == "status": Rectangle {
+            if root.visible-page == "status": Rectangle {
                 opacity: root.page-entering ? 0 : 1;
                 y: root.page-entering ? 6px : 0px;
                 animate opacity { duration: 180ms; easing: ease-out; }
@@ -4715,6 +4674,7 @@ export component AppWindow inherits Window {
                 // Title and log actions stay put; the cards scroll under them when the window is short.
                 PageHeader {
                     title: @tr("Состояние");
+                    subtitle: @tr("Проверка состояния ядер и системных компонентов");
                     scrolled: status-scroll.scrolled;
                     reduced-motion: root.reduced-motion;
                     VerticalLayout {
@@ -4767,8 +4727,8 @@ export component AppWindow inherits Window {
                             opacity: root.page-entering ? 0 : 1;
                             animate opacity { duration: 280ms; delay: 24ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: 132px;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -4789,8 +4749,8 @@ export component AppWindow inherits Window {
                             animate opacity { duration: 280ms; delay: 48ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             // Up to three rows show at once; more scroll inside the card.
                             height: root.diagnostic-mappings.length == 0 ? 44px : Math.min(3, root.diagnostic-mappings.length) * 44px;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -4814,7 +4774,7 @@ export component AppWindow inherits Window {
                                             Text { width: 128px; text: mapping.address; color: Theme.text-muted; font-size: Theme.type-metadata-size; horizontal-alignment: right; vertical-alignment: center; }
                                             Text { width: 132px; text: mapping.xray-label; color: Theme.text-secondary; font-size: Theme.type-metadata-size; horizontal-alignment: right; vertical-alignment: center; overflow: elide; }
                                         }
-                                        if index < root.diagnostic-mappings.length - 1: Rectangle { x: 46px; y: parent.height - 1px; width: parent.width - 46px; height: 1px; background: #ffffff0f; }
+                                        if index < root.diagnostic-mappings.length - 1: Rectangle { x: 46px; y: parent.height - 1px; width: parent.width - 46px; height: 1px; background: #7cc8ff18; }
                                     }
                                     if root.diagnostic-mappings.length == 0: Text { height: 44px; text: @tr("Маппинги появятся после загрузки подписки"); color: Theme.text-muted; font-size: Theme.type-metadata-size; vertical-alignment: center; horizontal-alignment: center; }
                                 }
@@ -4826,7 +4786,7 @@ export component AppWindow inherits Window {
                         Rectangle { height: 8px; background: transparent; }
                         event-filter-track := Rectangle {
                             height: 38px;
-                            background: #0a0c0f;
+                            background: #06101f;
                             border-color: Theme.line;
                             border-width: 1px;
                             border-radius: 10px;
@@ -4846,8 +4806,8 @@ export component AppWindow inherits Window {
                             animate opacity { duration: 280ms; delay: 72ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             vertical-stretch: 1;
                             min-height: 88px;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -4888,7 +4848,7 @@ export component AppWindow inherits Window {
                                                 accessible-label: (event.level == "error" ? @tr("Ошибка") : @tr("Событие")) + (event.component == "" ? "" : ", " + event.component) + (event.timestamp == "" ? "" : ", " + event.timestamp) + ": " + event.message;
                                             }
                                         }
-                                        if index < root.events.length - 1: Rectangle { x: 86px; y: parent.height - 1px; width: parent.width - 86px; height: 1px; background: #ffffff0f; }
+                                        if index < root.events.length - 1: Rectangle { x: 86px; y: parent.height - 1px; width: parent.width - 86px; height: 1px; background: #7cc8ff18; }
                                     }
                                     if root.events.length == 0: Text { height: 64px; text: @tr("Событий пока нет"); color: Theme.text-muted; font-size: Theme.type-metadata-size; vertical-alignment: center; horizontal-alignment: center; }
                                 }
@@ -4910,6 +4870,7 @@ export component AppWindow inherits Window {
                 // The title stays put; the sections scroll under it.
                 PageHeader {
                     title: @tr("Настройки");
+                    subtitle: @tr("Подключение, приложение и обновления");
                     scrolled: settings-scroll.scrolled;
                     reduced-motion: root.reduced-motion;
                 }
@@ -4933,8 +4894,8 @@ export component AppWindow inherits Window {
                         opacity: root.page-entering ? 0 : 1;
                         animate opacity { duration: 280ms; delay: 24ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: connection-rows.preferred-height;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -4943,6 +4904,7 @@ export component AppWindow inherits Window {
                                 padding-right: 16px;
                                 spacing: 0px;
                                 if root.tun-toggle-available: ToggleRow {
+                                    icon: @image-url("../assets/link.svg");
                                     label: @tr("Режим TUN — весь трафик");
                                     description: root.toggle-on || root.toggle-busy
                                         ? @tr("Применится при следующем подключении")
@@ -4956,6 +4918,7 @@ export component AppWindow inherits Window {
                                     toggled(value) => { root.tun-enabled = value; }
                                 }
                                 ToggleRow {
+                                    icon: @image-url("../assets/power.svg");
                                     label: @tr("Подключаться после входа в систему");
                                     description: root.launch-at-sign-in-enabled ? @tr("Когда появится сеть и профиль будет готов") : @tr("Сначала включите автозапуск");
                                     checked: root.auto-connect-on-startup;
@@ -4997,8 +4960,8 @@ export component AppWindow inherits Window {
                             opacity: root.page-entering ? 0 : 1;
                             animate opacity { duration: 280ms; delay: 36ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: Math.max(60px, service-row.preferred-height);
-                            background: Theme.surface;
-                            border-color: #4c9dff55;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: #159fff55;
                             border-width: 1px;
                             border-radius: 14px;
                             service-row := HorizontalLayout {
@@ -5039,8 +5002,8 @@ export component AppWindow inherits Window {
                         opacity: root.page-entering ? 0 : 1;
                         animate opacity { duration: 280ms; delay: 48ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: app-rows.preferred-height;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -5049,6 +5012,7 @@ export component AppWindow inherits Window {
                                 padding-right: 16px;
                                 spacing: 0px;
                                 ToggleRow {
+                                    icon: @image-url("../assets/app-icon.svg");
                                     label: @tr("Запускать при входе в {}", root.system-name);
                                     description: root.launch-at-sign-in-stale ? @tr("Путь приложения изменился — включите заново") : "";
                                     checked: root.launch-at-sign-in-enabled;
@@ -5057,6 +5021,7 @@ export component AppWindow inherits Window {
                                     toggled(value) => { root.set-launch-at-sign-in(value); }
                                 }
                                 ToggleRow {
+                                    icon: @image-url("../assets/layers.svg");
                                     label: @tr("Живой фон");
                                     description: root.reduced-motion ? @tr("Анимация отключена настройками {}", root.system-name) : @tr("Спокойные волны на главной");
                                     // Under system reduced-motion the animation never runs, so the
@@ -5112,8 +5077,8 @@ export component AppWindow inherits Window {
                             opacity: root.page-entering ? 0 : 1;
                             animate opacity { duration: 280ms; delay: 72ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: Math.max(60px, troubleshoot-row.preferred-height);
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             troubleshoot-row := HorizontalLayout {
@@ -5146,8 +5111,8 @@ export component AppWindow inherits Window {
                         opacity: root.page-entering ? 0 : 1;
                         animate opacity { duration: 280ms; delay: 96ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: Math.max(60px, updates-row.preferred-height);
-                            background: Theme.surface;
-                            border-color: root.update-available ? #4c9dff55 : #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: root.update-available ? #159fff55 : #ffffff0a;
                             border-width: 1px;
                             border-radius: 14px;
                             updates-row := HorizontalLayout {
@@ -5238,133 +5203,7 @@ export component AppWindow inherits Window {
                 }
             }
 
-            if root.terrieflow-preview && root.visible-page == "subscriptions": Rectangle {
-                opacity: root.page-entering ? 0 : 1;
-                y: root.page-entering ? 6px : 0px;
-                animate opacity { duration: 180ms; easing: ease-out; }
-                animate y { duration: 220ms; easing: ease-out; }
-                background: transparent;
-                clip: true;
-
-                VerticalLayout {
-                    padding: 20px;
-                    spacing: 10px;
-
-                    VerticalLayout {
-                        height: 50px;
-                        spacing: 2px;
-                        Text { text: "Подписка"; color: Theme.text-primary; font-size: 24px; font-weight: Theme.weight-title; }
-                        Text { text: "Управление тарифом, сроком действия и устройствами"; color: Theme.text-secondary; font-size: 13px; overflow: elide; }
-                    }
-
-                    Rectangle {
-                        height: 92px;
-                        background: root.terrieflow-preview-grace ? #17163a : #0d2443;
-                        border-color: root.terrieflow-preview-grace ? #7c5ce0 : #259ef0;
-                        border-width: 1px;
-                        border-radius: 14px;
-                        Rectangle {
-                            x: 16px; y: 16px; width: 58px; height: 58px; border-radius: 29px; background: root.terrieflow-preview-grace ? #8b5cf626 : #139dff20; border-color: root.terrieflow-preview-grace ? #8b5cf6 : #18a8ff; border-width: 1px;
-                            Image { x: 15px; y: 15px; width: 28px; height: 28px; source: @image-url("../assets/subscriptions.svg"); colorize: root.terrieflow-preview-grace ? #a78bfa : Theme.accent-blue-hover; image-fit: contain; }
-                        }
-                        Text { x: 92px; y: 17px; width: parent.width - 260px; height: 26px; text: "Premium Pro"; color: Theme.text-primary; font-size: 20px; font-weight: Theme.weight-bold; vertical-alignment: center; }
-                        Rectangle { x: 224px; y: 20px; width: 82px; height: 22px; border-radius: 11px; background: root.terrieflow-preview-grace ? #8b5cf633 : #26d99526; Text { text: root.terrieflow-preview-grace ? "Grace" : "Активна"; color: root.terrieflow-preview-grace ? #b69cff : Theme.accent-green; font-size: 10px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; } }
-                        Text { x: 92px; y: 49px; width: parent.width - 290px; height: 20px; text: root.terrieflow-preview-grace ? "Льготный доступ · осталось 71 ч 42 мин" : "Все локации · До 5 устройств · Раздельный доступ"; color: Theme.text-secondary; font-size: 12px; vertical-alignment: center; overflow: elide; }
-                        Text { x: parent.width - 170px; y: 18px; width: 150px; height: 54px; text: root.terrieflow-preview-grace ? "780 МБ\nиз 1 ГБ" : "12 дн 04 ч\n37 мин"; color: Theme.text-primary; font-size: 14px; font-weight: Theme.weight-semibold; horizontal-alignment: right; vertical-alignment: center; }
-                    }
-
-                    HorizontalLayout {
-                        height: 76px;
-                        spacing: 10px;
-                        Rectangle {
-                            horizontal-stretch: 1; background: Theme.surface; border-color: Theme.line; border-width: 1px; border-radius: 12px;
-                            Image { x: 14px; y: 19px; width: 28px; height: 28px; source: @image-url("../assets/status.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; }
-                            Text { x: 54px; y: 10px; width: parent.width - 66px; height: 20px; text: "Осталось"; color: Theme.text-muted; font-size: 10px; vertical-alignment: center; }
-                            Text { x: 54px; y: 31px; width: parent.width - 66px; height: 26px; text: root.terrieflow-preview-grace ? "71 ч 42 мин" : "12 дней"; color: Theme.text-primary; font-size: 16px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
-                        }
-                        Rectangle {
-                            horizontal-stretch: 1; background: Theme.surface; border-color: Theme.line; border-width: 1px; border-radius: 12px;
-                            Image { x: 14px; y: 19px; width: 28px; height: 28px; source: @image-url("../assets/gauge.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; }
-                            Text { x: 54px; y: 10px; width: parent.width - 66px; height: 20px; text: "Трафик"; color: Theme.text-muted; font-size: 10px; vertical-alignment: center; }
-                            Text { x: 54px; y: 31px; width: parent.width - 66px; height: 26px; text: root.terrieflow-preview-grace ? "780 МБ из 1 ГБ" : "Без ограничений"; color: root.terrieflow-preview-grace ? #b69cff : Theme.text-primary; font-size: 15px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
-                        }
-                        Rectangle {
-                            horizontal-stretch: 1; background: root.terrieflow-preview-grace ? #211b48 : Theme.surface; border-color: root.terrieflow-preview-grace ? #7c5ce0 : Theme.line; border-width: 1px; border-radius: 12px;
-                            Image { x: 14px; y: 19px; width: 28px; height: 28px; source: @image-url("../assets/shield-check.svg"); colorize: root.terrieflow-preview-grace ? #a78bfa : Theme.text-muted; image-fit: contain; }
-                            Text { x: 54px; y: 10px; width: parent.width - 66px; height: 20px; text: root.terrieflow-preview-grace ? "Grace активен" : "Grace-резерв"; color: root.terrieflow-preview-grace ? #b69cff : Theme.text-muted; font-size: 10px; vertical-alignment: center; }
-                            Text { x: 54px; y: 31px; width: parent.width - 66px; height: 26px; text: root.terrieflow-preview-grace ? "71 ч 42 мин · 780 МБ" : "72 ч · 1 ГБ"; color: root.terrieflow-preview-grace ? #c4b5fd : Theme.text-primary; font-size: 14px; font-weight: Theme.weight-semibold; vertical-alignment: center; overflow: elide; }
-                        }
-                    }
-
-                    Rectangle {
-                        height: 186px;
-                        background: Theme.surface;
-                        border-color: Theme.line;
-                        border-width: 1px;
-                        border-radius: 14px;
-                        clip: true;
-                        Text { x: 14px; y: 8px; width: 180px; height: 26px; text: "Устройства"; color: Theme.text-primary; font-size: 14px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
-                        Text { x: 110px; y: 8px; width: 160px; height: 26px; text: "Использовано 3 из 5"; color: Theme.text-muted; font-size: 10px; vertical-alignment: center; }
-                        Rectangle { x: parent.width - 190px; y: 7px; width: 176px; height: 28px; border-radius: 8px; background: #10213a; border-color: Theme.line; border-width: 1px; Text { text: "Управление устройствами"; color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; } }
-                        VerticalLayout {
-                            x: 4px; y: 36px; width: parent.width - 8px; height: 150px; spacing: 0px;
-                            PreviewDeviceRow { icon-source: @image-url("../assets/app-icon.svg"); title: "Windows PC"; detail: "Windows 11 · активность сейчас"; status: "Онлайн"; current: true; }
-                            PreviewDeviceRow { icon-source: @image-url("../assets/status.svg"); title: "iPhone"; detail: "iOS 17 · активность 12 мин назад"; status: "Сегодня"; }
-                            PreviewDeviceRow { icon-source: @image-url("../assets/app-icon.svg"); title: "MacBook"; detail: "macOS 14 · последняя активность"; status: "3 ч назад"; online: false; show-separator: false; }
-                        }
-                    }
-
-                    Rectangle {
-                        vertical-stretch: 1;
-                        min-height: 126px;
-                        background: Theme.surface;
-                        border-color: Theme.line;
-                        border-width: 1px;
-                        border-radius: 14px;
-                        Text { x: 14px; y: 9px; width: 240px; height: 20px; text: "Подключение устройств"; color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; }
-                        Text { x: 14px; y: 28px; width: parent.width - 220px; height: 17px; text: "Ссылка и QR-код скрыты для защиты данных"; color: Theme.text-muted; font-size: 10px; overflow: elide; }
-                        Rectangle {
-                            x: 14px; y: 48px; width: Math.max(250px, parent.width - 430px); height: 32px; border-radius: 8px; background: #0a1525; border-color: Theme.line; border-width: 1px;
-                            Text { x: 11px; width: parent.width - 46px; height: parent.height; text: root.terrieflow-subscription-revealed ? "https://terrieflow.app/s/demo-premium-pro" : "••••••••••••••••••••••••••••••••••pro"; color: root.terrieflow-subscription-revealed ? Theme.text-secondary : Theme.text-muted; font-size: 10px; vertical-alignment: center; overflow: elide; }
-                            Rectangle {
-                                x: parent.width - 34px; width: 34px; height: parent.height; border-radius: 7px; background: reveal-link-touch.has-hover ? #ffffff0d : transparent;
-                                Image { x: 9px; y: 8px; width: 16px; height: 16px; source: root.terrieflow-subscription-revealed ? @image-url("../assets/eye-off.svg") : @image-url("../assets/eye.svg"); colorize: Theme.text-secondary; image-fit: contain; }
-                                reveal-link-touch := TouchArea { mouse-cursor: pointer; clicked => { root.terrieflow-subscription-revealed = !root.terrieflow-subscription-revealed; } }
-                            }
-                        }
-                        Rectangle {
-                            x: Math.max(272px, parent.width - 406px); y: 48px; width: 184px; height: 32px; border-radius: 8px; background: #0e83d5; border-color: #34b9ff; border-width: 1px;
-                            Text { text: root.terrieflow-subscription-copied ? "Скопировано" : "Скопировать ссылку"; color: #ffffff; font-size: 10px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; }
-                            TouchArea { mouse-cursor: pointer; clicked => { root.terrieflow-subscription-copied = !root.terrieflow-subscription-copied; } }
-                        }
-                        Rectangle {
-                            x: 14px; y: 88px; width: 198px; height: 30px; border-radius: 8px; background: #10213a; border-color: Theme.line; border-width: 1px;
-                            Image { x: 12px; y: 7px; width: 16px; height: 16px; source: @image-url("../assets/link.svg"); colorize: Theme.text-secondary; image-fit: contain; }
-                            Text { x: 36px; width: parent.width - 46px; height: parent.height; text: "Открыть личный кабинет"; color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
-                        }
-                        Rectangle {
-                            x: 220px; y: 88px; width: 184px; height: 30px; border-radius: 8px; background: #10213a; border-color: Theme.line; border-width: 1px;
-                            Image { x: 12px; y: 7px; width: 16px; height: 16px; source: @image-url("../assets/refresh.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; }
-                            Text { x: 36px; width: parent.width - 46px; height: parent.height; text: "Обновить подписку"; color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; vertical-alignment: center; }
-                        }
-                        Text { x: 418px; y: 88px; width: parent.width - 638px; height: 30px; text: "Обновлено сегодня, 14:27"; color: Theme.text-muted; font-size: 9px; vertical-alignment: center; overflow: elide; }
-                        Rectangle {
-                            x: parent.width - 206px; y: 10px; width: 192px; height: parent.height - 20px; border-radius: 10px; background: #0b1727; border-color: Theme.line; border-width: 1px;
-                            property <length> qr-size: Math.min(parent.width - 20px, parent.height - 20px);
-                            Image { x: (parent.width - parent.qr-size) / 2; y: (parent.height - parent.qr-size) / 2; width: parent.qr-size; height: parent.qr-size; source: @image-url("../assets/qr-preview.svg"); image-fit: contain; opacity: root.terrieflow-subscription-revealed ? 1 : 0.13; }
-                            if !root.terrieflow-subscription-revealed: Rectangle {
-                                border-radius: 9px; background: #0b1727b8;
-                                Image { x: (parent.width - 30px) / 2; y: parent.height / 2 - 40px; width: 30px; height: 30px; source: @image-url("../assets/eye.svg"); colorize: Theme.accent-blue-hover; image-fit: contain; }
-                                Text { x: 12px; y: parent.height / 2 - 4px; width: parent.width - 24px; height: 22px; text: "QR скрыт"; color: Theme.text-primary; font-size: 11px; font-weight: Theme.weight-semibold; horizontal-alignment: center; vertical-alignment: center; }
-                                Text { x: 12px; y: parent.height / 2 + 18px; width: parent.width - 24px; height: 30px; text: "Нажмите, чтобы показать"; color: Theme.text-muted; font-size: 9px; horizontal-alignment: center; vertical-alignment: top; wrap: word-wrap; }
-                            }
-                            TouchArea { mouse-cursor: pointer; clicked => { root.terrieflow-subscription-revealed = !root.terrieflow-subscription-revealed; } }
-                        }
-                    }
-                }
-            }
-
-            if !root.terrieflow-preview && root.visible-page == "subscriptions": Rectangle {
+            if root.visible-page == "subscriptions": Rectangle {
                 opacity: root.page-entering ? 0 : 1;
                 y: root.page-entering ? 6px : 0px;
                 animate opacity { duration: 180ms; easing: ease-out; }
@@ -5375,7 +5214,7 @@ export component AppWindow inherits Window {
                 // Title, "Добавить" and the note stay put; the list scrolls under them.
                 PageHeader {
                     title: @tr("Подписки");
-                    subtitle: @tr("До 100 подписок · активна только одна · ссылки хранятся только на этом устройстве");
+                    subtitle: @tr("До 100 подписок · выбран только один локальный профиль · ссылки хранятся только на этом устройстве");
                     gap: 16px;
                     scrolled: subscriptions-scroll.scrolled;
                     reduced-motion: root.reduced-motion;
@@ -5435,8 +5274,8 @@ export component AppWindow inherits Window {
                             padding-bottom: 16px;
                             add-subscription-card := Rectangle {
                                 height: 56px;
-                                background: Theme.surface;
-                                border-color: #ffffff0a;
+                                background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                                border-color: Theme.line-soft;
                                 border-width: 1px;
                                 border-radius: 14px;
                                 HorizontalLayout {
@@ -5507,8 +5346,8 @@ export component AppWindow inherits Window {
                         }
                         if !root.profile-menu-loading && root.profile-menu-error == "" && root.subscription-profiles.length == 0: Rectangle {
                             height: 64px;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, #09243bdd 0%, #081b2ddd 55%, #0a2940dd 100%);
+                            border-color: #1dc9ef59;
                             border-width: 1px;
                             border-radius: 14px;
                             Text { text: @tr("Подписок пока нет"); color: Theme.text-muted; font-size: Theme.type-metadata-size; vertical-alignment: center; horizontal-alignment: center; }
@@ -5518,8 +5357,8 @@ export component AppWindow inherits Window {
                         opacity: root.page-entering ? 0 : 1;
                         animate opacity { duration: 280ms; delay: 24ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                             height: profile-list.preferred-height;
-                            background: Theme.surface;
-                            border-color: #ffffff0a;
+                            background: @linear-gradient(135deg, Theme.surface 0%, Theme.elevated 100%);
+                            border-color: Theme.line-soft;
                             border-width: 1px;
                             border-radius: 14px;
                             clip: true;
@@ -5532,7 +5371,7 @@ export component AppWindow inherits Window {
                                     property <bool> pending: root.profile-pending-id == profile.id;
                                     height: 56px + (self.editing || self.confirming ? 52px : 0px);
                                     clip: true;
-                                    background: profile.active ? Theme.elevated : transparent;
+                                    background: profile.active ? @linear-gradient(90deg, #123d61b8 0%, #0d2a44a8 58%, #0a2238a0 100%) : transparent;
                                     animate height { duration: Motion.reduced ? 0ms : 240ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
                                     animate background { duration: 200ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
 
@@ -5547,12 +5386,12 @@ export component AppWindow inherits Window {
                                         key-pressed(event) => { if ((event.text == " " || event.text == "\n") && self.enabled) { root.activate-profile(profile.id); return accept; } return reject; }
                                         activate-profile-touch := TouchArea { enabled: parent.enabled; clicked => { root.activate-profile(profile.id); } }
                                     }
-                                    if profile.active: Rectangle { x: 0; y: 18px; width: 3px; height: 20px; border-radius: 1.5px; background: Theme.accent-blue; }
+                                    if profile.active: Rectangle { x: 0; y: 10px; width: 3px; height: 36px; border-radius: 1.5px; background: Theme.accent-cyan; drop-shadow-blur: 8px; drop-shadow-color: #35d5ff80; }
 
                                     Rectangle {
                                         x: 12px; y: 14px; width: 28px; height: 28px;
                                         border-radius: 14px;
-                                        background: profile.active ? #4c9dff26 : #ffffff0d;
+                                        background: profile.active ? #159fff26 : #ffffff0d;
                                         opacity: profile.available || profile.active ? 1 : 0.62;
                                         if profile.has-logo: Image { x: 5px; y: 5px; width: 18px; height: 18px; source: profile.logo; image-fit: contain; accessible-role: none; }
                                         if !profile.has-logo: Text { text: profile.fallback; color: profile.active ? Theme.accent-blue : Theme.text-secondary; font-size: 11px; font-weight: Theme.weight-bold; horizontal-alignment: center; vertical-alignment: center; }
@@ -5571,8 +5410,10 @@ export component AppWindow inherits Window {
                                         x: subscription-name.x + subscription-name.width + 8px; y: 11px; height: 16px;
                                         width: active-tag.preferred-width + 12px;
                                         border-radius: 4px;
-                                        background: #3ccb7f1f;
-                                        active-tag := Text { text: @tr("АКТИВНА"); color: Theme.accent-green; font-size: 10px; font-weight: Theme.weight-bold; letter-spacing: 0.5px; horizontal-alignment: center; vertical-alignment: center; }
+                                        background: #159fff20;
+                                        border-color: #22c8ff66;
+                                        border-width: 1px;
+                                        active-tag := Text { text: @tr("ВЫБРАНА"); color: Theme.accent-cyan; font-size: 10px; font-weight: Theme.weight-bold; letter-spacing: 0.5px; horizontal-alignment: center; vertical-alignment: center; }
                                     }
                                     Text {
                                         x: 52px; y: 29px; width: parent.width - 52px - 132px; height: 18px;
@@ -5581,13 +5422,14 @@ export component AppWindow inherits Window {
                                             : root.profile-pending-operation == "edit" ? @tr("Меняем ссылку…")
                                             : root.profile-pending-operation == "delete" ? @tr("Удаляем…")
                                             : @tr("Применяем…")
+                                            : profile.expired ? @tr("СРОК ИСТЁК · {}", profile.usage)
                                             : !profile.available ? @tr("{} · {} · Временно недоступна", profile.expiry, profile.usage)
                                             : profile.expiry + " · " + profile.usage;
-                                        color: settings-profile-row.pending ? Theme.accent-blue : !profile.available ? Theme.warning : Theme.text-muted;
+                                        color: settings-profile-row.pending ? Theme.accent-blue : profile.expired ? Theme.error : !profile.available ? Theme.warning : Theme.text-muted;
                                         font-size: Theme.type-metadata-size;
                                         vertical-alignment: center;
                                         overflow: elide;
-                                        accessible-description: settings-profile-row.pending ? "" : !profile.available ? @tr("Временно недоступна") : profile.active ? @tr("Активна") : @tr("Доступна");
+                                        accessible-description: settings-profile-row.pending ? "" : profile.expired ? @tr("Срок истёк") : !profile.available ? @tr("Временно недоступна") : profile.active ? @tr("Выбранный локальный профиль") : @tr("Доступна");
                                     }
 
                                     refresh-profile-focus := FocusScope {
@@ -5609,7 +5451,7 @@ export component AppWindow inherits Window {
                                         focus-on-click: true; focus-on-tab-navigation: true;
                                         accessible-role: button; accessible-label: @tr("Изменить URL {}", profile.title); accessible-enabled: self.enabled;
                                         accessible-action-default => { if (self.enabled) { root.profile-delete-confirm-id = ""; root.profile-edit-draft = ""; root.profile-edit-id = root.profile-edit-id == profile.id ? "" : profile.id; } }
-                                        Rectangle { border-radius: 8px; opacity: parent.enabled ? 1 : 0.45; background: settings-profile-row.editing ? #4c9dff26 : edit-profile-touch.has-hover && parent.enabled ? #ffffff0d : transparent; border-color: Theme.focus; border-width: parent.has-focus ? Theme.focus-width : 0px; animate background { duration: 160ms; easing: cubic-bezier(0.22, 1, 0.36, 1); } Image { x: 8px; y: 8px; width: 16px; height: 16px; source: @image-url("../assets/edit.svg"); colorize: settings-profile-row.editing ? Theme.accent-blue : edit-profile-touch.has-hover ? Theme.text-primary : Theme.text-muted; image-fit: contain; accessible-role: none; } }
+                                        Rectangle { border-radius: 8px; opacity: parent.enabled ? 1 : 0.45; background: settings-profile-row.editing ? #159fff26 : edit-profile-touch.has-hover && parent.enabled ? #ffffff0d : transparent; border-color: Theme.focus; border-width: parent.has-focus ? Theme.focus-width : 0px; animate background { duration: 160ms; easing: cubic-bezier(0.22, 1, 0.36, 1); } Image { x: 8px; y: 8px; width: 16px; height: 16px; source: @image-url("../assets/edit.svg"); colorize: settings-profile-row.editing ? Theme.accent-blue : edit-profile-touch.has-hover ? Theme.text-primary : Theme.text-muted; image-fit: contain; accessible-role: none; } }
                                         key-pressed(event) => { if ((event.text == " " || event.text == "\n") && self.enabled) { root.profile-delete-confirm-id = ""; root.profile-edit-draft = ""; root.profile-edit-id = root.profile-edit-id == profile.id ? "" : profile.id; return accept; } return reject; }
                                         edit-profile-touch := TouchArea { enabled: parent.enabled; clicked => { root.profile-delete-confirm-id = ""; root.profile-edit-draft = ""; root.profile-edit-id = root.profile-edit-id == profile.id ? "" : profile.id; } }
                                     }
@@ -5622,7 +5464,7 @@ export component AppWindow inherits Window {
                                         accessible-action-default => { if (self.enabled) { root.profile-edit-id = ""; root.profile-delete-confirm-id = profile.id; } }
                                         init => { if (root.profile-delete-control-focus-id == profile.id && root.profile-delete-control-focus-serial > 0) { self.focus(); } }
                                         changed focus-serial => { if (root.profile-delete-control-focus-id == profile.id && self.enabled) { self.focus(); } }
-                                        Rectangle { border-radius: 8px; opacity: parent.enabled ? 1 : 0.45; background: settings-profile-row.confirming ? #f06a6a1f : delete-profile-touch.has-hover && parent.enabled ? #f06a6a14 : transparent; border-color: Theme.focus; border-width: parent.has-focus ? Theme.focus-width : 0px; animate background { duration: 160ms; easing: cubic-bezier(0.22, 1, 0.36, 1); } Image { x: 8px; y: 8px; width: 16px; height: 16px; source: @image-url("../assets/trash.svg"); colorize: settings-profile-row.confirming || delete-profile-touch.has-hover ? Theme.error : Theme.text-muted; image-fit: contain; accessible-role: none; } }
+                                        Rectangle { border-radius: 8px; opacity: parent.enabled ? 1 : 0.45; background: settings-profile-row.confirming ? #f0526a1f : delete-profile-touch.has-hover && parent.enabled ? #f0526a14 : transparent; border-color: Theme.focus; border-width: parent.has-focus ? Theme.focus-width : 0px; animate background { duration: 160ms; easing: cubic-bezier(0.22, 1, 0.36, 1); } Image { x: 8px; y: 8px; width: 16px; height: 16px; source: @image-url("../assets/trash.svg"); colorize: settings-profile-row.confirming || delete-profile-touch.has-hover ? Theme.error : Theme.text-muted; image-fit: contain; accessible-role: none; } }
                                         key-pressed(event) => { if ((event.text == " " || event.text == "\n") && self.enabled) { root.profile-edit-id = ""; root.profile-delete-confirm-id = profile.id; return accept; } return reject; }
                                         delete-profile-touch := TouchArea { enabled: parent.enabled; clicked => { root.profile-edit-id = ""; root.profile-delete-confirm-id = profile.id; } }
                                     }
@@ -5659,9 +5501,23 @@ export component AppWindow inherits Window {
                                         VerticalLayout { alignment: center; TextAction { label: @tr("Отмена"); tone: "neutral"; enabled: root.profile-pending-operation == "none"; activated => { root.profile-delete-control-focus-id = profile.id; root.profile-delete-confirm-id = ""; root.profile-delete-control-focus-serial += 1; } } }
                                         VerticalLayout { alignment: center; TextAction { label: @tr("Удалить"); tone: "danger"; enabled: root.profile-pending-operation == "none"; activated => { root.delete-profile(profile.id); } } }
                                     }
-                                    if index < root.subscription-profiles.length - 1: Rectangle { x: 52px; y: parent.height - 1px; width: parent.width - 52px; height: 1px; background: #ffffff0f; }
+                                    if index < root.subscription-profiles.length - 1: Rectangle { x: 52px; y: parent.height - 1px; width: parent.width - 52px; height: 1px; background: #7cc8ff18; }
                                 }
                             }
+                        }
+                        if root.account-selected-expired: Rectangle { height: 22px; background: transparent; }
+                        if root.account-selected-expired: RenewalCard {
+                            plan: root.account-access-plan;
+                            end-date: root.account-access-end-date-display;
+                            busy: root.account-status-check-loading;
+                            last-checked: root.account-access-last-checked;
+                            status-message: root.account-status-check-message;
+                            status-error: root.account-status-check-error;
+                            stale: root.account-access-stale;
+                            show-subscriptions-action: false;
+                            renew => { root.account-open-cabinet(); }
+                            refresh => { root.account-refresh(); }
+                            open-subscriptions => { }
                         }
                         HorizontalLayout {
                             padding-left: 4px;
@@ -5675,6 +5531,40 @@ export component AppWindow inherits Window {
                         Rectangle { vertical-stretch: 1; background: transparent; }
                     }
                 }
+                }
+            }
+
+            if root.account-status-check-message != "" && !root.account-selected-expired: Rectangle {
+                width: Math.min(390px, parent.width - 32px);
+                height: 58px;
+                x: parent.width - self.width - 16px;
+                y: 16px;
+                border-radius: 12px;
+                background: Theme.elevated;
+                border-color: root.account-status-check-error ? #f3c34a80 : #18dfa180;
+                border-width: 1px;
+                drop-shadow-blur: 22px;
+                drop-shadow-offset-y: 7px;
+                drop-shadow-color: #00000080;
+                HorizontalLayout {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                    spacing: 10px;
+                    Image {
+                        width: 18px;
+                        height: 18px;
+                        source: root.account-status-check-error ? @image-url("../assets/shield-alert.svg") : @image-url("../assets/shield-check.svg");
+                        colorize: root.account-status-check-error ? Theme.warning : Theme.accent-green;
+                    }
+                    Text {
+                        horizontal-stretch: 1;
+                        text: root.account-status-check-message;
+                        color: Theme.text-primary;
+                        font-size: Theme.type-metadata-size;
+                        vertical-alignment: center;
+                        wrap: word-wrap;
+                        accessible-live-region: polite;
+                    }
                 }
             }
 
@@ -5945,6 +5835,123 @@ export component AppWindow inherits Window {
                 }
             }
 
+            account-menu-dismiss := TouchArea {
+                x: 0;
+                y: 0;
+                width: parent.width;
+                height: parent.height;
+                visible: root.account-menu-open;
+                enabled: root.account-menu-open;
+                clicked => { root.account-menu-open = false; }
+            }
+
+            account-menu := Rectangle {
+                x: Math.max(8px, parent.width - self.width - 8px);
+                y: root.account-menu-open ? -2px : -8px;
+                width: Math.min(360px, parent.width - 16px);
+                height: root.account-authenticated ? 220px : root.account-busy ? 154px : 216px;
+                visible: self.opacity > 0;
+                opacity: root.account-menu-open ? 1 : 0;
+                background: @linear-gradient(145deg, #09213af5 0%, #071523fa 58%, #0b2940f5 100%);
+                border-color: root.account-refresh-success ? #2ee7c3d0 : #19bdf080;
+                border-width: 1px;
+                border-radius: 12px;
+                drop-shadow-blur: 24px;
+                drop-shadow-offset-y: 8px;
+                drop-shadow-color: root.account-refresh-success ? #17d6aa70 : #0b8ed050;
+                animate opacity { duration: 160ms; easing: ease-out; }
+                animate y { duration: 160ms; easing: ease-out; }
+
+                VerticalLayout {
+                    padding: 14px;
+                    spacing: 8px;
+                    alignment: start;
+                    Rectangle {
+                        height: root.account-authenticated ? 58px : 42px;
+                        border-radius: 10px;
+                        background: root.account-authenticated ? @linear-gradient(120deg, #0d3a4b99 0%, #0b294399 100%) : transparent;
+                        border-color: root.account-authenticated ? #22d3a84a : transparent;
+                        border-width: root.account-authenticated ? 1px : 0px;
+                    HorizontalLayout {
+                        x: root.account-authenticated ? 8px : 0px;
+                        y: root.account-authenticated ? 8px : 4px;
+                        width: parent.width - (root.account-authenticated ? 16px : 0px);
+                        height: 34px;
+                        spacing: 10px;
+                        Rectangle {
+                            width: 34px;
+                            height: 34px;
+                            border-radius: 10px;
+                            background: root.account-authenticated ? #22d3a81f : #159fff22;
+                            border-color: root.account-authenticated ? #22d3a845 : #22c8ff48;
+                            border-width: 1px;
+                            Image { x: 8px; y: 8px; width: 18px; height: 18px; source: @image-url("../assets/account.svg"); colorize: root.account-authenticated ? Theme.accent-green : Theme.accent-blue; }
+                        }
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 1px;
+                            Text { height: 18px; text: root.account-authenticated ? root.account-display-name : @tr("Войти в TerrieFlow"); color: Theme.text-primary; font-size: 13px; font-weight: Theme.weight-semibold; overflow: elide; vertical-alignment: center; }
+                            Text { height: 15px; text: root.account-authenticated ? (root.account-username != "" ? root.account-username : root.account-email != "" ? root.account-email : root.account-detail) : @tr("Выберите способ авторизации"); color: Theme.text-muted; font-size: 11px; overflow: elide; vertical-alignment: center; }
+                        }
+                    }
+                    if root.account-authenticated: Rectangle { x: parent.width - 18px; y: 10px; width: 7px; height: 7px; border-radius: 3.5px; background: #2ee7c3; drop-shadow-blur: 6px; drop-shadow-color: #2ee7c3aa; }
+                    }
+                    Rectangle { height: 1px; background: Theme.line; }
+
+                    if !root.account-authenticated && !root.account-busy: AccountButton {
+                        label: @tr("Через Telegram");
+                        icon: @image-url("../assets/telegram.svg");
+                        primary: true;
+                        activated => { root.account-login(); }
+                    }
+                    if !root.account-authenticated && !root.account-busy: AccountButton {
+                        label: @tr("По почте и паролю");
+                        icon: @image-url("../assets/mail.svg");
+                        activated => {
+                            root.account-menu-open = false;
+                            root.account-email-login-open = true;
+                        }
+                    }
+                    if !root.account-authenticated && root.account-busy: Rectangle {
+                        height: 38px;
+                        border-radius: 8px;
+                        background: #ffffff0a;
+                        Text { text: root.account-detail; color: Theme.text-secondary; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; overflow: elide; }
+                        TouchArea { clicked => { root.account-cancel-login(); } }
+                    }
+                    if root.account-authenticated: Rectangle {
+                        height: 40px;
+                        border-radius: 8px;
+                        background: account-cabinet-touch.has-hover ? #159fff1b : #071a2d80;
+                        Image { x: 10px; y: 12px; width: 16px; height: 16px; source: @image-url("../assets/external-link.svg"); colorize: Theme.accent-cyan; }
+                        Text { x: 36px; width: parent.width - 68px; text: @tr("Открыть личный кабинет"); color: Theme.text-primary; font-size: 12px; font-weight: Theme.weight-medium; vertical-alignment: center; }
+                        Image { x: parent.width - 25px; y: 13px; width: 14px; height: 14px; source: @image-url("../assets/chevron-right.svg"); colorize: Theme.text-muted; }
+                        account-cabinet-touch := TouchArea { clicked => { root.account-open-cabinet(); root.account-menu-open = false; } }
+                    }
+                    if root.account-authenticated: HorizontalLayout {
+                        spacing: 8px;
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            height: 40px;
+                            border-radius: 8px;
+                            background: root.account-refresh-success ? #18dfa127 : account-refresh-touch.has-hover ? #169cff20 : #ffffff08;
+                            Image { x: 13px; y: 12px; width: 16px; height: 16px; source: @image-url("../assets/refresh.svg"); colorize: root.account-refresh-success ? #2ee7c3 : Theme.accent-blue; transform-rotation: (root.account-busy || root.account-status-check-loading) && !root.reduced-motion ? Math.mod(animation-tick() / 1ms, 900) / 900 * 360deg : 0deg; }
+                            Text { x: 34px; width: parent.width - 42px; text: root.account-busy || root.account-status-check-loading ? @tr("Обновляем…") : root.account-refresh-success ? @tr("Обновлено") : @tr("Обновить"); color: root.account-refresh-success ? #2ee7c3 : Theme.accent-blue; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; }
+                            account-refresh-touch := TouchArea { enabled: !root.account-busy && !root.account-status-check-loading; clicked => { root.account-refresh(); } }
+                        }
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            height: 40px;
+                            border-radius: 8px;
+                            background: account-logout-touch.has-hover ? #ff5c6c18 : #ffffff08;
+                            Image { x: 13px; y: 12px; width: 16px; height: 16px; source: @image-url("../assets/logout.svg"); colorize: Theme.error; }
+                            Text { x: 34px; width: parent.width - 42px; text: @tr("Выйти"); color: Theme.error; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; }
+                            account-logout-touch := TouchArea { clicked => { root.account-logout(); root.account-menu-open = false; } }
+                        }
+                    }
+                }
+            }
+
             // Subscription dropdown (approved variant C): header, compact rows with
             // the chip's ring and quota, footer with add / all subscriptions.
             profile-menu := Rectangle {
@@ -6086,7 +6093,7 @@ export component AppWindow inherits Window {
                                 property <color> tone-color: profile.quota-tone == "danger" ? Theme.error
                                     : profile.quota-tone == "warning" ? Theme.warning
                                     : Theme.accent-blue;
-                                background: profile.active ? (self.hovered ? #4c9dff1f : #4c9dff14)
+                                background: profile.active ? (self.hovered ? #159fff1f : #159fff14)
                                     : self.hovered ? #ffffff0d : transparent;
                                 opacity: profile.expired ? 0.5 : self.switchable ? 1 : 0.62;
                                 animate background { duration: 120ms; easing: ease-out; }
@@ -6321,7 +6328,7 @@ export component AppWindow inherits Window {
                 transform-origin: { x: 0px, y: 0px };
                 transform-scale: self.shown ? 1 : 0.97;
                 background: Theme.elevated;
-                border-color: root.subscription-announcement-tone == "danger" ? #f06a6a66 : root.subscription-announcement-tone == "success" ? #3ccb7f66 : #4c9dff66;
+                border-color: root.subscription-announcement-tone == "danger" ? #f0526a66 : root.subscription-announcement-tone == "success" ? #18dfa166 : #159fff66;
                 border-width: 1px;
                 border-radius: 12px;
                 drop-shadow-blur: 24px;
@@ -6417,6 +6424,176 @@ export component AppWindow inherits Window {
             }
             }
         }
+        }
+    }
+
+    account-email-overlay := Rectangle {
+        x: root.resize-border;
+        y: root.resize-border;
+        width: parent.width - 2 * root.resize-border;
+        height: parent.height - 2 * root.resize-border;
+        background: #02070dcc;
+        opacity: root.account-email-login-open ? 1 : 0;
+        visible: self.opacity > 0;
+        animate opacity { duration: Motion.reduced ? 0ms : 180ms; easing: ease-out; }
+
+        TouchArea {
+            width: parent.width;
+            height: parent.height;
+            enabled: root.account-email-login-open && !root.account-busy;
+            clicked => { root.close-account-email-login(); }
+        }
+
+        email-login-card := Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2 + (root.account-email-login-open ? 0px : 10px);
+            width: Math.min(440px, parent.width - 40px);
+            height: Math.min(root.account-email-error != "" ? 442px : 418px, parent.height - 40px);
+            background: @linear-gradient(145deg, #0a2742fa 0%, #071523fc 52%, #0c2d45fa 100%);
+            border-color: #1bc8ef99;
+            border-width: 1px;
+            border-radius: 18px;
+            drop-shadow-blur: 42px;
+            drop-shadow-offset-y: 14px;
+            drop-shadow-color: #038ec05c;
+            clip: true;
+            animate y { duration: Motion.reduced ? 0ms : 180ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+            TouchArea { width: parent.width; height: parent.height; }
+
+            email-login-focus := FocusScope {
+                width: parent.width;
+                height: parent.height;
+                focus-on-tab-navigation: false;
+                key-pressed(event) => {
+                    if (event.text == Key.Escape) {
+                        root.close-account-email-login();
+                        return accept;
+                    }
+                    return reject;
+                }
+
+                VerticalLayout {
+                    padding: 22px;
+                    spacing: 8px;
+                    alignment: start;
+
+                    HorizontalLayout {
+                        height: 42px;
+                        spacing: 12px;
+                        Rectangle {
+                            width: 42px;
+                            height: 42px;
+                            border-radius: 12px;
+                            background: #159fff22;
+                            border-color: #22c8ff48;
+                            border-width: 1px;
+                            Image { x: 10px; y: 10px; width: 22px; height: 22px; source: @image-url("../assets/account.svg"); colorize: Theme.accent-cyan; image-fit: contain; }
+                        }
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 1px;
+                            alignment: center;
+                            Text { height: 22px; text: @tr("Вход в TerrieFlow"); color: Theme.text-primary; font-size: 18px; font-weight: Theme.weight-semibold; overflow: elide; vertical-alignment: center; }
+                            Text { height: 16px; text: @tr("Введите почту и пароль от кабинета"); color: Theme.text-muted; font-size: 11px; overflow: elide; vertical-alignment: center; }
+                        }
+                        Rectangle {
+                            width: 32px;
+                            height: 32px;
+                            border-radius: 8px;
+                            background: email-close-touch.has-hover ? #ffffff0d : transparent;
+                            border-color: Theme.focus;
+                            border-width: email-close-focus.has-focus ? 2px : 0px;
+                            Image { x: 9px; y: 9px; width: 14px; height: 14px; source: @image-url("../assets/close.svg"); colorize: Theme.text-secondary; image-fit: contain; }
+                            email-close-focus := FocusScope {
+                                enabled: !root.account-busy;
+                                focus-on-click: true;
+                                focus-on-tab-navigation: true;
+                                accessible-role: button;
+                                accessible-label: @tr("Закрыть форму входа");
+                                key-pressed(event) => {
+                                    if (event.text == " " || event.text == "\n") {
+                                        root.close-account-email-login();
+                                        return accept;
+                                    }
+                                    return reject;
+                                }
+                                email-close-touch := TouchArea { enabled: !root.account-busy; clicked => { root.close-account-email-login(); } }
+                            }
+                        }
+                    }
+
+                    Rectangle { height: 6px; background: transparent; }
+                    Text { height: 14px; text: @tr("ЭЛЕКТРОННАЯ ПОЧТА"); color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; letter-spacing: 0.5px; vertical-alignment: center; }
+                    email-login-email := AccountField {
+                        text <=> root.account-login-email;
+                        placeholder: "user@example.com";
+                        accessible-name: @tr("Электронная почта");
+                        enabled: !root.account-busy;
+                        init => { self.focus(); }
+                        accepted => {
+                            if (!root.account-busy && root.account-login-email != "" && root.account-login-password != "") {
+                                root.account-email-login(root.account-login-email, root.account-login-password);
+                            }
+                        }
+                    }
+                    Text { height: 14px; text: @tr("ПАРОЛЬ"); color: Theme.text-secondary; font-size: 10px; font-weight: Theme.weight-semibold; letter-spacing: 0.5px; vertical-alignment: center; }
+                    AccountField {
+                        text <=> root.account-login-password;
+                        placeholder: @tr("Введите пароль");
+                        accessible-name: @tr("Пароль");
+                        password: true;
+                        reveal: root.account-password-visible;
+                        enabled: !root.account-busy;
+                        toggle-reveal => { root.account-password-visible = !root.account-password-visible; }
+                        accepted => {
+                            if (!root.account-busy && root.account-login-email != "" && root.account-login-password != "") {
+                                root.account-email-login(root.account-login-email, root.account-login-password);
+                            }
+                        }
+                    }
+
+                    if root.account-email-error != "": Text {
+                        height: 34px;
+                        text: root.account-email-error;
+                        color: Theme.error;
+                        font-size: 11px;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        wrap: word-wrap;
+                        accessible-live-region: polite;
+                    }
+                    if root.account-email-error == "": Rectangle { height: 10px; background: transparent; }
+
+                    AccountButton {
+                        label: root.account-busy && root.account-phase == "email-login" ? @tr("Входим…") : @tr("Войти");
+                        icon: @image-url("../assets/account.svg");
+                        primary: true;
+                        enabled: !root.account-busy && root.account-login-email != "" && root.account-login-password != "";
+                        activated => { root.account-email-login(root.account-login-email, root.account-login-password); }
+                    }
+
+                    HorizontalLayout {
+                        height: 30px;
+                        alignment: center;
+                        spacing: 16px;
+                        TextAction { label: @tr("Забыли пароль?"); tone: "neutral"; enabled: !root.account-busy; activated => { root.account-open-password-recovery(); } }
+                        TextAction { label: @tr("Зарегистрироваться"); tone: "neutral"; enabled: !root.account-busy; activated => { root.account-open-registration(); } }
+                    }
+
+                    Rectangle { height: 1px; background: Theme.line-accent; }
+                    AccountButton {
+                        label: @tr("Вернуться к входу через Telegram");
+                        icon: @image-url("../assets/telegram.svg");
+                        enabled: !root.account-busy;
+                        activated => {
+                            root.account-email-login-open = false;
+                            root.account-login-password = "";
+                            root.account-password-visible = false;
+                            root.account-login();
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -6596,7 +6773,7 @@ export component AppWindow inherits Window {
     // bar and the rail stay visible; the content pane dims under a card centred in it.
     if root.log-range-open: Rectangle {
         property <length> pane-x: root.resize-border
-            + (root.rail-width-live >= 0px ? root.rail-width-live : root.navigation-collapsed ? 64px : root.navigation-expanded-width);
+            + (root.rail-width-live >= 0px ? root.rail-width-live : root.navigation-collapsed ? 64px : 176px);
         property <length> pane-y: root.resize-border + 44px;
         x: 0;
         y: 0;
@@ -6746,9 +6923,6 @@ export component AppWindow inherits Window {
     // supplies the matching resume edge without waking a tray-hidden window.
     changed minimized => {
         root.shell-active = !root.minimized;
-        if (root.minimized) {
-            root.terrieflow-subscription-revealed = false;
-        }
     }
 
     TouchArea {

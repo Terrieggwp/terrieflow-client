@@ -13,7 +13,7 @@
       "svgIconColor": "cyan",
       "buttons": [
         {
-          "link": "https://github.com/fatyzzz/multicore/releases/latest/download/MultiCore-Setup-x64.exe",
+          "link": "https://github.com/Terrieggwp/terrieflow-client/releases/latest/download/TerrieFlow-Client-Setup-x64.exe",
           "type": "external",
           "text": { "ru": "Скачать для Windows", "en": "Download for Windows" },
           "svgIconKey": "Download"

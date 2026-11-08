@@ -1,7 +1,8 @@
 # Third-party notices
 
-This local preview contains executable builds from two independent upstream
-projects. MULTICORE does not claim ownership of either project or its marks.
+TerrieFlow Client contains executable builds and statically linked libraries
+from independent upstream projects. TerrieFlow does not claim ownership of
+those projects or their marks.
 
 ## Xray-core
 
@@ -26,12 +27,12 @@ projects. MULTICORE does not claim ownership of either project or its marks.
   `https://github.com/MetaCubeX/mihomo/archive/88dcbf7f1614a67c3b36b848ee3592dfa92ada36.zip`
 - Observed source snapshot SHA-256:
   `63ad2b98fb7a1067422af350a172e2c656c45a2564d0202b5181c6dc4cc7dd30`
-- Modified: the bundled Mihomo is built by MULTICORE from that snapshot plus three REALITY
+- Modified: the bundled Mihomo is built by TerrieFlow Client from that snapshot plus three REALITY
   patches (configurable client version, adaptive X25519MLKEM768 key share, `reality-mlkem` /
   `reality-client-version` config keys), taken unmodified from SlothClash by Nemu-x
   (`https://github.com/Nemu-x/SlothClash`, commit `9a09ac799e9c63ed170cbbc039670be65311afff`,
   `core/patches/mihomo/`, GPL-3.0). The modified program is distributed under the same GNU GPL
-  version 3. The patches, their SHA-256 pins and the build script are in the MULTICORE source
+  version 3. The patches, their SHA-256 pins and the build script are in the TerrieFlow Client source
   (`packaging/mihomo-patches/`, `scripts/build-mihomo.sh`).
 - Corresponding source: every release attaches `mihomo-source.zip`, the complete patched source
   tree that was compiled, with the patches, the pin manifest and the build script under
@@ -63,8 +64,8 @@ projects. MULTICORE does not claim ownership of either project or its marks.
 - Project: Google Skia, as packaged by rust-skia (`rust-skia/skia`, tag `m150-0.98.1`,
   commit `90af6f5c5a3ed8788b805fe6ca3fcdf28c2c2bc9`) and linked through `skia-safe` /
   `skia-bindings` 0.99.0 (MIT)
-- License: BSD 3-Clause ("Copyright (c) 2011 Google Inc."); the full text is in the
-  pinned Skia source's `LICENSE` file
+- License: BSD 3-Clause ("Copyright (c) 2011 Google Inc."); the full text is
+  included as `licenses/Skia-BSD-3-Clause.txt`
 - Use: the desktop app's renderer (Slint's Skia renderer on Direct3D 12); built from
   the pinned source by `scripts/build-skia-binaries.ps1` and linked statically
 - Statically linked Skia dependencies, each under its own permissive license recorded
@@ -78,11 +79,11 @@ projects. MULTICORE does not claim ownership of either project or its marks.
 - `zip` by the zip-rs contributors — MIT
 
 Their source and license metadata are recorded by Cargo.lock and the linked
-upstream repositories. A public binary release still requires a complete
-dependency/license inventory rather than relying only on this short notice.
+upstream repositories. Every package in the locked Cargo dependency graph
+declares a license expression or license file; this short notice highlights the
+libraries used directly by the update-bundle implementation.
 
-The GitHub commit URLs and recorded hashes are provenance records, not a complete
-public-release compliance process. Public redistribution requires immutable
-corresponding-source artifacts that remain available through the required offer
-period, plus a license-compliance and legal review appropriate to the release
-channel. The current generator intentionally produces a local preview only.
+The GitHub commit URLs and recorded hashes are provenance records. Release assets
+also include immutable corresponding-source archives for Xray-core and the
+patched Mihomo tree. Those archives must remain available for the required offer
+period. This notice is technical documentation and does not replace legal review.

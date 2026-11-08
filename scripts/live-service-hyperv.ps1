@@ -13,8 +13,8 @@ Runs the always-ready service live test inside the Windows 10 Hyper-V VM from th
 ASCII only: Windows PowerShell 5.1 reads BOM-less files in the ANSI code page.
 
 Example (host, Hyper-V Administrators; the guest password of the test VM is not a secret):
-  .\scripts\live-service-hyperv.ps1 -InstallerPath .\dist\release\MultiCore-Setup-x64.exe -Revert -Mode Service -Uninstall InteractiveRemoveData
-  .\scripts\live-service-hyperv.ps1 -InstallerPath .\dist\release\MultiCore-Setup-x64.exe -Mode PerUser -Uninstall InteractiveKeepData
+  .\scripts\live-service-hyperv.ps1 -InstallerPath .\dist\release\TerrieFlow-Client-Setup-x64.exe -Revert -Mode Service -Uninstall InteractiveRemoveData
+  .\scripts\live-service-hyperv.ps1 -InstallerPath .\dist\release\TerrieFlow-Client-Setup-x64.exe -Mode PerUser -Uninstall InteractiveKeepData
 #>
 [CmdletBinding()]
 param(

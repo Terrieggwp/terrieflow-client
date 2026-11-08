@@ -484,7 +484,7 @@ fn fetch_latest_release(repository: &Repository) -> Result<GitHubRelease, ApiErr
     let release = GitHubRelease::parse_for_repository(repository, &body);
     #[cfg(target_os = "linux")]
     let release = GitHubRelease::parse_appimage_for_repository(repository, &body);
-    release.map_err(|_| ApiError::Failed(tr!("Релиз не соответствует контракту MULTICORE").into()))
+    release.map_err(|_| ApiError::Failed(tr!("Релиз не соответствует контракту TerrieFlow").into()))
 }
 
 /// Whether an API answer is GitHub's rate limit rather than a real failure.
@@ -618,7 +618,7 @@ impl StagedUpdate {
 #[cfg(target_os = "linux")]
 fn appimage_paths() -> Result<(PathBuf, PathBuf, PathBuf), String> {
     let LinuxInstall::AppImage(image) = linux_install() else {
-        return Err(tr!("Обновите MULTICORE через менеджер пакетов").into());
+        return Err(tr!("Обновите TerrieFlow через менеджер пакетов").into());
     };
     let directory = image
         .parent()
@@ -685,7 +685,7 @@ pub(crate) fn start_apply(release: &GitHubRelease, staged: &StagedUpdate) -> Res
         .stderr(Stdio::null())
         .process_group(0)
         .spawn()
-        .map_err(|_| tr!("Не удалось перезапустить MULTICORE").to_owned())?;
+        .map_err(|_| tr!("Не удалось перезапустить TerrieFlow").to_owned())?;
     Ok(())
 }
 
@@ -731,10 +731,10 @@ pub(crate) fn start_apply(release: &GitHubRelease, staged: &StagedUpdate) -> Res
     staged.reverify(release)?;
     let update_dir = update_directory()?;
     let current_exe = std::env::current_exe()
-        .map_err(|_| tr!("Не удалось определить путь MULTICORE").to_owned())?;
+        .map_err(|_| tr!("Не удалось определить путь TerrieFlow").to_owned())?;
     let target = current_exe
         .parent()
-        .ok_or_else(|| tr!("Некорректный путь MULTICORE").to_owned())?
+        .ok_or_else(|| tr!("Некорректный путь TerrieFlow").to_owned())?
         .to_path_buf();
     let helper_source = target.join("runtime").join("multicore-updater.exe");
     if !helper_source.is_file() {
@@ -995,7 +995,7 @@ fn take_update_confirmation_in(directory: &Path, current: &str) -> Option<String
 pub(crate) fn update_directory() -> Result<PathBuf, String> {
     crate::data_root::user_data_root()
         .map(|root| root.join("updates"))
-        .map_err(|_| tr!("Каталог данных MULTICORE недоступен").to_owned())
+        .map_err(|_| tr!("Каталог данных TerrieFlow недоступен").to_owned())
 }
 
 /// Marker the Windows updater waits for before discarding the previous version.
@@ -1078,10 +1078,10 @@ mod tests {
     fn release() -> GitHubRelease {
         GitHubRelease::parse_for_arch(br#"{
             "tag_name":"v0.2.0",
-            "html_url":"https://github.com/Fatyzzz/multi-core/releases/tag/v0.2.0",
+            "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v0.2.0",
             "assets":[{
-                "name":"multicore-windows-x64.zip",
-                "browser_download_url":"https://github.com/Fatyzzz/multi-core/releases/download/v0.2.0/multicore-windows-x64.zip",
+                "name":"TerrieFlow-Client-windows-x64.zip",
+                "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.2.0/TerrieFlow-Client-windows-x64.zip",
                 "size":1234,
                 "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             }]
@@ -1298,10 +1298,10 @@ mod tests {
         let body = format!(
             r#"{{
             "tag_name":"v0.2.0",
-            "html_url":"https://github.com/Fatyzzz/multi-core/releases/tag/v0.2.0",
+            "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v0.2.0",
             "assets":[{{
-                "name":"multicore-windows-x64.zip",
-                "browser_download_url":"https://github.com/Fatyzzz/multi-core/releases/download/v0.2.0/multicore-windows-x64.zip",
+                "name":"TerrieFlow-Client-windows-x64.zip",
+                "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.2.0/TerrieFlow-Client-windows-x64.zip",
                 "size":{},
                 "digest":"sha256:{:x}"
             }}]
@@ -1712,10 +1712,10 @@ mod linux_tests {
     fn release() -> GitHubRelease {
         GitHubRelease::parse_appimage(br#"{
             "tag_name":"v0.9.0",
-            "html_url":"https://github.com/fatyzzz/multicore-releases/releases/tag/v0.9.0",
+            "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v0.9.0",
             "assets":[{
                 "name":"MultiCore-0.9.0-x86_64.AppImage",
-                "browser_download_url":"https://github.com/fatyzzz/multicore-releases/releases/download/v0.9.0/MultiCore-0.9.0-x86_64.AppImage",
+                "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.9.0/MultiCore-0.9.0-x86_64.AppImage",
                 "size":4,
                 "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             }]
@@ -1787,10 +1787,10 @@ mod english_tests {
         GitHubRelease::parse_for_arch(
             br#"{
             "tag_name":"v0.2.0",
-            "html_url":"https://github.com/Fatyzzz/multi-core/releases/tag/v0.2.0",
+            "html_url":"https://github.com/Terrieggwp/terrieflow-client/releases/tag/v0.2.0",
             "assets":[{
-                "name":"multicore-windows-x64.zip",
-                "browser_download_url":"https://github.com/Fatyzzz/multi-core/releases/download/v0.2.0/multicore-windows-x64.zip",
+                "name":"TerrieFlow-Client-windows-x64.zip",
+                "browser_download_url":"https://github.com/Terrieggwp/terrieflow-client/releases/download/v0.2.0/TerrieFlow-Client-windows-x64.zip",
                 "size":1234,
                 "digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             }]

@@ -22,7 +22,7 @@ $builder = Get-Content -Raw -LiteralPath $BuilderPath
 $installedUpdateSmoke = Get-Content -Raw -LiteralPath $InstalledUpdateSmokePath
 & (Join-Path $PSScriptRoot 'test-installer-shortcut-state.ps1')
 
-Assert-True ($definition.Contains('Name: "{autoprograms}\MULTICORE"; Filename: "{app}\current\MultiCore.exe"; WorkingDir: "{app}\current"')) `
+Assert-True ($definition.Contains('Name: "{autoprograms}\TerrieFlow Client"; Filename: "{app}\current\{#AppExeName}"; WorkingDir: "{app}\current"')) `
     'installer must always create a searchable per-user Start menu shortcut'
 Assert-True ($installedUpdateSmoke.Contains('Restore-InstallerShortcutState $shortcutSnapshots $ownedShortcutTargets')) `
     'installed-update smoke must restore user shortcuts after disposable uninstall'
@@ -39,35 +39,42 @@ Assert-True ($installedUpdateSmoke.IndexOf('reg.exe export') -lt $installedUpdat
 Assert-True (-not $definition.Contains('Verb: "runas"')) 'installer must not elevate desktop postinstall launch'
 
 foreach ($token in @(
-    'DefaultDirName={autopf}\MultiCore',
+    'DefaultDirName={autopf}\TerrieFlow',
+    'UsePreviousAppDir=no',
     'PrivilegesRequired=admin',
     'ArchitecturesAllowed=x64compatible',
     'ArchitecturesInstallIn64BitMode=x64compatible',
-    'OutputBaseFilename=MultiCore-Setup-x64',
+    'OutputBaseFilename=TerrieFlow-Client-Setup-x64',
     # The 32-bit flavour: same definition, 32-bit install mode on any x86-compatible Windows.
     '#define Arch "x64"',
     '#if Arch == "x64"',
     'ArchitecturesAllowed=x86compatible',
-    'OutputBaseFilename=MultiCore-Setup-x86',
+    'OutputBaseFilename=TerrieFlow-Client-Setup-x86',
     # The ARM64 flavour: ARM64 Windows only (an x64 or x86 PC refuses it), 64-bit install mode,
     # so it shares Program Files and the 64-bit uninstall entry with x64.
     '#elif Arch == "arm64"',
     'ArchitecturesAllowed=arm64',
     'ArchitecturesInstallIn64BitMode=arm64',
-    'OutputBaseFilename=MultiCore-Setup-arm64',
+    'OutputBaseFilename=TerrieFlow-Client-Setup-arm64',
     '#error Arch must be x64, x86 or arm64',
     'CloseApplications=yes',
-    'UninstallDisplayIcon={app}\current\MultiCore.exe',
+    'UninstallDisplayIcon={app}\TerrieFlow-Symbol.ico',
+    'SetupIconFile={#SetupIconPath}',
+    'DestName: "TerrieFlow-Symbol.ico"',
+    'IconFilename: "{app}\TerrieFlow-Symbol.ico"',
+    'Type: files; Name: "{autoprograms}\TerrieFlow Client.lnk"',
+    'Type: files; Name: "{autodesktop}\TerrieFlow Client.lnk"; Tasks: desktopicon',
+    'Type: files; Name: "{app}\TerrieFlow.ico"',
     'DestDir: "{app}\current"',
     'Name: "desktopicon"',
     'Name: "autostart"',
     'Software\Microsoft\Windows\CurrentVersion\Run',
-    '""{app}\current\MultiCore.exe"" --background',
+    '""{app}\current\{#AppExeName}"" --background',
     'Software\Classes\multicore',
     'ValueName: "URL Protocol"',
-    'ValueData: "{app}\current\MultiCore.exe,0"',
-    '""{app}\current\MultiCore.exe"" ""%1""',
-    'Filename: "{app}\current\MultiCore.exe"',
+    'ValueData: "{app}\current\{#AppExeName},0"',
+    '""{app}\current\{#AppExeName}"" ""%1""',
+    'Filename: "{app}\current\{#AppExeName}"',
     'WorkingDir: "{app}\current"',
     'Flags: postinstall shellexec skipifsilent',
     'Type: filesandordirs; Name: "{app}\.multicore-previous-*"',
@@ -82,7 +89,7 @@ foreach ($token in @(
 }
 
 foreach ($forbiddenToken in @(
-    'DestDir: "{app}"',
+    'Source: "{#PayloadDir}\*"; DestDir: "{app}"',
     'UninstallDisplayIcon={app}\MultiCore.exe',
     'Filename: "{app}\MultiCore.exe"',
     'ValueData: "{app}\MultiCore.exe,0"',
@@ -98,13 +105,14 @@ foreach ($token in @(
     '[switch]$ValidateOnly',
     'SHA256SUMS.txt',
     "[ValidateSet('x64', 'x86', 'arm64')]",
-    '"MultiCore-Setup-$Architecture.exe"',
+    '"TerrieFlow-Client-Setup-$Architecture.exe"',
     '"/DArch=$Architecture"',
     '[string]$payloadManifest.platform -cne "windows-$Architecture"',
     'ISCC.exe',
     '/DPayloadDir=',
     '/DOutputDir=',
-    '/DAppVersion='
+    '/DAppVersion=',
+    '/DSetupIconPath='
 )) {
     Assert-True ($builder.Contains($token)) "installer builder is missing: $token"
 }
@@ -116,11 +124,13 @@ try {
         New-Item -ItemType Directory -Path $directory | Out-Null
     }
     $files = @(
-        'MultiCore.exe',
+        'TerrieFlow.exe',
+        'LICENSE.txt',
         'README.md',
         'THIRD_PARTY_NOTICES.md',
         'cores\mihomo.exe',
         'cores\xray.exe',
+        'licenses\Skia-BSD-3-Clause.txt',
         'licenses\Xray-core-MPL-2.0.txt',
         'licenses\mihomo-GPL-3.0.txt',
         'runtime\multicore-daemon.exe',
@@ -200,7 +210,7 @@ try {
             [IO.File]::WriteAllLines((Join-Path $flavourPayload 'SHA256SUMS.txt'), $flavourLines, [Text.UTF8Encoding]::new($false))
             $flavourOutput = Join-Path $testRoot "installer-$arch"
             & $BuilderPath -Architecture $arch -PackagePath $flavourPayload -OutputDirectory $flavourOutput -AppVersion '0.1.0' -CompilerPath $compiler | Out-Null
-            Assert-True (Test-Path -LiteralPath (Join-Path $flavourOutput "MultiCore-Setup-$arch.exe") -PathType Leaf) "the $arch installer must compile as MultiCore-Setup-$arch.exe"
+            Assert-True (Test-Path -LiteralPath (Join-Path $flavourOutput "TerrieFlow-Client-Setup-$arch.exe") -PathType Leaf) "the $arch installer must compile as TerrieFlow-Client-Setup-$arch.exe"
             $other = if ($arch -ceq 'x64') { 'arm64' } else { 'x64' }
             $failed = $false
             try { & $BuilderPath -Architecture $other -PackagePath $flavourPayload -OutputDirectory $flavourOutput -AppVersion '0.1.0' -CompilerPath $compiler | Out-Null } catch { $failed = $true }

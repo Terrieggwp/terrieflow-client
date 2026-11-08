@@ -140,7 +140,7 @@ GO="$GO_HOME/go/bin/go"
 # A clean, explicit Go environment: nothing from the caller's go env or GOFLAGS leaks in.
 while IFS= read -r name; do unset "$name"; done < <(env | sed -n 's/^\(GO[A-Z0-9_]*\)=.*/\1/p' | grep -v '^GOMAXPROCS$' || true)
 unset CGO_CFLAGS CGO_LDFLAGS CC CXX
-export GOENV=off GOTOOLCHAIN=local CGO_ENABLED=0 GOFLAGS=-mod=readonly
+export GOENV=off GOTOOLCHAIN=local CGO_ENABLED=0 GOFLAGS="-mod=readonly -buildvcs=false"
 export GOPROXY="https://proxy.golang.org,direct" GOSUMDB="sum.golang.org"
 export GOPATH="$(native "$CACHE/gopath")" GOMODCACHE="$(native "$CACHE/gomod")" GOCACHE="$(native "$CACHE/gocache")"
 GO_SEEN="$("$GO" version | tr -d '\r')"
@@ -277,7 +277,7 @@ PY
     echo "source:    $SOURCE_URL"
     echo "           sha256 $SOURCE_SHA"
     echo "go:        $GO_SEEN ($GO_URL sha256 $GO_SHA)"
-    echo "flags:     CGO_ENABLED=0 -tags $TAGS -trimpath"
+    echo "flags:     CGO_ENABLED=0 GOFLAGS=-mod=readonly,-buildvcs=false -tags $TAGS -trimpath"
     echo "ldflags:   $LDFLAGS"
     echo "patches:"
     for p in "${LISTED[@]}"; do echo "  $(sha "$PATCH_DIR/$p")  $p"; done

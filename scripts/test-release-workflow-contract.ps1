@@ -5,331 +5,114 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $root = Split-Path -Parent $PSScriptRoot
-$workflowPath = Join-Path $root '.github\workflows\release.yml'
-$ciPath = Join-Path $root '.github\workflows\ci.yml'
-$linuxWorkflowPath = Join-Path $root '.github\workflows\linux-packages.yml'
-$linuxDockerScriptPath = Join-Path $root 'scripts\package-linux-in-docker.sh'
-$linuxPackageContractPath = Join-Path $root 'scripts\test-linux-package-contract.sh'
-$publishReleaseScriptPath = Join-Path $root 'scripts\publish-github-release.ps1'
+$workflow = Get-Content -Raw -LiteralPath (Join-Path $root '.github\workflows\release.yml')
+$ci = Get-Content -Raw -LiteralPath (Join-Path $root '.github\workflows\ci.yml')
+$publisher = Get-Content -Raw -LiteralPath (Join-Path $root 'scripts\publish-github-release.ps1')
 
 function Assert-True {
     param([bool]$Condition, [string]$Message)
     if (-not $Condition) { throw "FAIL: $Message" }
 }
 
-Assert-True (Test-Path -LiteralPath $workflowPath -PathType Leaf) 'release workflow must exist'
-Assert-True (Test-Path -LiteralPath $ciPath -PathType Leaf) 'CI workflow must exist'
-Assert-True (Test-Path -LiteralPath $linuxWorkflowPath -PathType Leaf) 'Linux package workflow must exist'
-Assert-True (Test-Path -LiteralPath $linuxDockerScriptPath -PathType Leaf) 'Linux Docker packager must exist'
-Assert-True (Test-Path -LiteralPath $linuxPackageContractPath -PathType Leaf) 'Linux package artifact contract must exist'
-Assert-True (Test-Path -LiteralPath $publishReleaseScriptPath -PathType Leaf) 'GitHub release publisher must exist'
-$workflow = Get-Content -Raw -LiteralPath $workflowPath
-$ci = Get-Content -Raw -LiteralPath $ciPath
-$linuxWorkflow = Get-Content -Raw -LiteralPath $linuxWorkflowPath
-$linuxDockerScript = Get-Content -Raw -LiteralPath $linuxDockerScriptPath
-$publishReleaseScript = Get-Content -Raw -LiteralPath $publishReleaseScriptPath
-
-& (Join-Path $PSScriptRoot 'test-windows-workflow-fail-fast.ps1')
-
-foreach ($hostJob in @(
-    @{ Text = $ci; Name = 'linux' },
-    @{ Text = $linuxWorkflow; Name = 'debian-appimage' }
-)) {
-    $pattern = '(?ms)^  ' + [regex]::Escape($hostJob.Name) + ':\r?\n(?<body>.*?)(?=^  [\w-]+:\r?$|\z)'
-    $body = [regex]::Match($hostJob.Text, $pattern).Groups['body'].Value
-    $guardIndex = $body.IndexOf('name: Recover host workspace ownership', [StringComparison]::Ordinal)
-    $checkoutIndex = $body.IndexOf('actions/checkout@', [StringComparison]::Ordinal)
-    Assert-True ($guardIndex -ge 0 -and $guardIndex -lt $checkoutIndex) `
-        "$($hostJob.Name) must recover host workspace ownership before checkout"
-    Assert-True (-not $body.Contains('    container:')) 'ownership recovery must only run on the Linux host'
-    foreach ($token in @(
-        'working-directory: ${{ runner.temp }}',
-        'runner_work="$(realpath -e -- "$(dirname -- "${RUNNER_TEMP:?}")")"',
-        'expected="$runner_work/multicore/multicore"',
-        'workspace="$(realpath -e -- "${GITHUB_WORKSPACE:?}")"',
-        '"$workspace" == "$expected"',
-        '"$runner_uid" != 0',
-        'sudo chown -hR -P -- "$runner_uid:$runner_gid" "$expected"'
-    )) {
-        Assert-True ($body.Contains($token)) "host recovery guard is missing: $token"
-    }
-}
-foreach ($fedoraJob in @(
-    @{ Name = 'rpm'; Tools = 'Install RPM build and verification tools' }
-)) {
-    $pattern = '(?ms)^  ' + [regex]::Escape($fedoraJob.Name) + ':\r?\n(?<body>.*?)(?=^  [\w-]+:\r?$|\z)'
-    $body = [regex]::Match($linuxWorkflow, $pattern).Groups['body'].Value
-    $toolsIndex = $body.IndexOf($fedoraJob.Tools, [StringComparison]::Ordinal)
-    $checkoutIndex = $body.IndexOf('actions/checkout@', [StringComparison]::Ordinal)
-    Assert-True ($toolsIndex -ge 0 -and $toolsIndex -lt $checkoutIndex) `
-        "$($fedoraJob.Name) must install tools before checkout"
-    Assert-True ($body.Substring(0, $checkoutIndex).Contains('dnf install -y git ')) `
-        "$($fedoraJob.Name) must install Git before checkout to avoid the REST fallback"
-}
-Assert-True ($ci.Contains('python3 -B scripts/fixtures/test_runner_workspace_recovery.py')) `
-    'Linux CI must exercise the actual workspace recovery guards'
-
-Assert-True (-not $linuxWorkflow.Contains('rpm-smoke')) 'The Fedora RPM smoke was removed from CI'
-foreach ($content in @($ci, $workflow, $linuxWorkflow)) {
-    Assert-True ($content.Contains('  actions: read')) 'RPM artifact reuse requires read-only Actions permissions in each caller'
-}
-
 foreach ($token in @(
-    '  rpm:',
-    'container: fedora:43',
-    '--formats rpm',
-    'name: linux-packages-rpm'
-)) {
-    Assert-True ($linuxWorkflow.Contains($token)) "Fedora RPM workflow is missing: $token"
-}
-$rpmName = 'multicore-$($env:APP_VERSION)-1.x86_64.rpm'
-Assert-True ([regex]::Matches($workflow, [regex]::Escape($rpmName)).Count -eq 4) `
-    'RPM must appear in the required Linux set, checksums, release notes, and publication stage'
-# Version-less copies, so README buttons can link releases/latest/download/<name> directly.
-foreach ($stableName in @(
-    'multicore_amd64.deb',
-    'MultiCore-x86_64.AppImage',
-    'multicore-x86_64.pkg.tar.zst',
-    'multicore.x86_64.rpm'
-)) {
-    Assert-True ([regex]::Matches($workflow, [regex]::Escape($stableName)).Count -eq 4) `
-        "$stableName must appear in the required Linux set, checksums, release notes, and publication stage"
-}
-Assert-True ($workflow.Contains('run: ./scripts/add-stable-linux-asset-names.ps1 -Directory dist/release/linux -Version $env:APP_VERSION')) `
-    'release must add the version-less Linux asset names after collecting the packages'
-Assert-True ($workflow.IndexOf('add-stable-linux-asset-names.ps1') -lt $workflow.IndexOf('- name: Verify Linux package set')) `
-    'version-less Linux asset names must exist before the package set is verified'
-$stableFixture = Join-Path ([IO.Path]::GetTempPath()) ("multicore-stable-names-" + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $stableFixture | Out-Null
-try {
-    $fixtureNames = @(
-        'multicore_9.8.7_amd64.deb',
-        'MultiCore-9.8.7-x86_64.AppImage',
-        'multicore-9.8.7-1-x86_64.pkg.tar.zst',
-        'multicore-9.8.7-1.x86_64.rpm'
-    )
-    foreach ($name in $fixtureNames) {
-        [IO.File]::WriteAllText((Join-Path $stableFixture $name), "fixture $name")
-    }
-    & (Join-Path $PSScriptRoot 'add-stable-linux-asset-names.ps1') -Directory $stableFixture -Version '9.8.7' | Out-Null
-    $pairs = @(
-        @('multicore_9.8.7_amd64.deb', 'multicore_amd64.deb'),
-        @('MultiCore-9.8.7-x86_64.AppImage', 'MultiCore-x86_64.AppImage'),
-        @('multicore-9.8.7-1-x86_64.pkg.tar.zst', 'multicore-x86_64.pkg.tar.zst'),
-        @('multicore-9.8.7-1.x86_64.rpm', 'multicore.x86_64.rpm')
-    )
-    foreach ($pair in $pairs) {
-        $versionedPath = Join-Path $stableFixture $pair[0]
-        $stablePath = Join-Path $stableFixture $pair[1]
-        Assert-True (Test-Path -LiteralPath $versionedPath -PathType Leaf) "$($pair[0]) must be kept"
-        Assert-True ([IO.File]::ReadAllText($stablePath) -ceq "fixture $($pair[0])") "$($pair[1]) must copy $($pair[0])"
-    }
-    Remove-Item -LiteralPath (Join-Path $stableFixture 'multicore-9.8.7-1.x86_64.rpm')
-    $refused = $false
-    try {
-        & (Join-Path $PSScriptRoot 'add-stable-linux-asset-names.ps1') -Directory $stableFixture -Version '9.8.7' | Out-Null
-    }
-    catch {
-        $refused = $true
-    }
-    Assert-True $refused 'a missing versioned Linux package must fail the version-less copies'
-}
-finally {
-    Remove-Item -LiteralPath $stableFixture -Recurse -Force -ErrorAction SilentlyContinue
-}
-# AppImageUpdate reads the delta file the AppImage's gh-releases-zsync update information names.
-$zsyncName = 'MultiCore-$($env:APP_VERSION)-x86_64.AppImage.zsync'
-Assert-True ([regex]::Matches($workflow, [regex]::Escape($zsyncName)).Count -eq 3) `
-    'The AppImage .zsync must appear in the required Linux set, checksums, and publication stage'
-Assert-True ($workflow.Contains('needs: linux-packages')) 'release must wait for the Linux packages'
-$linuxCiJob = [regex]::Match($ci, '(?ms)^  linux-packages:\r?\n(?<body>.*?)(?=^  [\w-]+:\r?$|\z)').Groups['body'].Value
-Assert-True ($linuxCiJob -match "(?m)^    if: github\.event_name == 'push'\r?`$") `
-    'Linux packaging must run on every configured push branch, without a main-only restriction'
-Assert-True ($linuxCiJob -match '(?m)^      update-repository: fatyzzz/multicore\r?$') `
-    'Linux CI artifacts must use the public update channel before publication'
-
-if ($ExpectedVersion) {
-    $manifest = Get-Content -Raw -LiteralPath (Join-Path $root 'apps\multicore-desktop\Cargo.toml')
-    $ui = Get-Content -Raw -LiteralPath (Join-Path $root 'apps\multicore-desktop\ui\app.slint')
-    $installer = Get-Content -Raw -LiteralPath (Join-Path $root 'scripts\build-windows-installer.ps1')
-    $versionPattern = '(?m)^version\s*=\s*"{0}"\s*$' -f [regex]::Escape($ExpectedVersion)
-    Assert-True ([regex]::IsMatch($manifest, $versionPattern)) 'desktop manifest must match expected release version'
-    Assert-True ($ui.Contains(('update-status: "MultiCore {0}";' -f $ExpectedVersion))) `
-        'desktop UI must show the expected release version'
-    Assert-True ($installer.Contains(('[string]$AppVersion = ''{0}''' -f $ExpectedVersion))) `
-        'installer default must match the expected release version'
-}
-
-foreach ($token in @(
-    'tags:',
-    "- 'v*'",
+    'workflow_dispatch:',
+    'tag:',
+    'publish:',
+    "default: false",
+    "^v[0-9]+\.[0-9]+\.[0-9]+$",
     'permissions:',
     'contents: read',
-    'runs-on: [self-hosted, Windows, X64, windowsbuild]',
-    'cargo test --workspace --locked',
-    'cargo clippy --workspace --all-targets --locked -- -D warnings',
-    '-AssertReleaseReady',
-    'GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}',
-    '-UpdateRepository fatyzzz/multicore `',
-    'multicore-windows-x64.zip',
-    'MultiCore-Setup-x64.exe',
-    # 32-bit Windows flavour.
-    'rustup target add i686-pc-windows-msvc --toolchain 1.98.1-x86_64-pc-windows-msvc',
-    'cargo test --workspace --locked --target i686-pc-windows-msvc',
-    'cargo clippy --workspace --all-targets --locked --target i686-pc-windows-msvc -- -D warnings',
-    # No rust-skia download exists for 32-bit Windows: the pinned static-CRT Skia build.
-    '$env:SKIA_BINARIES_URL = powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/pinned-skia-binaries-url.ps1 -Architecture x86',
-    "`$env:CARGO_TARGET_I686_PC_WINDOWS_MSVC_RUSTFLAGS = '-Ctarget-feature=+crt-static'",
-    '-ReleaseAssetPath dist/release/multicore-windows-x86.zip',
-    '-CoreHostExecutablePath dist/release/multicore-windows-x86/runtime/multicore-core-host.exe',
-    "`$env:MULTICORE_RELEASE_BUNDLE_ARCH = 'x86'",
-    '-PackagePath dist/release/multicore-windows-x86',
-    # Windows on ARM flavour: cross-compiled, tests built but not run on the x64 runner.
-    'rustup target add aarch64-pc-windows-msvc --toolchain 1.98.1-x86_64-pc-windows-msvc',
-    "if (-not (Get-Command clang.exe -CommandType Application -ErrorAction SilentlyContinue)) { throw 'The ARM64 build needs LLVM clang.exe on PATH' }",
-    '$env:SKIA_BINARIES_URL = powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/pinned-skia-binaries-url.ps1 -Architecture arm64',
-    "`$env:CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_RUSTFLAGS = '-Ctarget-feature=+crt-static'",
-    'cargo test --workspace --locked --target aarch64-pc-windows-msvc --no-run',
-    'cargo clippy --workspace --all-targets --locked --target aarch64-pc-windows-msvc -- -D warnings',
-    '-Architecture arm64',
-    '-ReleaseAssetPath dist/release/multicore-windows-arm64.zip',
-    '-CoreHostExecutablePath dist/release/multicore-windows-arm64/runtime/multicore-core-host.exe',
-    "`$env:MULTICORE_RELEASE_BUNDLE_ARCH = 'arm64'",
-    '-PackagePath dist/release/multicore-windows-arm64',
-    'test-windows-installer-contract.ps1',
-    'test-smoke-test-one-click-contract.ps1',
-    'test-packaged-daemon-smoke-contract.ps1',
-    '-DesktopExecutablePath dist/release/multicore-windows-x64/MultiCore.exe',
-    '-DaemonExecutablePath dist/release/multicore-windows-x64/runtime/multicore-daemon.exe',
-    '-UpdaterExecutablePath dist/release/multicore-windows-x64/runtime/multicore-updater.exe',
-    '-CoreHostExecutablePath dist/release/multicore-windows-x64/runtime/multicore-core-host.exe',
-    '$env:MULTICORE_RELEASE_BUNDLE',
-    'cargo test -p multicore-release --test archive_contract built_release_bundle_matches_updater_contract --locked -- --ignored --exact',
-    'smoke-test-packaged-daemon.ps1',
-    '-PackagePath dist/release/multicore-windows-x64',
-    'build-windows-installer.ps1',
-    'smoke-test-windows-installed-update.ps1',
+    'runs-on: windows-2022',
+    'CARGO_BUILD_JOBS: 1',
+    'ref: ${{ inputs.tag }}',
+    '-UpdateRepository Terrieggwp/terrieflow-client `',
+    'TerrieFlow-Client-windows-x64.zip',
+    'TerrieFlow-Client-Setup-x64.exe',
+    'RELEASE-SHA256SUMS.txt',
+    'docs/release-notes-$env:APP_VERSION.md',
     'Xray-core-source.zip',
     'mihomo-source.zip',
-    'publish-github-release.ps1',
-    '-Repository fatyzzz/multicore `',
-    '-Repository fatyzzz/multicore-releases `',
-    'Point release.txt at this version',
-    'Upload verified release publication',
-    'Download verified release publication',
-    'name: release-publication',
-    'needs: release',
-    'Publish release to update channel',
-    'PUBLIC UNSIGNED PREVIEW'
+    'smoke-test-windows-installed-update.ps1',
+    'build-support/release-dependencies/skia',
+    'Provisioned Skia archive checksum mismatch',
+    'git merge-base --is-ancestor $tagCommit origin/main',
+    'Release tag must point to a commit contained in main',
+    'CANDIDATE-SHA256SUMS.txt',
+    'Verify release candidate handoff',
+    'environment: terrieflow-release',
+    'if: ${{ inputs.publish }}',
+    'contents: write',
+    '-Repository Terrieggwp/terrieflow-client `',
+    'Point release.txt at the published version'
 )) {
     Assert-True ($workflow.Contains($token)) "release workflow is missing: $token"
 }
 
-# Mihomo ships as the pinned patched build (packaging/mihomo-patches), and its GPL source archive is
-# the patched tree build-mihomo.sh compiled, not the stock upstream download.
-$mihomoBuildIndex = $workflow.IndexOf('scripts/build-mihomo.sh --output dist/mihomo', [StringComparison]::Ordinal)
-$x64PackageIndex = $workflow.IndexOf('-DestinationPath dist/release/multicore-windows-x64', [StringComparison]::Ordinal)
-Assert-True ($mihomoBuildIndex -ge 0 -and $mihomoBuildIndex -lt $x64PackageIndex) 'release must build the patched Mihomo before packaging'
-Assert-True ($workflow.Contains('MULTICORE_MIHOMO_BINARIES_DIR=')) 'release packaging must receive the patched Mihomo build'
-Assert-True ($workflow.Contains('Copy-Item -LiteralPath dist/mihomo/mihomo-source.zip -Destination dist/release/mihomo-source.zip')) 'mihomo-source.zip must be the patched source build-mihomo.sh compiled'
-Assert-True (-not $workflow.Contains('components.mihomo.source.url')) 'release must not attach the unpatched Mihomo source as the shipped source'
-$linuxReleaseScript = Get-Content -Raw -LiteralPath (Join-Path $root 'scripts\package-linux-release.sh')
-Assert-True ($linuxReleaseScript.Contains('scripts/build-mihomo.sh') -and -not $linuxReleaseScript.Contains('fetch_core mihomo')) 'Linux packages must ship the patched Mihomo build'
+Assert-True (-not ($workflow -match '(?m)^\s*push:\s*$')) 'release must never run from a push or tag automatically'
+Assert-True (-not $workflow.Contains("- 'v*'")) 'release must not have a wildcard tag trigger'
+Assert-True (-not $workflow.Contains('pull_request_target')) 'release must not run in pull_request_target'
+Assert-True (-not $workflow.Contains('runs-on: [self-hosted')) 'release must not use a persistent self-hosted runner'
+Assert-True (-not $workflow.Contains('fatyzzz/multicore')) 'official release must not target the upstream repository'
+Assert-True (-not $workflow.Contains('multicore-releases')) 'official release must not target a legacy mirror'
+Assert-True (-not $workflow.Contains('windows-x86.zip')) 'first beta must not publish Windows x86'
+Assert-True (-not $workflow.Contains('windows-arm64.zip')) 'first beta must not publish Windows arm64'
+Assert-True (-not $workflow.Contains('AppImage')) 'first beta must not publish Linux packages'
+Assert-True (-not $workflow.Contains('GH_TOKEN: ${{ secrets.')) 'release must not require a personal access token'
+Assert-True (-not $workflow.Contains('MULTICORE_DAEMON_TOKEN')) 'release must not embed runtime secrets'
+Assert-True (-not $workflow.Contains('First supported beta platform: Windows 10/11 x64.')) `
+    'release workflow must use reviewed versioned notes instead of an inline placeholder'
 
-Assert-True (-not $workflow.Contains('pull_request_target')) 'release workflow must not run in pull_request_target'
-Assert-True (-not $workflow.Contains('cargo test --workspace --all-targets --locked')) `
-    'Windows release must not try to execute the requireAdministrator core-host binary as a test target'
-Assert-True (-not $workflow.Contains('MULTICORE_DAEMON_TOKEN')) 'release workflow must not embed runtime secrets'
-Assert-True (-not $workflow.Contains('GH_TOKEN: ${{ github.token }}')) 'cross-repository release must not use the source repository token'
-$publishJob = ($workflow -split '(?m)^  publish:\s*$', 2)[1]
-Assert-True ($publishJob.Contains('runs-on: [self-hosted, Windows, X64, windowsbuild]')) `
-    'release publication must not depend on GitHub-hosted runner billing'
-Assert-True ($publishJob -match '(?m)^    timeout-minutes: 90\s*$') `
-    'release publication must allow the complete asset set to upload over a slow connection'
-Assert-True (-not $workflow.Contains('gh release create')) 'release publication must not depend on GitHub CLI being installed on the runner'
-Assert-True ($publishReleaseScript.Contains('[Text.Encoding]::UTF8.GetBytes')) `
-    'release metadata must be encoded as UTF-8 bytes for Windows PowerShell 5.1'
-Assert-True ($publishReleaseScript.Contains('[IO.File]::ReadAllText')) `
-    'release notes must be read as a plain string without PowerShell file metadata'
-Assert-True ($publishReleaseScript.Contains('application/json; charset=utf-8')) `
+$windowsManifest = Get-Content -Raw -LiteralPath (Join-Path $root 'packaging\windows-x64\versions.json') | ConvertFrom-Json
+$skiaPin = $windowsManifest.build.skiaBinaries
+$skiaArchive = Join-Path $root "build-support\release-dependencies\skia\skia-binaries-$($skiaPin.key).tar.gz"
+Assert-True (Test-Path -LiteralPath $skiaArchive -PathType Leaf) `
+    'the durable repository-pinned Windows x64 Skia archive must exist'
+$skiaHash = (Get-FileHash -LiteralPath $skiaArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+Assert-True ($skiaHash -ceq [string]$skiaPin.sha256) `
+    'the durable repository-pinned Windows x64 Skia archive must match the manifest SHA-256'
+
+$publishIndex = $workflow.IndexOf('Publish release to official update channel', [StringComparison]::Ordinal)
+$channelIndex = $workflow.IndexOf('Point release.txt at the published version', [StringComparison]::Ordinal)
+Assert-True ($publishIndex -ge 0 -and $channelIndex -gt $publishIndex) `
+    'release.txt must only move after the GitHub release is published'
+
+foreach ($action in @('actions/checkout@', 'actions/upload-artifact@', 'actions/download-artifact@')) {
+    $matches = [regex]::Matches($workflow, [regex]::Escape($action) + '([0-9a-f]{40})')
+    Assert-True ($matches.Count -gt 0) "$action must be used"
+    foreach ($match in $matches) {
+        Assert-True ($match.Groups[1].Value.Length -eq 40) "$action must be pinned to a commit"
+    }
+}
+
+Assert-True ($publisher.Contains("`$OfficialRepository = 'Terrieggwp/terrieflow-client'")) `
+    'publisher must be restricted to the official repository'
+Assert-True ($publisher.Contains("'User-Agent'           = 'terrieflow-release-workflow'")) `
+    'publisher must identify TerrieFlow'
+Assert-True ($publisher.Contains('[Text.Encoding]::UTF8.GetBytes')) `
+    'release metadata must be encoded as UTF-8 bytes'
+Assert-True ($publisher.Contains('application/json; charset=utf-8')) `
     'release API requests must declare UTF-8 JSON'
-Assert-True (-not $workflow.Contains('gh release edit')) 'unsigned workflow must not publish the draft release'
-Assert-True (-not $workflow.Contains('--draft=false')) 'unsigned workflow must not clear draft state'
-Assert-True (-not $workflow.Contains('--draft')) 'update channel release must be public rather than draft'
-Assert-True ($ci.Contains('test-smoke-test-one-click-contract.ps1')) 'normal CI must run the one-click smoke contract'
-Assert-True ($ci.Contains('test-packaged-daemon-smoke-contract.ps1')) 'normal CI must run the packaged daemon smoke contract'
-Assert-True ($ci.Contains('cargo test --workspace --locked')) 'normal CI must run workspace tests without elevated binary targets'
-foreach ($content in @($ci, $workflow, $linuxWorkflow)) {
-    Assert-True (-not $content.Contains('actions/cache')) `
-        'self-hosted workflows must not transfer oversized Cargo cache archives'
-    Assert-True (-not $content.Contains('Restore Cargo build cache')) `
-        'self-hosted workflows must not stall on Cargo cache restoration'
-}
-Assert-True ($ci.Contains('CARGO_PROFILE_DEV_DEBUG: 0')) 'CI must not create multi-gigabyte development debug symbols'
-Assert-True ($ci.Contains('CARGO_PROFILE_TEST_DEBUG: 0')) 'CI must not create multi-gigabyte test debug symbols'
-Assert-True ($ci.Contains('CARGO_INCREMENTAL: 0')) 'CI cache must not retain incremental compiler state'
-Assert-True ($workflow.Contains('CARGO_PROFILE_TEST_DEBUG: 0')) 'release verification must use the bounded test profile'
-Assert-True ($ci.Contains('DPkg::Lock::Timeout=180')) 'Linux CI must tolerate concurrent apt jobs on the self-hosted runner'
-Assert-True ($linuxWorkflow.Contains('DPkg::Lock::Timeout=180')) 'Linux packaging must tolerate concurrent apt jobs on the self-hosted runner'
-Assert-True ($ci.Contains('zstd')) 'Linux CI must install zstd for release-stage verification'
-Assert-True ($linuxWorkflow.Contains('zstd')) 'Linux packaging must install zstd for release-stage verification'
-Assert-True ($linuxWorkflow.Contains('zstd file')) `
-    'Linux packaging must install file before validating ELF package contents'
-Assert-True ($linuxWorkflow.Contains('./scripts/package-linux-in-docker.sh --output dist/linux --formats deb,appimage')) `
-    'Debian and AppImage packages must be built inside the pinned Ubuntu 22.04 image'
-Assert-True (-not $linuxWorkflow.Contains('./scripts/build-linux-packages.sh --stage target/linux-stage --output dist/linux --formats deb,appimage')) `
-    'Linux workflow must not build glibc-bound release binaries directly on the Debian 13 runner'
-Assert-True ($linuxWorkflow.Contains('target/linux-stage-ubuntu')) `
-    'Arch packaging must reuse the exact Ubuntu 22.04 release stage'
-foreach ($token in @(
-    'https://api.github.com/repos/$Repository',
-    'https://uploads.github.com/repos/$Repository',
-    "'X-GitHub-Api-Version'",
-    'Invoke-RestMethod -Method Delete',
-    "make_latest      = 'true'"
-)) {
-    Assert-True ($publishReleaseScript.Contains($token)) "release publisher is missing: $token"
-}
-Assert-True ($linuxDockerScript.Contains('-e MULTICORE_UPDATE_REPOSITORY')) `
-    'Docker packaging must forward the compiled update repository into the container'
-# The optional local build cache must reuse the exact in-container paths of a cache-less build
-# (same --remap-path-prefix inputs, same staged files), and CI must keep building without it.
-foreach ($cacheMount in @(
-    '-v "$CACHE_DIR/cargo-registry:/opt/cargo/registry"',
-    '-v "$CACHE_DIR/target:/build/multicore/target/linux-release-ubuntu"',
-    '-v "$CACHE_DIR/downloads:/build/multicore/target/linux-downloads"',
-    '-e CARGO_TARGET_DIR=/build/multicore/target/linux-release-ubuntu'
-)) {
-    Assert-True ($linuxDockerScript.Contains($cacheMount)) "Docker packaging cache must keep the in-container path: $cacheMount"
-}
-Assert-True (-not $linuxWorkflow.Contains('--cache-dir')) 'CI Linux packages must be built without the local build cache'
-Assert-True ($linuxWorkflow.Contains('./scripts/test-linux-package-contract.sh --stage target/linux-stage-ubuntu --packages dist/linux --formats deb,appimage')) `
-    'Debian and AppImage artifacts must be inspected before upload'
-Assert-True ($linuxWorkflow.Contains('./scripts/test-linux-package-contract.sh --stage target/linux-stage-ubuntu --packages dist/linux --formats arch')) `
-    'Arch artifacts must be inspected before upload'
 
-foreach ($x86Asset in @("'dist/release/multicore-windows-x86.zip',", "'dist/release/MultiCore-Setup-x86.exe',")) {
-    Assert-True ([regex]::Matches($workflow, [regex]::Escape($x86Asset)).Count -eq 2) `
-        "x86 asset must appear in the release checksums and the publication stage: $x86Asset"
-}
-foreach ($arm64Asset in @("'dist/release/multicore-windows-arm64.zip',", "'dist/release/MultiCore-Setup-arm64.exe',")) {
-    Assert-True ([regex]::Matches($workflow, [regex]::Escape($arm64Asset)).Count -eq 2) `
-        "arm64 asset must appear in the release checksums and the publication stage: $arm64Asset"
-}
-$arm64PackageIndex = $workflow.IndexOf('-ReleaseAssetPath dist/release/multicore-windows-arm64.zip', [StringComparison]::Ordinal)
-$arm64BundleArchIndex = $workflow.IndexOf("`$env:MULTICORE_RELEASE_BUNDLE_ARCH = 'arm64'", [StringComparison]::Ordinal)
-Assert-True ($arm64PackageIndex -ge 0 -and $arm64BundleArchIndex -gt $arm64PackageIndex) 'arm64 updater bundle contract must run after the arm64 release ZIP is created'
-# The x64 runner cannot run ARM64 executables: never execute the ARM64 tests or packaged daemon.
-Assert-True (-not ($workflow -match '(?m)cargo test [^\r\n]*--target aarch64-pc-windows-msvc(?![^\r\n]*--no-run)')) 'ARM64 tests must be built with --no-run, not executed on the x64 runner'
-Assert-True (-not ($workflow -match 'smoke-test-packaged-daemon\.ps1 `\r?\n\s*-PackagePath dist/release/multicore-windows-arm64')) 'the packaged-daemon smoke test must not run the ARM64 package on the x64 runner'
-$x86PackageIndex = $workflow.IndexOf('-ReleaseAssetPath dist/release/multicore-windows-x86.zip', [StringComparison]::Ordinal)
-$x86BundleArchIndex = $workflow.IndexOf("`$env:MULTICORE_RELEASE_BUNDLE_ARCH = 'x86'", [StringComparison]::Ordinal)
-Assert-True ($x86PackageIndex -ge 0 -and $x86BundleArchIndex -gt $x86PackageIndex) 'x86 updater bundle contract must run after the x86 release ZIP is created'
-$packageIndex = $workflow.IndexOf('-ReleaseAssetPath dist/release/multicore-windows-x64.zip', [StringComparison]::Ordinal)
-$realBundleIndex = $workflow.IndexOf('$env:MULTICORE_RELEASE_BUNDLE', [StringComparison]::Ordinal)
-$daemonSmokeIndex = $workflow.IndexOf('smoke-test-packaged-daemon.ps1', [StringComparison]::Ordinal)
-Assert-True ($packageIndex -ge 0 -and $realBundleIndex -gt $packageIndex) 'real updater bundle contract must run after release ZIP creation'
-Assert-True ($daemonSmokeIndex -gt $packageIndex) 'headless daemon smoke must run after portable package creation'
-Assert-True (-not $workflow.Contains('-File scripts/smoke-test-one-click.ps1')) 'hosted release CI must not require a GUI session'
+Assert-True ($ci.Contains("- 'codex/**'")) 'CI must run for Codex development branches'
+Assert-True ($ci.Contains('runs-on: windows-2022')) 'Windows CI must use the pinned GitHub-hosted image'
+Assert-True ($ci.Contains('runs-on: ubuntu-24.04')) 'Linux CI must use the pinned GitHub-hosted image'
+Assert-True ($ci.Contains('CARGO_BUILD_JOBS: 1')) 'hosted CI must limit Cargo parallelism'
+Assert-True ($ci.Contains('cancel-in-progress: true')) 'CI must cancel obsolete branch and pull-request runs'
+Assert-True (-not $ci.Contains('Recover host workspace ownership')) 'hosted CI must not mutate runner workspace ownership'
+Assert-True (-not ([regex]::IsMatch($ci, '(?m)^  linux-packages:\s*$'))) `
+    'normal CI must not create unsupported Linux release artifacts'
+Assert-True ($ci.Contains('test-release-workflow-contract.ps1')) 'normal CI must verify the release contract'
 
-Write-Output 'PASS: GitHub release workflow contract'
+if ($ExpectedVersion) {
+    $manifest = Get-Content -Raw -LiteralPath (Join-Path $root 'apps\multicore-desktop\Cargo.toml')
+    $installer = Get-Content -Raw -LiteralPath (Join-Path $root 'scripts\build-windows-installer.ps1')
+    $ui = Get-Content -Raw -LiteralPath (Join-Path $root 'apps\multicore-desktop\ui\app.slint')
+    Assert-True ([regex]::IsMatch($manifest, ('(?m)^version\s*=\s*"{0}"\s*$' -f [regex]::Escape($ExpectedVersion)))) `
+        'desktop manifest must match the expected version'
+    Assert-True ($installer.Contains(("[string]`$AppVersion = '{0}'" -f $ExpectedVersion))) `
+        'installer default must match the expected version'
+    Assert-True ($ui.Contains(('update-status: "TerrieFlow {0}";' -f $ExpectedVersion))) `
+        'desktop fallback version must match the expected version'
+}
+
+Write-Output 'PASS: TerrieFlow Windows x64 release workflow contract'

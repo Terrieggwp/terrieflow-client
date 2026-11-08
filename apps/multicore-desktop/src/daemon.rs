@@ -302,7 +302,7 @@ pub struct DaemonEvent {
     pub component: String,
     #[serde(default, alias = "summary")]
     pub message: String,
-    /// The stable code of `message` for the events MULTICORE writes itself; provider and core
+    /// The stable code of `message` for the events TerrieFlow writes itself; provider and core
     /// lines have none and are shown as they are.
     #[serde(default)]
     pub message_key: Option<multicore_i18n::MessageKey>,
@@ -743,19 +743,19 @@ pub trait DaemonClient: Send + Sync {
     /// POST /v1/service/update: the always-ready service downloads and installs `version`
     /// (reusing a release staged by `stage_update_via_service`).
     fn update_via_service(&self, _version: &str) -> Result<(), DaemonError> {
-        Err(DaemonError::new(tr!("Служба MULTICORE недоступна.")))
+        Err(DaemonError::new(tr!("Служба TerrieFlow недоступна.")))
     }
 
     /// POST /v1/service/update/stage: the service only downloads and verifies `version`; the
     /// tunnel keeps running.
     fn stage_update_via_service(&self, _version: &str) -> Result<(), DaemonError> {
-        Err(DaemonError::new(tr!("Служба MULTICORE недоступна.")))
+        Err(DaemonError::new(tr!("Служба TerrieFlow недоступна.")))
     }
 
     /// GET /v1/service/update/progress, polled while `stage_update_via_service` waits; a
     /// failure only means the progress is not known right now (never logged: it is polled).
     fn service_update_progress(&self) -> Result<DaemonUpdateProgress, DaemonError> {
-        Err(DaemonError::new(tr!("Служба MULTICORE недоступна.")))
+        Err(DaemonError::new(tr!("Служба TerrieFlow недоступна.")))
     }
 
     /// POST /v1/troubleshoot/check: one check of «Устранить неполадки».
@@ -1234,7 +1234,7 @@ fn known_error_message(code: &str) -> Option<&'static str> {
         "subscription_http_status" => tr!("Сервер подписки ответил ошибкой."),
         "subscription_not_multicore" => {
             tr!(
-                "По ссылке пришла веб-страница или список ссылок, а не подписка MULTICORE. Скопируйте ссылку подписки для приложения у провайдера."
+                "По ссылке пришла веб-страница или список ссылок, а не подписка TerrieFlow. Скопируйте ссылку подписки для приложения у провайдера."
             )
         }
         "subscription_invalid" => {
@@ -1251,7 +1251,7 @@ fn known_error_message(code: &str) -> Option<&'static str> {
         }
         "not_connected" => tr!("Подключитесь, чтобы открыть панель Mihomo."),
         "dashboard_unavailable" => tr!("Панель Mihomo недоступна в этой сборке."),
-        "service_busy" => tr!("MULTICORE уже запущен у другого пользователя."),
+        "service_busy" => tr!("TerrieFlow уже запущен у другого пользователя."),
         // Why a Connect's cores did not start (the daemon's start-failure codes).
         "elevation_cancelled" => tr!("Подключение отменено: не выдано разрешение администратора."),
         "elevation_failed" => {
@@ -1263,7 +1263,7 @@ fn known_error_message(code: &str) -> Option<&'static str> {
         }
         "core_missing" => {
             tr!(
-                "Не удалось запустить ядро: файл не найден или заблокирован. Проверьте карантин антивируса и переустановите MULTICORE."
+                "Не удалось запустить ядро: файл не найден или заблокирован. Проверьте карантин антивируса и переустановите TerrieFlow."
             )
         }
         "core_exited" => {
@@ -1283,7 +1283,7 @@ fn known_error_message(code: &str) -> Option<&'static str> {
         "system_proxy_failed" => tr!("Не удалось включить системный прокси. Повторите попытку."),
         "connect_failed" => tr!("Не удалось запустить подключение. Повторите попытку."),
         "service_update_failed" => tr!("Служба не смогла загрузить или проверить обновление."),
-        "service_unavailable" => tr!("Служба MULTICORE недоступна."),
+        "service_unavailable" => tr!("Служба TerrieFlow недоступна."),
         "disconnect_first" => tr!("Сначала отключитесь: проверка меняет сетевые настройки."),
         "troubleshoot_unavailable" => tr!("Устранение неполадок недоступно в этой сборке."),
         _ => return None,
@@ -1499,7 +1499,7 @@ impl DaemonClient for HttpDaemonClient {
             .map_err(map_error)?;
         if !response.status().is_success() {
             return Err(DaemonError::definitive_http(tr!(
-                "Служба MULTICORE недоступна."
+                "Служба TerrieFlow недоступна."
             )));
         }
         decode_bounded_json(response, UPDATE_PROGRESS_RESPONSE_LIMIT_BYTES)
@@ -1856,7 +1856,7 @@ mod http_tests {
             ),
             (
                 "core_missing",
-                "Не удалось запустить ядро: файл не найден или заблокирован. Проверьте карантин антивируса и переустановите MULTICORE.",
+                "Не удалось запустить ядро: файл не найден или заблокирован. Проверьте карантин антивируса и переустановите TerrieFlow.",
             ),
             (
                 "core_exited",
@@ -1901,7 +1901,7 @@ mod http_tests {
             (
                 "409 Conflict",
                 r#"{"code":"service_busy","message":"x"}"#,
-                Some("MULTICORE уже запущен у другого пользователя."),
+                Some("TerrieFlow уже запущен у другого пользователя."),
             ),
         ] {
             let listener = TcpListener::bind("127.0.0.1:0").expect("bind update server");

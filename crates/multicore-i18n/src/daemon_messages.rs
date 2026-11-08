@@ -71,11 +71,11 @@ pub const ALL: &[(&str, &str)] = &[
     ),
     (
         "cores.lost",
-        "Служба MULTICORE потеряла ядра — подключение разорвано. Подключитесь снова.",
+        "Служба TerrieFlow потеряла ядра — подключение разорвано. Подключитесь снова.",
     ),
     (
         "cores.lost_reconnecting",
-        "Служба MULTICORE потеряла ядра — переподключаемся…",
+        "Служба TerrieFlow потеряла ядра — переподключаемся…",
     ),
     (
         "cores.reconnected",
@@ -87,7 +87,7 @@ pub const ALL: &[(&str, &str)] = &[
     ),
     (
         "service.unavailable_notice",
-        "Служба MULTICORE недоступна — права администратора будут запрошены при подключении.",
+        "Служба TerrieFlow недоступна — права администратора будут запрошены при подключении.",
     ),
     ("subscription.switched", "Подписка переключена."),
     (
@@ -119,7 +119,7 @@ pub const ALL: &[(&str, &str)] = &[
     ),
     (
         "start.core_missing",
-        "Не удалось запустить {0}: файл ядра не найден или заблокирован. Проверьте карантин антивируса и переустановите MULTICORE.",
+        "Не удалось запустить {0}: файл ядра не найден или заблокирован. Проверьте карантин антивируса и переустановите TerrieFlow.",
     ),
     (
         "start.core_exited",
@@ -143,7 +143,7 @@ pub const ALL: &[(&str, &str)] = &[
     ),
     (
         "start.service_busy",
-        "MULTICORE уже запущен у другого пользователя.",
+        "TerrieFlow уже запущен у другого пользователя.",
     ),
     (
         "start.unknown",
@@ -153,11 +153,11 @@ pub const ALL: &[(&str, &str)] = &[
     ("ts.antivirus.found", "Обнаружен {0}"),
     (
         "ts.antivirus.severe",
-        "{0} часто блокирует VPN. Если подключение не работает — выключите его или добавьте MULTICORE в исключения.",
+        "{0} часто блокирует VPN. Если подключение не работает — выключите его или добавьте TerrieFlow в исключения.",
     ),
     (
         "ts.antivirus.mild",
-        "Антивирус может мешать VPN. Если подключение не работает — добавьте MULTICORE в исключения или временно отключите защиту.",
+        "Антивирус может мешать VPN. Если подключение не работает — добавьте TerrieFlow в исключения или временно отключите защиту.",
     ),
     // Packet filters ({0} is the service).
     ("ts.dpi.running", "Работает {0}"),
@@ -186,7 +186,7 @@ pub const ALL: &[(&str, &str)] = &[
     ("ts.dpi.folders", "Найдены программы обхода блокировок"),
     (
         "ts.dpi.folders_detail",
-        "{0}. Если они запущены — закройте их. MULTICORE эти папки не трогает.",
+        "{0}. Если они запущены — закройте их. TerrieFlow эти папки не трогает.",
     ),
     // Ports ({0} port, {1} the program).
     ("ts.port.busy", "Порт {0} занят"),
@@ -206,7 +206,7 @@ pub const ALL: &[(&str, &str)] = &[
     ),
     (
         "ts.proxy.stale_cleared_detail",
-        "MULTICORE не успел выключить системный прокси. Прежние настройки восстановлены.",
+        "TerrieFlow не успел выключить системный прокси. Прежние настройки восстановлены.",
     ),
     ("ts.proxy.disabled", "Системный прокси отключён"),
     (
@@ -277,7 +277,7 @@ pub const ALL: &[(&str, &str)] = &[
     ("ts.hosts.entries", "В файле hosts есть записи: {0}"),
     (
         "ts.hosts.entries_detail",
-        "{0}: {1}. Они могут перенаправлять сайты. MULTICORE этот файл не меняет — проверьте его вручную.",
+        "{0}: {1}. Они могут перенаправлять сайты. TerrieFlow этот файл не меняет — проверьте его вручную.",
     ),
     // Group policies ({0} the values).
     ("ts.policy.restricted", "Ограничения сети"),
@@ -339,12 +339,12 @@ pub const ALL: &[(&str, &str)] = &[
         "ts.batch.cancelled_detail",
         "Без разрешения администратора их не выполнить.",
     ),
-    ("ts.batch.service_too_old", "Служба MULTICORE устарела"),
+    ("ts.batch.service_too_old", "Служба TerrieFlow устарела"),
     (
         "ts.batch.service_too_old_detail",
-        "Обновите MULTICORE — тогда служба сможет выполнять эти исправления.",
+        "Обновите TerrieFlow — тогда служба сможет выполнять эти исправления.",
     ),
-    ("ts.batch.busy", "MULTICORE запущен у другого пользователя"),
+    ("ts.batch.busy", "TerrieFlow запущен у другого пользователя"),
     (
         "ts.batch.busy_detail",
         "Исправления можно выполнить, когда он отключится.",
@@ -407,7 +407,7 @@ pub const ALL: &[(&str, &str)] = &[
     ("ts.fix.wintun_done", "Адаптер Wintun удалён"),
     (
         "ts.fix.wintun_done_detail",
-        "MULTICORE создаст его заново при следующем подключении.",
+        "TerrieFlow создаст его заново при следующем подключении.",
     ),
     ("ts.fix.wintun_absent", "Адаптера Wintun нет"),
     (
@@ -419,7 +419,7 @@ pub const ALL: &[(&str, &str)] = &[
         "ts.fix.wintun_failed_detail",
         "Перезагрузите ПК и повторите.",
     ),
-    ("ts.fix.service_done", "Служба MULTICORE переустановлена"),
+    ("ts.fix.service_done", "Служба TerrieFlow переустановлена"),
     (
         "ts.fix.service_done_detail",
         "Служба зарегистрирована заново и запущена.",
@@ -427,7 +427,7 @@ pub const ALL: &[(&str, &str)] = &[
     ("ts.fix.service_failed", "Не удалось переустановить службу"),
     (
         "ts.fix.service_failed_detail",
-        "Перезагрузите ПК и повторите или переустановите MULTICORE установщиком.",
+        "Перезагрузите ПК и повторите или переустановите TerrieFlow установщиком.",
     ),
     ("ts.linux.fixes_unavailable", "Доступно только в Windows"),
     (

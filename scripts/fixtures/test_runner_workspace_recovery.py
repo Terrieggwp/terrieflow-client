@@ -44,10 +44,11 @@ def guard_script(body):
 
 class WorkspaceRecoveryTests(unittest.TestCase):
     def guards(self):
-        for path, name in (
-            (".github/workflows/ci.yml", "linux"),
-            (".github/workflows/linux-packages.yml", "debian-appimage"),
-        ):
+        hosted_ci = job_body(".github/workflows/ci.yml", "linux")
+        self.assertIn("runs-on: ubuntu-24.04", hosted_ci)
+        self.assertNotIn(GUARD_NAME, hosted_ci)
+
+        for path, name in ((".github/workflows/linux-packages.yml", "debian-appimage"),):
             body = job_body(path, name)
             self.assertNotIn("    container:", body)
             script = guard_script(body)
@@ -125,10 +126,7 @@ sudo() { printf '%s\\0' "$@" > "$TEST_SUDO_LOG"; }
                         self.assertFalse(log.exists(), "Rejected paths/users must never reach sudo")
 
     def test_fedora_tools_precede_checkout(self):
-        for name, step in (
-            ("rpm", "Install RPM build and verification tools"),
-            ("rpm-smoke", "Install isolated Fedora smoke tools"),
-        ):
+        for name, step in (("rpm", "Install RPM build and verification tools"),):
             with self.subTest(job=name):
                 body = job_body(".github/workflows/linux-packages.yml", name)
                 self.assertLess(body.index(step), body.index("actions/checkout@"))

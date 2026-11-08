@@ -52,7 +52,7 @@
     "tags": "with_gvisor",
     "version": "v1.19.32",
     "buildTime": "Wed Sep 30 14:35:49 UTC 2026",
-    "note": "MetaCubeX release flags (CGO_ENABLED=0, -tags with_gvisor, -trimpath, -ldflags \"-extldflags --static -X constant.Version -X constant.BuildTime -w -s -buildid=\"). BuildTime is the upstream commit time instead of the wall clock, so a rebuild is byte-identical."
+    "note": "MetaCubeX release flags (CGO_ENABLED=0, GOFLAGS=-mod=readonly -buildvcs=false, -tags with_gvisor, -trimpath, -ldflags \"-extldflags --static -X constant.Version -X constant.BuildTime -w -s -buildid=\"). BuildTime is the upstream commit time instead of the wall clock, and VCS stamping is disabled so an enclosing checkout cannot affect the binary; rebuilds are byte-identical."
   },
   "targets": {
     "windows-amd64": {

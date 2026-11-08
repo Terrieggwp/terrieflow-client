@@ -8,7 +8,7 @@ use crate::view_model::StatePresentation;
 
 /// The home banner that offers troubleshooting after a failed connect. Not for the failures
 /// the user caused or that troubleshooting cannot touch: a dismissed administrator prompt or
-/// MULTICORE running in another user's session.
+/// TerrieFlow running in another user's session.
 pub(crate) fn offered_after_failure(presentation: &StatePresentation) -> bool {
     presentation.has_profile
         && presentation.is_error
@@ -257,7 +257,7 @@ mod tests {
             "Подключение отменено: не выдано разрешение администратора."
         )));
         assert!(!offered_after_failure(&failed(
-            "MULTICORE уже запущен у другого пользователя."
+            "TerrieFlow уже запущен у другого пользователя."
         )));
         assert!(!offered_after_failure(
             &UiState::Ready {
@@ -541,8 +541,8 @@ mod english_tests {
         for message in [
             "Подключение отменено: не выдано разрешение администратора.",
             "Connection cancelled: administrator permission was not granted.",
-            "MULTICORE уже запущен у другого пользователя.",
-            "MULTICORE is already running for another user.",
+            "TerrieFlow уже запущен у другого пользователя.",
+            "TerrieFlow is already running for another user.",
         ] {
             assert!(caused_by_user(message), "{message}");
         }

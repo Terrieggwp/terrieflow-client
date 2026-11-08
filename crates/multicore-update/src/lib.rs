@@ -46,18 +46,18 @@ impl WindowsArch {
     /// Portable bundle and updater asset.
     pub const fn bundle_asset_name(self) -> &'static str {
         match self {
-            Self::X64 => "multicore-windows-x64.zip",
-            Self::X86 => "multicore-windows-x86.zip",
-            Self::Arm64 => "multicore-windows-arm64.zip",
+            Self::X64 => "TerrieFlow-Client-windows-x64.zip",
+            Self::X86 => "TerrieFlow-Client-windows-x86.zip",
+            Self::Arm64 => "TerrieFlow-Client-windows-arm64.zip",
         }
     }
 
     /// Inno Setup installer asset.
     pub const fn installer_asset_name(self) -> &'static str {
         match self {
-            Self::X64 => "MultiCore-Setup-x64.exe",
-            Self::X86 => "MultiCore-Setup-x86.exe",
-            Self::Arm64 => "MultiCore-Setup-arm64.exe",
+            Self::X64 => "TerrieFlow-Client-Setup-x64.exe",
+            Self::X86 => "TerrieFlow-Client-Setup-x86.exe",
+            Self::Arm64 => "TerrieFlow-Client-Setup-arm64.exe",
         }
     }
 
@@ -669,11 +669,13 @@ fn extract_verified_bundle_inner(
 }
 
 const REQUIRED_BUNDLE_FILES: &[&str] = &[
-    "MultiCore.exe",
+    "TerrieFlow.exe",
+    "LICENSE.txt",
     "README.md",
     "THIRD_PARTY_NOTICES.md",
     "cores/mihomo.exe",
     "cores/xray.exe",
+    "licenses/Skia-BSD-3-Clause.txt",
     "licenses/Xray-core-MPL-2.0.txt",
     "licenses/mihomo-GPL-3.0.txt",
     "runtime/multicore-core-host.exe",
@@ -683,7 +685,7 @@ const REQUIRED_BUNDLE_FILES: &[&str] = &[
 ];
 
 const REQUIRED_PE_FILES: &[&str] = &[
-    "MultiCore.exe",
+    "TerrieFlow.exe",
     "cores/mihomo.exe",
     "cores/xray.exe",
     "runtime/multicore-core-host.exe",
@@ -897,7 +899,7 @@ fn validate_swap_paths(target: &Path, staged: &Path, backup: &Path) -> Result<()
     }
     for directory in [target, staged] {
         if !directory.is_dir()
-            || !directory.join("MultiCore.exe").is_file()
+            || !directory.join("TerrieFlow.exe").is_file()
             || !directory.join("SHA256SUMS.txt").is_file()
         {
             return Err(UpdateError::InvalidBundle(format!(

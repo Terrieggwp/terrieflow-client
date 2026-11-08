@@ -3408,7 +3408,7 @@ dependencies = [
 
 [[package]]
 name = "multicore-desktop"
-version = "1.1.15"
+version = "1.1.17"
 dependencies = [
  "chrono",
  "copypasta",
@@ -3436,6 +3436,7 @@ dependencies = [
  "webbrowser",
  "windows-sys 0.61.2",
  "x11rb",
+ "zeroize",
  "zip",
 ]
 

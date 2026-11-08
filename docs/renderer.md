@@ -51,7 +51,18 @@ platform's `packaging/*/versions.json`) and hand it to `skia-bindings` through
   `scripts/package-windows-release.ps1` needs that directory as
   `-SkiaBinariesDirectory` or `MULTICORE_SKIA_BINARIES_DIR` and refuses an archive
   whose SHA-256 differs from the pin. The Skia build is not bit-reproducible: building
-  the archive again means updating `build.skiaBinaries.sha256`.
+  the archive again means reviewing and updating `build.skiaBinaries.sha256`; a release
+  runner must reuse the immutable archive that corresponds to the pin rather than expect
+  a rebuild to reproduce it. The reviewed Windows x64 archive for 1.1.17 has SHA-256
+  `dfae17eb3e66eb7d242b557efff3599bcc12715da492f5e4772bb0b12b24087f`.
+
+  That x64 pin replaced the earlier unavailable artifact after a controlled rebuild on
+  2026-11-06 with the same `skia-bindings` version, source tag and commit, feature key,
+  LLVM version and static-CRT configuration. Two independent builds had identical source
+  inputs, member names, member order and immutable payloads, but different archive hashes:
+  COFF object timestamps vary between builds, `skia-bindings.lib` records absolute object
+  paths, and gzip records packaging metadata. The replacement therefore pins the reviewed
+  artifact itself; it is not a claim that future Skia builds will be byte-identical.
 - **Windows on ARM (arm64)**: cross-compiled on an x64 host for `aarch64-pc-windows-msvc`.
   The Skia archive is built like the others (`-Architecture arm64`); clang-cl compiles
   Skia and skia-bindings' `bindings.cpp` and llvm-lib archives it, so building the archive

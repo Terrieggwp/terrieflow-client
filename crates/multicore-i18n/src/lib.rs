@@ -1,4 +1,4 @@
-//! MULTICORE's interface languages: Russian (the source language and the default) and English.
+//! TerrieFlow's interface languages: Russian (the source language and the default) and English.
 //!
 //! One gettext catalog, `apps/multicore-desktop/translations/en/LC_MESSAGES/multicore-desktop.po`,
 //! serves both halves of the desktop app: Slint bundles it for every `@tr("…")` in the `.slint`
@@ -447,6 +447,11 @@ mod tests {
         "Язык",
         // The update toast's download line without figures: "Loading…" would not say what.
         "Скачиваем…",
+        // Compact account controls: these are the shortest natural English labels.
+        "Войти",
+        "Входим…",
+        "ПАРОЛЬ",
+        "Пароль",
     ];
 
     fn chars(text: &str) -> usize {

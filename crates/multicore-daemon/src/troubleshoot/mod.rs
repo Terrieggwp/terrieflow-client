@@ -210,7 +210,7 @@ pub struct PortOwner {
     pub image: Option<String>,
 }
 
-/// Image names of MULTICORE's own processes.
+/// Image names of TerrieFlow's own processes.
 const OWN_IMAGES: [&str; 4] = [
     "mihomo.exe",
     "xray.exe",
@@ -277,7 +277,7 @@ pub fn port_findings(
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ProxyOutcome {
     Direct,
-    /// MULTICORE's own proxy outlived its connection (a crash): the user's earlier settings
+    /// TerrieFlow's own proxy outlived its connection (a crash): the user's earlier settings
     /// were put back, or the leftover was switched off.
     StaleOursCleared,
     /// Another program's proxy was switched off (its address is kept for switching it back on).
@@ -289,7 +289,7 @@ pub enum ProxyOutcome {
     },
 }
 
-/// Whether `server` is the loopback proxy MULTICORE applies (`127.0.0.1:<port>`).
+/// Whether `server` is the loopback proxy TerrieFlow applies (`127.0.0.1:<port>`).
 pub fn looks_like_our_proxy(server: &str, proxy_override: Option<&str>) -> bool {
     let ours_server = server
         .strip_prefix("127.0.0.1:")

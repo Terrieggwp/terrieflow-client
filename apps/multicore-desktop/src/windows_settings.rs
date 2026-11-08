@@ -64,7 +64,10 @@ fn is_installed_executable(executable: &Path) -> bool {
     executable
         .file_name()
         .and_then(|name| name.to_str())
-        .is_some_and(|name| name.eq_ignore_ascii_case("MultiCore.exe"))
+        .is_some_and(|name| {
+            name.eq_ignore_ascii_case("TerrieFlow.exe")
+                || name.eq_ignore_ascii_case("MultiCore.exe")
+        })
         && current
             .file_name()
             .and_then(|name| name.to_str())
@@ -121,7 +124,8 @@ pub fn launch_executable(current_executable: &Path) -> PathBuf {
     multicore_release::brand::without_verbatim_prefix(current_executable)
 }
 
-/// `<install>` when `executable` is the installed `<install>\current\MultiCore.exe`.
+/// `<install>` when `executable` is the installed `<install>\current\TerrieFlow.exe` (or the
+/// legacy `MultiCore.exe` during migration).
 #[cfg(windows)]
 fn install_root_of(executable: &Path) -> Option<PathBuf> {
     if !is_installed_executable(executable) {
@@ -362,7 +366,7 @@ mod autostart {
 
     pub(super) fn desktop_entry(command: &str) -> String {
         format!(
-            "[Desktop Entry]\nType=Application\nName=MULTICORE\nComment=MULTICORE network client\nExec={command}\nIcon=multicore\nTerminal=false\nX-GNOME-Autostart-enabled=true\n"
+            "[Desktop Entry]\nType=Application\nName=TerrieFlow\nComment=TerrieFlow network client\nExec={command}\nIcon=multicore\nTerminal=false\nX-GNOME-Autostart-enabled=true\n"
         )
     }
 
@@ -576,7 +580,7 @@ mod registry {
         executable: &std::path::Path,
         command: &str,
     ) -> io::Result<()> {
-        write_string_value(PROTOCOL_KEY, "", "URL:MULTICORE Protocol")?;
+        write_string_value(PROTOCOL_KEY, "", "URL:TerrieFlow Protocol")?;
         write_string_value(PROTOCOL_KEY, "URL Protocol", "")?;
         write_string_value(
             &format!("{PROTOCOL_KEY}\\DefaultIcon"),
@@ -680,8 +684,8 @@ mod tests {
     #[test]
     fn launch_command_is_exactly_quoted_and_backgrounded() {
         assert_eq!(
-            build_launch_command(Path::new(r"C:\Program Files\MultiCore\MultiCore.exe")).unwrap(),
-            r#""C:\Program Files\MultiCore\MultiCore.exe" --background"#
+            build_launch_command(Path::new(r"C:\Program Files\TerrieFlow\TerrieFlow.exe")).unwrap(),
+            r#""C:\Program Files\TerrieFlow\TerrieFlow.exe" --background"#
         );
     }
 
@@ -690,7 +694,7 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let current = root.path().join("current");
         std::fs::create_dir(&current).unwrap();
-        let executable = current.join("MultiCore.exe");
+        let executable = current.join("TerrieFlow.exe");
         std::fs::write(&executable, b"app").unwrap();
 
         assert!(!is_installed_executable(&executable));
@@ -735,10 +739,10 @@ mod tests {
         }
     }
 
-    const INSTALLED: &str = r"C:\Program Files\MultiCore\current\MultiCore.exe";
-    const VERBATIM: &str = r"\\?\C:\Program Files\MultiCore\current\MultiCore.exe";
-    const ROOT: &str = r"C:\Program Files\MultiCore";
-    const CANONICAL: &str = r#""C:\Program Files\MultiCore\current\MultiCore.exe" --background"#;
+    const INSTALLED: &str = r"C:\Program Files\TerrieFlow\current\TerrieFlow.exe";
+    const VERBATIM: &str = r"\\?\C:\Program Files\TerrieFlow\current\TerrieFlow.exe";
+    const ROOT: &str = r"C:\Program Files\TerrieFlow";
+    const CANONICAL: &str = r#""C:\Program Files\TerrieFlow\current\TerrieFlow.exe" --background"#;
 
     /// The updater relaunches the new client from a canonicalized (`\\?\`) path, while the
     /// installer, the shortcuts and an earlier toggle use the plain one. Either spelling of
@@ -748,27 +752,27 @@ mod tests {
         for (stored, running) in [
             (CANONICAL, VERBATIM),
             (
-                r#""\\?\C:\Program Files\MultiCore\current\MultiCore.exe" --background"#,
+                r#""\\?\C:\Program Files\TerrieFlow\current\TerrieFlow.exe" --background"#,
                 INSTALLED,
             ),
             (
-                r#""\\?\C:\Program Files\MultiCore\current\MultiCore.exe" --background"#,
+                r#""\\?\C:\Program Files\TerrieFlow\current\TerrieFlow.exe" --background"#,
                 VERBATIM,
             ),
             (
-                r#""c:\program files\multicore\CURRENT\multicore.exe" --background"#,
+                r#""c:\program files\terrieflow\CURRENT\terrieflow.exe" --background"#,
                 INSTALLED,
             ),
             (
-                r#""C:/Program Files/MultiCore/current/MultiCore.exe" --background"#,
+                r#""C:/Program Files/TerrieFlow/current/TerrieFlow.exe" --background"#,
                 INSTALLED,
             ),
             (
-                r#""C:\Program Files\MultiCore\current\MultiCore.exe""#,
+                r#""C:\Program Files\TerrieFlow\current\TerrieFlow.exe""#,
                 INSTALLED,
             ),
             (
-                r#"  "C:\Program Files\MultiCore\current\MultiCore.exe" --background "#,
+                r#"  "C:\Program Files\TerrieFlow\current\TerrieFlow.exe" --background "#,
                 INSTALLED,
             ),
         ] {
@@ -789,12 +793,12 @@ mod tests {
         let root = Some(Path::new(ROOT));
         for running in [INSTALLED, VERBATIM] {
             for stored in [
-                r#""\\?\C:\Program Files\MultiCore\current\MultiCore.exe" --background"#,
-                r#""c:\program files\multicore\current\multicore.exe" --background"#,
-                r#""C:\Program Files\MultiCore\current\MultiCore.exe""#,
+                r#""\\?\C:\Program Files\TerrieFlow\current\TerrieFlow.exe" --background"#,
+                r#""c:\program files\terrieflow\current\terrieflow.exe" --background"#,
+                r#""C:\Program Files\TerrieFlow\current\TerrieFlow.exe""#,
                 // Earlier layouts and leftovers of this install.
-                r#""C:\Program Files\MultiCore\MultiCore.exe" --background"#,
-                r#""C:\Program Files\MultiCore\.multicore-previous-1.1.4-77\MultiCore.exe" --background"#,
+                r#""C:\Program Files\TerrieFlow\TerrieFlow.exe" --background"#,
+                r#""C:\Program Files\TerrieFlow\.multicore-previous-1.1.4-77\TerrieFlow.exe" --background"#,
             ] {
                 assert_eq!(
                     repaired_launch_command(Some(stored), Path::new(running), root)
@@ -934,7 +938,7 @@ mod linux_tests {
         let entry = desktop_entry(command);
         assert!(entry.starts_with("[Desktop Entry]\n"));
         assert!(entry.contains("\nType=Application\n"));
-        assert!(entry.contains("\nName=MULTICORE\n"));
+        assert!(entry.contains("\nName=TerrieFlow\n"));
         assert_eq!(exec_from_desktop_entry(&entry).as_deref(), Some(command));
     }
 

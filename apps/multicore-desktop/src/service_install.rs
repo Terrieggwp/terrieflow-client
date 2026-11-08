@@ -1,6 +1,6 @@
 //! Settings card for per-user installs: download the release installer and run it in service
 //! mode (`/ALLUSERS`, one UAC). The installer removes this per-user copy and keeps the user's
-//! data, so MultiCore quits first and the installer starts only after the app has let go of
+//! data, so TerrieFlow quits first and the installer starts only after the app has let go of
 //! its files (see `launch_pending_installer`, called by `main` after the event loop ends).
 
 use multicore_i18n::tr;
@@ -13,10 +13,12 @@ static PENDING_INSTALLER: Mutex<Option<PathBuf>> = Mutex::new(None);
 pub(crate) fn is_per_user_install(executable: &Path, local_app_data: &Path) -> bool {
     let normalize = |path: &Path| path.to_string_lossy().replace('/', "\\").to_lowercase();
     // A client the updater relaunched sees its own path as `\\?\C:\...`.
-    normalize(&multicore_release::brand::without_verbatim_prefix(
+    let root = normalize(local_app_data);
+    let executable = normalize(&multicore_release::brand::without_verbatim_prefix(
         executable,
-    ))
-    .starts_with(&(normalize(local_app_data) + "\\programs\\multicore\\"))
+    ));
+    executable.starts_with(&(root.clone() + "\\programs\\terrieflow\\"))
+        || executable.starts_with(&(root + "\\programs\\multicore\\"))
 }
 
 fn card_visible_on(windows: bool, per_user_install: bool, service_mode: bool) -> bool {
@@ -30,7 +32,7 @@ pub(crate) fn card_visible(service_mode: bool) -> bool {
     card_visible_on(cfg!(windows), per_user_install(), service_mode)
 }
 
-/// This copy runs from `%LOCALAPPDATA%\Programs\MultiCore` (read once).
+/// This copy runs from `%LOCALAPPDATA%\Programs\TerrieFlow` (or the legacy `MultiCore` folder).
 pub(crate) fn per_user_install() -> bool {
     static PER_USER_INSTALL: OnceLock<bool> = OnceLock::new();
     *PER_USER_INSTALL.get_or_init(|| {
@@ -81,7 +83,7 @@ fn query_service_installed() -> bool {
 }
 
 /// Inno Setup command line: service mode without the privileges dialog, a progress window
-/// only, and a relaunch of MultiCore once the service runs. Never the data-cleanup task.
+/// only, and a relaunch of TerrieFlow once the service runs. Never the data-cleanup task.
 fn installer_arguments(launch_at_sign_in: bool) -> Vec<&'static str> {
     let mut arguments = vec![
         "/ALLUSERS",
@@ -109,7 +111,7 @@ pub(crate) fn download_installer() -> Result<PathBuf, String> {
     let directory = crate::updater::update_directory()?;
     std::fs::create_dir_all(&directory)
         .map_err(|_| tr!("Не удалось создать папку обновлений").to_owned())?;
-    let installer = directory.join(format!("MultiCore-Setup-{}.exe", release.version()));
+    let installer = directory.join(format!("TerrieFlow-Client-Setup-{}.exe", release.version()));
     if installer.exists() {
         std::fs::remove_file(&installer)
             .map_err(|_| tr!("Не удалось очистить прошлую загрузку").to_owned())?;
@@ -129,7 +131,7 @@ pub(crate) fn download_installer() -> Result<PathBuf, String> {
     Err(tr!("Служба устанавливается пакетом").into())
 }
 
-/// Remember the verified installer; `main` starts it after MultiCore has shut down.
+/// Remember the verified installer; `main` starts it after TerrieFlow has shut down.
 pub(crate) fn launch_after_exit(installer: PathBuf) {
     *PENDING_INSTALLER.lock().expect("pending installer lock") = Some(installer);
 }
@@ -148,7 +150,7 @@ pub(crate) fn launch_pending_installer() {
         crate::windows_settings::query_launch_at_sign_in(),
         Ok(crate::windows_settings::LaunchAtSignInState::Enabled)
     );
-    // Inno Setup elevates itself (one UAC) and relaunches MultiCore (/LAUNCH=1).
+    // Inno Setup elevates itself (one UAC) and relaunches TerrieFlow (/LAUNCH=1).
     if let Err(error) = std::process::Command::new(&installer)
         .args(installer_arguments(launch_at_sign_in))
         .spawn()
@@ -165,6 +167,10 @@ mod tests {
     #[test]
     fn only_a_per_user_install_offers_the_service() {
         let local = Path::new(r"C:\Users\me\AppData\Local");
+        assert!(is_per_user_install(
+            Path::new(r"C:\Users\me\AppData\Local\Programs\TerrieFlow\current\TerrieFlow.exe"),
+            local
+        ));
         assert!(is_per_user_install(
             Path::new(r"C:\Users\me\AppData\Local\Programs\MultiCore\current\MultiCore.exe"),
             local
