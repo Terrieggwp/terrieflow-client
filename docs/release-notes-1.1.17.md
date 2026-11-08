@@ -26,6 +26,11 @@ of this release.
 ## Compatibility
 
 - Windows x64 is the beta release target.
+- The Linux-only GTK3 dependency currently resolves `glib 0.18.5`, which is
+  affected by GHSA-wrw7-89jp-8q8g. It is not compiled into the Windows x64
+  release. The temporary acceptance, evidence, restrictions, and remediation plan
+  are recorded in
+  [security-risk-acceptance-1.1.17.md](security-risk-acceptance-1.1.17.md).
 - Existing local profiles, account sessions and subscription state are retained
   during a normal update.
 - `release.txt` remains at `1.1.15` until the 1.1.17 release is actually
@@ -41,3 +46,4 @@ of this release.
 - The executable is currently unsigned, so Windows SmartScreen may display a
   warning. Download only from the official TerrieFlow repository.
 - Verify every downloaded asset with `RELEASE-SHA256SUMS.txt`.
+
